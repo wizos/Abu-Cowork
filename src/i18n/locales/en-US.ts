@@ -206,6 +206,10 @@ const enUS: TranslationDict = {
       web3: 'Generate 12 months of sample sales data, then create a visual dashboard page with charts and key metrics. Save to Desktop',
       web4: 'Create a clean company homepage with navbar, about section, team introduction, and contact info. Save to Desktop',
     },
+    contextWarning: 'Context usage is high. Consider compressing history or starting a new chat.',
+    contextCritical: 'Context nearly full, auto-compressing...',
+    contextCompressBtn: 'Compress',
+    contextNewChatBtn: 'New Chat',
   },
 
   status: {

@@ -206,6 +206,10 @@ const zhCN: TranslationDict = {
       web3: '先生成一份 12 个月的示例销售数据，然后生成一个可视化数据看板网页，包含图表和关键指标，保存到桌面',
       web4: '生成一个简洁的公司官网首页，包含导航栏、公司简介、团队介绍和联系方式，保存到桌面',
     },
+    contextWarning: '上下文使用较高，建议压缩历史或开启新对话',
+    contextCritical: '上下文即将满载，正在自动压缩...',
+    contextCompressBtn: '压缩历史',
+    contextNewChatBtn: '新对话',
   },
 
   status: {

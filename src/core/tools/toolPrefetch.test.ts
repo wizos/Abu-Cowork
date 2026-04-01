@@ -13,8 +13,8 @@ function makeCtx(overrides: Partial<PrefetchContext> = {}): PrefetchContext {
 
 describe('toolPrefetch', () => {
   describe('CORE_TOOL_NAMES', () => {
-    it('should contain 12 core tools', () => {
-      expect(CORE_TOOL_NAMES.size).toBe(12);
+    it('should contain 13 core tools', () => {
+      expect(CORE_TOOL_NAMES.size).toBe(13);
     });
 
     it('should include essential tools', () => {

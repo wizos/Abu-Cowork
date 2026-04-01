@@ -170,6 +170,11 @@ export interface TranslationDict {
     scenarioPrompts: Record<string, string>;
     /** Full prompt sent on click (falls back to scenarioPrompts if absent) */
     scenarioFullPrompts: Record<string, string>;
+    // Context warning bar
+    contextWarning: string;
+    contextCritical: string;
+    contextCompressBtn: string;
+    contextNewChatBtn: string;
   };
 
   // Status Bar

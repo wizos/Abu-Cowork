@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { LLMProvider, ApiFormat, ProviderCapabilities, CustomService } from '../types';
+import type { PermissionMode } from '../core/permissions/permissionMode';
 import type { WebSearchProviderType } from '../core/search/providers';
 import { setLanguage, initLanguage, type LanguageSetting } from '@/i18n';
 import type { UpdateInfo } from '@/core/updates/checker';
@@ -274,6 +275,8 @@ interface SettingsState {
   behaviorSensorEnabled: boolean;
   // Computer Use (screenshot + keyboard/mouse simulation)
   computerUseEnabled: boolean;
+  // Experimental: streaming tool execution (execute tools as LLM streams, not after)
+  enableStreamingToolExecution: boolean;
   // Skill inline command execution (!`command` syntax)
   allowSkillCommands: boolean;
   // npm skill registry
@@ -281,6 +284,8 @@ interface SettingsState {
   // Custom AI services
   customServices: CustomService[];
   activeCustomServiceId: string | null;
+  // Permission mode for tool execution confirmation
+  permissionMode: PermissionMode;
 }
 
 interface SettingsActions {
@@ -357,6 +362,8 @@ interface SettingsActions {
   updateCustomService: (id: string) => void;
   deleteCustomService: (id: string) => void;
   switchToCustomService: (id: string) => void;
+  // Permission mode
+  setPermissionMode: (mode: PermissionMode) => void;
 }
 
 /** Returns the active API key for the current provider */
@@ -463,10 +470,12 @@ export const useSettingsStore = create<SettingsStore>()(
       guideShown: false,
       behaviorSensorEnabled: false,
       computerUseEnabled: false,
+      enableStreamingToolExecution: false,
       allowSkillCommands: true,
       skillRegistry: '',
       customServices: [],
       activeCustomServiceId: null,
+      permissionMode: 'default' as PermissionMode,
 
       setProvider: (provider) => set({ provider }),
       setApiFormat: (apiFormat) => set({ apiFormat }),
@@ -612,12 +621,16 @@ export const useSettingsStore = create<SettingsStore>()(
           activeCustomServiceId: id,
         };
       }),
+      setPermissionMode: (mode) => set({ permissionMode: mode }),
     }),
     {
       name: 'abu-settings',
-      version: 11,
+      version: 12,
       migrate: (persisted: unknown, version: number) => {
         const state = persisted as Record<string, unknown>;
+        if (version < 12) {
+          if (state.permissionMode === undefined) state.permissionMode = 'default';
+        }
         if (version < 11) {
           // Bump default maxOutputTokens from 8192 to 32768 for users who never changed it
           if (state.maxOutputTokens === 8192) {
@@ -756,6 +769,7 @@ export const useSettingsStore = create<SettingsStore>()(
         skillRegistry: state.skillRegistry,
         customServices: state.customServices,
         activeCustomServiceId: state.activeCustomServiceId,
+        permissionMode: state.permissionMode,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;

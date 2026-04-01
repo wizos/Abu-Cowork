@@ -3,7 +3,7 @@ import type { LLMAdapter } from '../llm/adapter';
 import { LLMError } from '../llm/adapter';
 import { ClaudeAdapter } from '../llm/claude';
 import { OpenAICompatibleAdapter } from '../llm/openai-compatible';
-import { getAllTools, type ConfirmationInfo, type FilePermissionCallback } from '../tools/registry';
+import { getAllTools, executeAnyTool, toolResultToString, type ConfirmationInfo, type FilePermissionCallback } from '../tools/registry';
 import type { ToolDefinition } from '../../types';
 import { useChatStore, flushTokenBuffer } from '../../stores/chatStore';
 import { useSettingsStore, getEffectiveModel, getActiveApiKey, resolveAgentModel } from '../../stores/settingsStore';
@@ -33,12 +33,14 @@ import { snapshotExecutionSteps } from './executionSnapshot';
 import { emitHook } from './lifecycleHooks';
 import { clearAllSkillHooks } from '../tools/builtins';
 import { executeToolBatch } from './toolExecutor';
+import { StreamingToolExecutor } from '../tools/streamingExecutor';
 import { formatTodosForPrompt } from './todoManager';
 import { isWindows } from '../../utils/platform';
 import { getBuiltinSearchConfig } from '../capabilities';
 import { resolveCapabilities } from '../llm/modelCapabilities';
 import { TOOL_NAMES } from '../tools/toolNames';
-import { CORE_TOOL_NAMES, prefetchTools } from '../tools/toolPrefetch';
+import { prefetchTools } from '../tools/toolPrefetch';
+import { classifyTools, buildDeferredToolsSummary } from '../tools/toolSearch';
 import { createLogger } from '../logging/logger';
 
 const logger = createLogger('agentLoop');
@@ -224,17 +226,19 @@ function resolveTools(
   hasBuiltinWebSearch: boolean,
   blockedTools?: string[],
   prefetchContext?: { userInput: string; computerUseEnabled: boolean; activeSkills: import('../../types').Skill[]; turnCount: number },
-): { tools: ToolDefinition[]; inputValidators: Map<string, (input: Record<string, unknown>) => boolean> } {
+): { tools: ToolDefinition[]; deferredTools: ToolDefinition[]; inputValidators: Map<string, (input: Record<string, unknown>) => boolean> } {
   let tools = getAllTools();
   let inputValidators = new Map<string, (input: Record<string, unknown>) => boolean>();
+  let deferredTools: ToolDefinition[] = [];
 
   // Conditional tool loading: filter to core + prefetched tools
-  // Only when skill doesn't define its own allowed-tools whitelist
+  // Non-core tools become "deferred" — name + description only in system prompt
   if (prefetchContext && !route.skill?.allowedTools) {
     const additionalToolNames = prefetchTools(prefetchContext);
-    tools = tools.filter(t =>
-      CORE_TOOL_NAMES.has(t.name) || additionalToolNames.includes(t.name)
-    );
+    const prefetchedSet = new Set(additionalToolNames);
+    const classified = classifyTools(tools, prefetchedSet);
+    tools = classified.coreTools;
+    deferredTools = classified.deferredTools;
   }
 
   if (route.type === 'skill' && route.skill?.allowedTools) {
@@ -246,11 +250,16 @@ function resolveTools(
     tools = tools.filter(t =>
       patterns.some(pattern => matchesToolName(t.name, pattern)),
     );
+    // Skills with explicit allowedTools don't use deferred tools
+    deferredTools = [];
   }
   // Skill blocked-tools: blacklist mode (softer than allowedTools whitelist)
   if (route.type === 'skill' && route.skill?.blockedTools) {
     const blockedPatterns = route.skill.blockedTools;
     tools = tools.filter(t =>
+      !blockedPatterns.some(pattern => matchesToolName(t.name, pattern)),
+    );
+    deferredTools = deferredTools.filter(t =>
       !blockedPatterns.some(pattern => matchesToolName(t.name, pattern)),
     );
   }
@@ -259,21 +268,25 @@ function resolveTools(
     if (def.tools && def.tools.length > 0) {
       const allowed = new Set(def.tools);
       tools = tools.filter(t => allowed.has(t.name));
+      deferredTools = [];  // Agents with explicit tool lists don't use deferred
     }
     if (def.disallowedTools && def.disallowedTools.length > 0) {
       const blocked = new Set(def.disallowedTools);
       tools = tools.filter(t => !blocked.has(t.name));
+      deferredTools = deferredTools.filter(t => !blocked.has(t.name));
     }
   }
   if (hasBuiltinWebSearch) {
     tools = tools.filter(t => t.name !== TOOL_NAMES.WEB_SEARCH);
+    deferredTools = deferredTools.filter(t => t.name !== TOOL_NAMES.WEB_SEARCH);
   }
   // Headless / IM mode: block specific tools that require UI interaction
   if (blockedTools && blockedTools.length > 0) {
     const blocked = new Set(blockedTools);
     tools = tools.filter(t => !blocked.has(t.name));
+    deferredTools = deferredTools.filter(t => !blocked.has(t.name));
   }
-  return { tools, inputValidators };
+  return { tools, deferredTools, inputValidators };
 }
 
 /** Build dynamic capabilities text describing currently available MCP tools */
@@ -705,9 +718,10 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
         activeSkills: activeSkillObjects,
         turnCount,
       };
-      const { tools, inputValidators } = resolveTools(route, !!builtinWebSearch, options?.blockedTools, prefetchCtx);
+      const { tools, deferredTools, inputValidators } = resolveTools(route, !!builtinWebSearch, options?.blockedTools, prefetchCtx);
       const toolTokens = estimateToolSchemaTokens(tools);
       const dynamicCapabilities = buildDynamicCapabilities(tools);
+      const deferredToolsSummary = buildDeferredToolsSummary(deferredTools);
       const activeSkillContent = await loadActiveSkillContent(
         conv?.activeSkills,
         conv?.activeSkillArgs,
@@ -739,6 +753,9 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       }
       if (todoState) {
         dynamicSections.push({ name: 'todos', text: todoState, cacheable: false });
+      }
+      if (deferredToolsSummary) {
+        dynamicSections.push({ name: 'deferred-tools', text: deferredToolsSummary, cacheable: false });
       }
       const allSections = mergeSections([...systemPromptSections, ...dynamicSections]);
       // String form for token estimation and context management
@@ -840,6 +857,25 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
         builtinWebSearch,
       };
 
+      // StreamingToolExecutor: when enabled, starts executing concurrent-safe tools
+      // during LLM streaming instead of waiting for all tool_use blocks to arrive.
+      const useStreamingExecution = freshSettings.enableStreamingToolExecution;
+      const confirmCbForStreaming = options?.commandConfirmCallback ?? requestCommandConfirmation;
+      const filePermCbForStreaming = options?.filePermissionCallback ?? requestFilePermission;
+      const streamingExecutor = useStreamingExecution ? new StreamingToolExecutor(async (tc) => {
+        const startTime = Date.now();
+        try {
+          const rawResult = await executeAnyTool(
+            tc.name, tc.input, confirmCbForStreaming, filePermCbForStreaming, toolContext, usagePercent
+          );
+          const resultStr = toolResultToString(rawResult);
+          return { id: tc.id, result: resultStr, resultContent: typeof rawResult !== 'string' ? rawResult : undefined, error: false, duration: (Date.now() - startTime) / 1000 };
+        } catch (err) {
+          if (err instanceof Error && err.name === 'AbortError') throw err;
+          return { id: tc.id, result: `Error: ${err instanceof Error ? err.message : String(err)}`, resultContent: undefined, error: true, duration: (Date.now() - startTime) / 1000 };
+        }
+      }) : null;
+
       const chatFn = () => adapter.chat(preparedMessages, chatOptions, eventHandler);
 
       const eventHandler = (event: StreamEvent) => {
@@ -925,6 +961,16 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
                 isExecuting: true,
                 startTime: Date.now(),
               });
+
+              // Feed to streaming executor for immediate execution (if enabled)
+              if (streamingExecutor && event.name !== TOOL_NAMES.REPORT_PLAN) {
+                streamingExecutor.addTool({
+                  id: event.id,
+                  name: event.name,
+                  input: event.input,
+                  isExecuting: true,
+                });
+              }
               break;
             }
 

@@ -11,6 +11,7 @@ import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { useI18n } from '@/i18n';
 import MessageGroup from './MessageGroup';
 import ChatInput from './ChatInput';
+import ContextWarningBar from './ContextWarningBar';
 import ScenarioGuide from './ScenarioGuide';
 import PermissionDialog from '@/components/common/PermissionDialog';
 import CommandConfirmDialog from '@/components/common/CommandConfirmDialog';
@@ -262,8 +263,10 @@ export default function ChatView() {
   }
 
   // Chat view with messages
-  // Group messages by loopId for unified rendering
-  const messageGroups = groupMessagesByLoop(messages);
+  // Filter out system-injected messages (e.g. max_tokens recovery prompts) and
+  // group remaining messages by loopId for unified rendering
+  const visibleMessages = messages.filter(m => !m.isSystem);
+  const messageGroups = groupMessagesByLoop(visibleMessages);
 
   return (
     <div className="flex flex-col h-full min-h-0 min-w-0 bg-[var(--abu-bg-base)]">
@@ -348,7 +351,11 @@ export default function ChatView() {
 
       {/* Bottom Input */}
       <div className="shrink-0 px-6 md:px-10 pb-4 pt-1.5 bg-[var(--abu-bg-base)]">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto flex flex-col gap-1.5">
+          <ContextWarningBar
+            conversationId={activeConv.id}
+            onNewChat={() => createConversation(useWorkspaceStore.getState().currentPath)}
+          />
           <ChatInput variant="chat" onSend={handleSend} />
           <p className="text-center text-[11px] text-[var(--abu-text-muted)] mt-1.5">
             {t.chat.disclaimer}
