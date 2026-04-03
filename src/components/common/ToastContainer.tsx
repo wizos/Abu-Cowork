@@ -1,11 +1,12 @@
 import { useToastStore } from '@/stores/toastStore';
-import { X, CheckCircle, AlertCircle, Info } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const iconMap = {
   success: CheckCircle,
   error: AlertCircle,
   info: Info,
+  warning: AlertTriangle,
 };
 
 const colorMap = {
@@ -14,18 +15,28 @@ const colorMap = {
     icon: 'text-green-500',
     title: 'text-green-800',
     message: 'text-green-600',
+    action: 'bg-green-600 hover:bg-green-700 text-white',
   },
   error: {
     bg: 'bg-red-50 border-red-200',
     icon: 'text-red-500',
     title: 'text-red-800',
     message: 'text-red-600',
+    action: 'bg-red-600 hover:bg-red-700 text-white',
   },
   info: {
     bg: 'bg-blue-50 border-blue-200',
     icon: 'text-blue-500',
     title: 'text-blue-800',
     message: 'text-blue-600',
+    action: 'bg-blue-600 hover:bg-blue-700 text-white',
+  },
+  warning: {
+    bg: 'bg-amber-50 border-amber-200',
+    icon: 'text-amber-500',
+    title: 'text-amber-800',
+    message: 'text-amber-600',
+    action: 'bg-amber-600 hover:bg-amber-700 text-white',
   },
 };
 
@@ -57,6 +68,25 @@ export default function ToastContainer() {
                 <p className={cn('text-[12px] mt-0.5', colors.message)}>
                   {toast.message}
                 </p>
+              )}
+              {toast.actions && toast.actions.length > 0 && (
+                <div className="flex gap-1.5 mt-2">
+                  {toast.actions.map((action, i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        action.onClick();
+                        removeToast(toast.id);
+                      }}
+                      className={cn(
+                        'px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors',
+                        i === 0 ? colors.action : 'bg-black/5 hover:bg-black/10 text-gray-700',
+                      )}
+                    >
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
             <button

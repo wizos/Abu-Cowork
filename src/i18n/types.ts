@@ -383,6 +383,20 @@ export interface TranslationDict {
     autoSaved: string;
   };
 
+  // Sandbox recovery
+  sandbox: {
+    writeBlocked: string;
+    writeBlockedDir: string;
+    writeBlockedGeneric: string;
+    authorizePath: string;
+    pathAuthorized: string;
+    retryHint: string;
+    goToSettings: string;
+    authorizedPaths: string;
+    authorizedPathsEmpty: string;
+    revoke: string;
+  };
+
   // Toolbox Modal
   toolbox: {
     title: string;

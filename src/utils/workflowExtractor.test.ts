@@ -301,6 +301,26 @@ describe('workflowExtractor', () => {
       expect(files).toHaveLength(0);
     });
 
+    it('skips failed commands (non-zero exit code)', () => {
+      const toolCalls: ToolCall[] = [{
+        id: 'tc1', name: 'run_command',
+        input: { command: 'cp "/tmp/Hello world.docx" "/Users/didi/Desktop/Hello world.docx"' },
+        result: 'stderr:\n[sandbox-blocked] file write or network access blocked by sandbox policy\n\nexit code: 1',
+      }];
+      const files = extractFileOutputs(toolCalls);
+      expect(files).toHaveLength(0);
+    });
+
+    it('skips sandbox-blocked commands', () => {
+      const toolCalls: ToolCall[] = [{
+        id: 'tc1', name: 'run_command',
+        input: { command: 'mv /tmp/doc.pdf /Users/didi/Desktop/doc.pdf' },
+        result: 'stderr:\n[sandbox-blocked] file write or network access blocked by sandbox policy\n\nexit code: 1',
+      }];
+      const files = extractFileOutputs(toolCalls);
+      expect(files).toHaveLength(0);
+    });
+
     it('write overrides read for same path', () => {
       const toolCalls: ToolCall[] = [
         { id: 'tc1', name: 'read_file', input: { path: '/tmp/a.txt' }, result: 'content' },

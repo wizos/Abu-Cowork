@@ -4,6 +4,8 @@ import { getPlatform, getShell } from '../../../utils/platform';
 import { resolveCommandPython } from '../../../utils/pythonRuntime';
 import { isSandboxEnabled, isNetworkIsolationEnabled } from '../../sandbox/config';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
+import { getAuthorizedWritablePaths } from '../pathSafety';
+import { showSandboxBlockedToast } from '../../sandbox/recovery';
 import type { CommandOutput } from '../helpers/toolHelpers';
 import { isReadOnlyCommand } from '../readOnlyDetector';
 import { TOOL_NAMES } from '../toolNames';
@@ -50,9 +52,13 @@ export const runCommandTool: ToolDefinition = {
       const isOpenCmd = /^\s*open\s/.test(resolvedCommand);
       const sandbox = isOpenCmd ? false : isSandboxEnabled();
 
-      // Allow writes to workspace directory under sandbox
+      // Allow writes to workspace + user-authorized directories under sandbox
       const workspacePath = useWorkspaceStore.getState().currentPath;
-      const extraWritablePaths = workspacePath ? [workspacePath] : [];
+      const authorizedPaths = sandbox ? getAuthorizedWritablePaths() : [];
+      const extraWritablePaths = [
+        ...(workspacePath ? [workspacePath] : []),
+        ...authorizedPaths,
+      ];
 
       // Use custom Tauri command defined in Rust
       const output = await invoke<CommandOutput>('run_shell_command', {
@@ -64,6 +70,11 @@ export const runCommandTool: ToolDefinition = {
         networkIsolation: isNetworkIsolationEnabled(),
         extraWritablePaths,
       });
+
+      // Detect sandbox-blocked errors and show recovery toast
+      if (sandbox && output.stderr.includes('[sandbox-blocked]')) {
+        showSandboxBlockedToast(resolvedCommand);
+      }
 
       const parts: string[] = [];
       if (output.stdout.trim()) {

@@ -199,6 +199,19 @@ export function authorizeWorkspace(path: string, capabilities?: ('read' | 'write
 }
 
 /**
+ * Get all paths authorized for write access.
+ * Used by commandTools to forward authorized paths to the OS-level sandbox (Seatbelt),
+ * so child processes (cp, python, etc.) can write to user-authorized directories.
+ */
+export function getAuthorizedWritablePaths(): string[] {
+  const paths: string[] = [];
+  for (const [workspace, caps] of authorizedWorkspaces) {
+    if (caps.has('write')) paths.push(workspace);
+  }
+  return paths;
+}
+
+/**
  * Remove a workspace from the authorized list
  */
 export function revokeWorkspace(path: string): void {

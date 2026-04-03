@@ -1,12 +1,18 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 export interface Toast {
   id: string;
-  type: 'success' | 'error' | 'info';
+  type: 'success' | 'error' | 'info' | 'warning';
   title: string;
   message?: string;
   duration?: number;
+  actions?: ToastAction[];
 }
 
 interface ToastState {
@@ -33,20 +39,23 @@ export const useToastStore = create<ToastStore>()(
 
     addToast: (toast) => {
       const id = generateId();
-      const duration = toast.duration ?? 3000;
+      // Actionable toasts get longer duration by default
+      const duration = toast.duration ?? (toast.actions ? 10000 : 3000);
 
       set((state) => {
         state.toasts.push({ ...toast, id });
       });
 
-      // Auto-remove after duration
-      const timeoutId = setTimeout(() => {
-        toastTimeouts.delete(id);
-        set((state) => {
-          state.toasts = state.toasts.filter((t) => t.id !== id);
-        });
-      }, duration);
-      toastTimeouts.set(id, timeoutId);
+      // Auto-remove after duration (0 = no auto-remove)
+      if (duration > 0) {
+        const timeoutId = setTimeout(() => {
+          toastTimeouts.delete(id);
+          set((state) => {
+            state.toasts = state.toasts.filter((t) => t.id !== id);
+          });
+        }, duration);
+        toastTimeouts.set(id, timeoutId);
+      }
     },
 
     removeToast: (id) => {

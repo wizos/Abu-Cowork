@@ -412,6 +412,19 @@ const zhCN: TranslationDict = {
     autoSaved: '自动保存',
   },
 
+  sandbox: {
+    writeBlocked: '沙箱拦截了写入操作',
+    writeBlockedDir: '被拦截的目录',
+    writeBlockedGeneric: '命令尝试写入沙箱不允许的位置。可以授权该目录或在安全设置中调整。',
+    authorizePath: '授权此目录',
+    pathAuthorized: '目录已授权',
+    retryHint: '请让阿布重试刚才的操作',
+    goToSettings: '前往安全设置',
+    authorizedPaths: '已授权的写入目录',
+    authorizedPathsEmpty: '暂无授权目录，阿布需要写入文件时会自动请求授权',
+    revoke: '撤销',
+  },
+
   toolbox: {
     title: '工具箱',
     skills: '技能',

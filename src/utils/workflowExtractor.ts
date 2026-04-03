@@ -368,6 +368,18 @@ export function extractStdout(result: string): string {
   return '';
 }
 
+/**
+ * Check if a command result indicates failure (non-zero exit code).
+ * Handles the run_command result format: "...\n\nexit code: N"
+ */
+function isCommandFailed(result: string): boolean {
+  const exitMatch = result.match(/exit code:\s*(\d+)/);
+  if (exitMatch) return exitMatch[1] !== '0';
+  // Also check for sandbox-blocked results
+  if (result.includes('[sandbox-blocked]')) return true;
+  return false;
+}
+
 /** Check if a path has a file extension (guard against directory paths) */
 function hasFileExtension(path: string): boolean {
   return /\.\w{1,10}$/.test(path);
@@ -543,6 +555,10 @@ export function extractFileOutputs(
 
     // 6. Command tools — parse stdout + command string for file paths
     if (COMMAND_TOOLS.includes(tc.name)) {
+      // Skip failed commands — don't extract paths from cp/mv that got sandbox-blocked
+      if (tc.result && isCommandFailed(tc.result)) {
+        continue;
+      }
       // 6a. Search stdout for announced file paths
       if (tc.result) {
         const stdout = extractStdout(tc.result);

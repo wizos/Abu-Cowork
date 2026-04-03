@@ -412,6 +412,19 @@ const enUS: TranslationDict = {
     autoSaved: 'Auto-saved',
   },
 
+  sandbox: {
+    writeBlocked: 'Sandbox blocked a write operation',
+    writeBlockedDir: 'Blocked directory',
+    writeBlockedGeneric: 'A command tried to write to a location not allowed by the sandbox. You can authorize the directory or adjust settings.',
+    authorizePath: 'Authorize directory',
+    pathAuthorized: 'Directory authorized',
+    retryHint: 'Please ask Abu to retry the operation',
+    goToSettings: 'Go to settings',
+    authorizedPaths: 'Authorized write directories',
+    authorizedPathsEmpty: 'No authorized directories yet. Abu will request authorization when needed.',
+    revoke: 'Revoke',
+  },
+
   toolbox: {
     title: 'Toolbox',
     skills: 'Skills',

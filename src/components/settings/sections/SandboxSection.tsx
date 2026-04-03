@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useSyncExternalStore } from 'react';
 import { useSettingsStore } from '@/stores/settingsStore';
 import type { PermissionMode } from '@/core/permissions/permissionMode';
+import { getAuthorizedWritablePaths, revokeWorkspace } from '@/core/tools/pathSafety';
 import { useI18n } from '@/i18n';
 import { isMacOS } from '@/utils/platform';
-import { Shield, ShieldAlert, Globe, Plus, X, Info, Lock, Unlock, ShieldCheck } from 'lucide-react';
+import { Shield, ShieldAlert, Globe, Plus, X, Info, Lock, Unlock, ShieldCheck, FolderOpen, Trash2 } from 'lucide-react';
 import { Toggle } from '@/components/ui/toggle';
 import { cn } from '@/lib/utils';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
@@ -263,6 +264,71 @@ export default function SandboxSection() {
         </p>
         <PermissionModeSelector />
       </div>
+      {/* Authorized Writable Paths */}
+      {sandboxEnabled && (
+        <div className="mt-6 pt-6 border-t border-[var(--abu-border)]">
+          <h4 className="text-sm font-medium text-[var(--abu-text-primary)] mb-1">
+            {t.sandbox.authorizedPaths}
+          </h4>
+          <AuthorizedPathsList />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Subscribe to authorized paths changes — uses a version counter
+// since getAuthorizedWritablePaths returns a new array each call
+let pathsVersion = 0;
+const pathsListeners = new Set<() => void>();
+
+function subscribeToAuthorizedPaths(callback: () => void): () => void {
+  pathsListeners.add(callback);
+  return () => pathsListeners.delete(callback);
+}
+
+function notifyPathsChanged(): void {
+  pathsVersion++;
+  for (const cb of pathsListeners) cb();
+}
+
+function AuthorizedPathsList() {
+  const { t } = useI18n();
+  // Re-render when paths change
+  useSyncExternalStore(subscribeToAuthorizedPaths, () => pathsVersion);
+  const paths = getAuthorizedWritablePaths();
+
+  if (paths.length === 0) {
+    return (
+      <p className="text-xs text-[var(--abu-text-tertiary)] mt-1">
+        {t.sandbox.authorizedPathsEmpty}
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-2 space-y-1.5">
+      {paths.map((path) => (
+        <div
+          key={path}
+          className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--abu-border)] bg-[var(--abu-bg-secondary)]"
+        >
+          <FolderOpen className="h-3.5 w-3.5 text-[var(--abu-text-muted)] shrink-0" />
+          <span className="flex-1 text-xs text-[var(--abu-text-secondary)] truncate" title={path}>
+            {path}
+          </span>
+          <button
+            onClick={() => {
+              revokeWorkspace(path);
+              notifyPathsChanged();
+            }}
+            className="p-1 rounded hover:bg-red-100 text-[var(--abu-text-muted)] hover:text-red-500 transition-colors shrink-0"
+            title={t.sandbox.revoke}
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
+        </div>
+      ))}
     </div>
   );
 }
