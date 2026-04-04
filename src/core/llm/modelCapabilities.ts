@@ -69,9 +69,22 @@ const KNOWN_MODELS: Record<string, ModelCapabilities> = {
   'MiniMax-M2.5':              { vision: false, thinking: false,              toolResultImages: 'workaround', documentBlock: false, maxOutputTokens: 8192,  contextWindow: 204800 },
   'MiniMax-M2.5-highspeed':    { vision: false, thinking: false,              toolResultImages: 'workaround', documentBlock: false, maxOutputTokens: 8192,  contextWindow: 204800 },
 
-  // Local models
+  // Local / Ollama models
+  'gemma3':                     { vision: true,  thinking: false,              toolResultImages: 'none',       documentBlock: false, maxOutputTokens: 8192,  contextWindow: 128000 },
+  'gemma3:27b':                 { vision: true,  thinking: false,              toolResultImages: 'none',       documentBlock: false, maxOutputTokens: 8192,  contextWindow: 128000 },
+  'gemma3:12b':                 { vision: true,  thinking: false,              toolResultImages: 'none',       documentBlock: false, maxOutputTokens: 8192,  contextWindow: 128000 },
+  'gemma3:4b':                  { vision: true,  thinking: false,              toolResultImages: 'none',       documentBlock: false, maxOutputTokens: 8192,  contextWindow: 128000 },
+  'gemma2':                     { vision: false, thinking: false,              toolResultImages: 'none',       documentBlock: false, maxOutputTokens: 8192,  contextWindow: 8192 },
+  'llama3.3':                   { vision: false, thinking: false,              toolResultImages: 'none',       documentBlock: false, maxOutputTokens: 4096,  contextWindow: 128000 },
   'llama3.2':                   { vision: true,  thinking: false,              toolResultImages: 'none',       documentBlock: false, maxOutputTokens: 4096,  contextWindow: 128000 },
+  'llama3.1':                   { vision: false, thinking: false,              toolResultImages: 'none',       documentBlock: false, maxOutputTokens: 4096,  contextWindow: 128000 },
   'qwen2.5':                    { vision: false, thinking: false,              toolResultImages: 'none',       documentBlock: false, maxOutputTokens: 8192,  contextWindow: 32768 },
+  'qwen3':                      { vision: false, thinking: false,              toolResultImages: 'none',       documentBlock: false, maxOutputTokens: 8192,  contextWindow: 128000 },
+  'phi4':                       { vision: false, thinking: false,              toolResultImages: 'none',       documentBlock: false, maxOutputTokens: 4096,  contextWindow: 16384 },
+  'phi3':                       { vision: false, thinking: false,              toolResultImages: 'none',       documentBlock: false, maxOutputTokens: 4096,  contextWindow: 128000 },
+  'mistral':                    { vision: false, thinking: false,              toolResultImages: 'none',       documentBlock: false, maxOutputTokens: 4096,  contextWindow: 32768 },
+  'codellama':                  { vision: false, thinking: false,              toolResultImages: 'none',       documentBlock: false, maxOutputTokens: 4096,  contextWindow: 16384 },
+  'deepseek-r1:distill':        { vision: false, thinking: 'openai-reasoning', toolResultImages: 'none',       documentBlock: false, maxOutputTokens: 8192,  contextWindow: 128000 },
 };
 
 // ── Pattern-based defaults ──────────────────────────────────────────
@@ -123,7 +136,10 @@ export function resolveCapabilities(modelId: string): ModelCapabilities {
   if (/minimax.*m2\.7/i.test(id)) return { vision: true, thinking: false, toolResultImages: 'workaround', documentBlock: false, maxOutputTokens: 8192, contextWindow: 204800 };
   if (/minimax/i.test(id)) return { vision: false, thinking: false, toolResultImages: 'workaround', documentBlock: false, maxOutputTokens: 8192, contextWindow: 204800 };
   if (/moonshot|kimi/i.test(id)) return { ...FALLBACK_DEFAULT, vision: false };
-  if (/llama|mistral|gemma/i.test(id)) return { ...FALLBACK_DEFAULT, toolResultImages: 'none' };
+  if (/gemma3/i.test(id)) return { vision: true, thinking: false, toolResultImages: 'none', documentBlock: false, maxOutputTokens: 8192, contextWindow: 128000 };
+  if (/gemma/i.test(id)) return { ...FALLBACK_DEFAULT, vision: false, toolResultImages: 'none' };
+  if (/phi[34]/i.test(id)) return { ...FALLBACK_DEFAULT, vision: false, toolResultImages: 'none' };
+  if (/llama|mistral/i.test(id)) return { ...FALLBACK_DEFAULT, toolResultImages: 'none' };
 
   // 4. Fallback: assume modern model with basic capabilities
   return FALLBACK_DEFAULT;

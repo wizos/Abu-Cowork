@@ -410,6 +410,18 @@ const enUS: TranslationDict = {
     selectProvider: 'Select API Provider',
     selectPlaceholder: 'Select',
     autoSaved: 'Auto-saved',
+    // Ollama
+    localModelsGroup: 'Local Models',
+    ollamaStatus: 'Service Status',
+    ollamaOnline: 'Connected',
+    ollamaOffline: 'Not Connected',
+    ollamaChecking: 'Checking...',
+    ollamaRefreshModels: 'Refresh Models',
+    ollamaNoModels: 'No Models Found',
+    ollamaNoModelsHint: 'Run "ollama pull <model>" in terminal to download models first',
+    ollamaUrlLabel: 'Ollama URL',
+    ollamaUrlHint: 'Default http://localhost:11434, change for remote deployment',
+    ollamaModelSize: 'Size',
   },
 
   sandbox: {

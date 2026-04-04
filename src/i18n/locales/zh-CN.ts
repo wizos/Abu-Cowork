@@ -410,6 +410,18 @@ const zhCN: TranslationDict = {
     selectProvider: '选择 API 厂商',
     selectPlaceholder: '请选择',
     autoSaved: '自动保存',
+    // Ollama
+    localModelsGroup: '本地模型',
+    ollamaStatus: '服务状态',
+    ollamaOnline: '已连接',
+    ollamaOffline: '未连接',
+    ollamaChecking: '检测中...',
+    ollamaRefreshModels: '刷新模型列表',
+    ollamaNoModels: '未检测到模型',
+    ollamaNoModelsHint: '请先在终端运行 ollama pull <模型名> 下载模型',
+    ollamaUrlLabel: 'Ollama 地址',
+    ollamaUrlHint: '默认 http://localhost:11434，远程部署可修改',
+    ollamaModelSize: '大小',
   },
 
   sandbox: {

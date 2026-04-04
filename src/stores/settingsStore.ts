@@ -185,6 +185,7 @@ export const PROVIDER_CONFIGS = {
       { id: 'stepfun/step-3.5-flash:free', label: 'Step 3.5 Flash (Free)' },
     ],
   },
+  ollama: { name: 'Ollama', baseUrl: 'http://localhost:11434', format: 'openai-compatible', models: [] },
   local: { name: '本地模型 (Local)', baseUrl: '', format: 'openai-compatible', models: [] },
   custom: { name: '自定义 API', baseUrl: '', format: 'openai-compatible', models: [] },
 } as Record<LLMProvider, ProviderConfig>;
@@ -371,8 +372,17 @@ export function getActiveApiKey(state: SettingsState): string {
   return state.apiKeys[state.provider] ?? '';
 }
 
+/** Whether the current provider requires an API key (Ollama does not) */
+export function providerRequiresApiKey(state: SettingsState): boolean {
+  return state.provider !== 'ollama';
+}
+
 /** Returns the effective model ID to use for API calls */
 export function getEffectiveModel(state: SettingsState): string {
+  // Ollama: always use customModel (models are dynamic, not in static config)
+  if (state.provider === 'ollama') {
+    return state.customModel || '';
+  }
   if (state.model === '__custom__') {
     if (state.customModel) return state.customModel;
     // Fallback: use current provider's first model
@@ -572,6 +582,9 @@ export const useSettingsStore = create<SettingsStore>()(
         const config = PROVIDER_CONFIGS[p];
         if (p === 'custom') {
           set({ provider: p, apiFormat: config.format, baseUrl: '', model: '__custom__', activeCustomServiceId: null });
+        } else if (p === 'ollama') {
+          // Ollama: models fetched dynamically, keep existing customModel if set
+          set({ provider: p, apiFormat: config.format, baseUrl: config.baseUrl, model: '__custom__', activeCustomServiceId: null });
         } else {
           set({
             provider: p,
@@ -625,9 +638,15 @@ export const useSettingsStore = create<SettingsStore>()(
     }),
     {
       name: 'abu-settings',
-      version: 12,
+      version: 13,
       migrate: (persisted: unknown, version: number) => {
         const state = persisted as Record<string, unknown>;
+        if (version < 13) {
+          // Ollama provider: ensure model is '__custom__' so getEffectiveModel reads customModel
+          if (state.provider === 'ollama' && state.model !== '__custom__') {
+            state.model = '__custom__';
+          }
+        }
         if (version < 12) {
           if (state.permissionMode === undefined) state.permissionMode = 'default';
         }

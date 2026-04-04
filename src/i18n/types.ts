@@ -381,6 +381,18 @@ export interface TranslationDict {
     selectProvider: string;
     selectPlaceholder: string;
     autoSaved: string;
+    // Ollama
+    localModelsGroup: string;
+    ollamaStatus: string;
+    ollamaOnline: string;
+    ollamaOffline: string;
+    ollamaChecking: string;
+    ollamaRefreshModels: string;
+    ollamaNoModels: string;
+    ollamaNoModelsHint: string;
+    ollamaUrlLabel: string;
+    ollamaUrlHint: string;
+    ollamaModelSize: string;
   };
 
   // Sandbox recovery
