@@ -1,8 +1,8 @@
 ---
 name: mermaid-diagram
 description: 用 Mermaid 语法生成可视化图表 — 流程图、架构图、序列图、ER 图、甘特图、状态图、思维导图、饼图等结构化图表。当用户要求画图/画架构图/画流程图等结构化可视化需求时触发，直接输出 mermaid 代码块，前端会自动转换为 HTML 并在沙箱 iframe 中渲染。
-trigger: 用户要求画流程图、架构图、序列图、ER 图、甘特图、状态图、思维导图、饼图、类图、时间线、关系图、拓扑图、部署图、数据库设计图、系统架构、技术架构、业务流程、数据流、状态机，或任何结构化的图表/可视化需求
-do-not-trigger: 用户要求生成照片、插画、艺术画、海报、UI 设计图、Logo、手绘风格图片等需要像素级渲染的视觉内容；用户明确要求用 generate_image 生图
+trigger: 用户明确要求用 mermaid 语法画图，或需要 ER 图、甘特图、Git 分支图、类图等 mermaid 专长的技术图表
+do-not-trigger: 用户要求画流程图、架构图、时间线、层级图、对比图等通用图表（优先用 svg-diagram）；用户要求生成照片、插画、艺术画、海报、UI 设计图、Logo；用户明确要求用 generate_image 生图
 user-invocable: true
 disable-auto-invoke: false
 argument-hint: <图表描述>
