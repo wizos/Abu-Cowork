@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { ToolDefinition } from '../../../types';
-import { getPlatform, getShell } from '../../../utils/platform';
+import { getPlatform, getShell, isWindows } from '../../../utils/platform';
 import { resolveCommandPython } from '../../../utils/pythonRuntime';
 import { isSandboxEnabled, isNetworkIsolationEnabled } from '../../sandbox/config';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
@@ -47,10 +47,13 @@ export const runCommandTool: ToolDefinition = {
       // Use embedded Python runtime if command starts with python/python3
       const resolvedCommand = await resolveCommandPython(command);
 
-      // Exempt `open` commands from sandbox — they use LaunchServices
-      // which requires XPC operations blocked by Seatbelt
-      const isOpenCmd = /^\s*open\s/.test(resolvedCommand);
-      const sandbox = isOpenCmd ? false : isSandboxEnabled();
+      // Exempt app-launcher commands from sandbox
+      // macOS: `open` uses LaunchServices via XPC, blocked by Seatbelt
+      // Windows: `start`/`Start-Process` exempted for consistency with ExecutionPolicy
+      const isLauncherCmd = isWindows()
+        ? /^\s*(start|Start-Process)\s/i.test(resolvedCommand)
+        : /^\s*open\s/.test(resolvedCommand);
+      const sandbox = isLauncherCmd ? false : isSandboxEnabled();
 
       // Allow writes to workspace + user-authorized directories under sandbox
       const workspacePath = useWorkspaceStore.getState().currentPath;

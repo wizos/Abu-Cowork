@@ -180,6 +180,7 @@ export default function SkillsSection({ manualCreateTrigger, onAICreate, onManua
       }
     };
     loadSkillDetails();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedSkill omitted: adding it would reload all skill details on every selection change
   }, [skills]);
 
   const disabledSet = useMemo(() => new Set(disabledSkills), [disabledSkills]);
@@ -187,7 +188,7 @@ export default function SkillsSection({ manualCreateTrigger, onAICreate, onManua
   // Filter by search
   const searchLower = toolboxSearchQuery.toLowerCase();
   const filteredSkills = useMemo(() => {
-    if (!toolboxSearchQuery) return installedSkills;
+    if (!searchLower) return installedSkills;
     return installedSkills.filter((s) => {
       const tagStr = (s.tags ?? []).join(' ').toLowerCase();
       return s.name.toLowerCase().includes(searchLower) ||

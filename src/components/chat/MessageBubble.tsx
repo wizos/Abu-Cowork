@@ -428,7 +428,7 @@ export default function MessageBubble({
                     </div>
                   )}
                   {userCleanText && (
-                    <div className="text-[14.5px] leading-relaxed break-words">
+                    <div className="text-[14.5px] leading-relaxed break-words select-text">
                       <MarkdownRenderer content={userCleanText} variant="user" />
                     </div>
                   )}
@@ -449,7 +449,7 @@ export default function MessageBubble({
         {message.thinking && <ThinkingBlock thinking={message.thinking} />}
 
         {textContent && (
-          <div className="text-[var(--abu-text-primary)] break-words">
+          <div className="text-[var(--abu-text-primary)] break-words select-text">
             <MarkdownRenderer content={textContent} />
           </div>
         )}
@@ -498,7 +498,7 @@ export default function MessageBubble({
         {message.thinking && <ThinkingBlock thinking={message.thinking} />}
 
         {textContent && (
-          <div className="text-[var(--abu-text-primary)] break-words">
+          <div className="text-[var(--abu-text-primary)] break-words select-text">
             <MarkdownRenderer content={textContent} />
           </div>
         )}

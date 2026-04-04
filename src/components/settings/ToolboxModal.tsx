@@ -32,7 +32,7 @@ export default function ToolboxView() {
   useEffect(() => {
     setManualCreateTrigger(0);
     setToolboxSearchQuery('');
-  }, [activeToolboxTab]);
+  }, [activeToolboxTab, setToolboxSearchQuery]);
 
   // Handler for creating with AI, adapts to active tab
   const handleAICreate = () => {

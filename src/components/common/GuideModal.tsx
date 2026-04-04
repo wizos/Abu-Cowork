@@ -4,9 +4,10 @@ import { useI18n } from '@/i18n';
 interface GuideModalProps {
   open: boolean;
   onClose: () => void;
+  onNavigateToAIServices?: () => void;
 }
 
-export default function GuideModal({ open, onClose }: GuideModalProps) {
+export default function GuideModal({ open, onClose, onNavigateToAIServices }: GuideModalProps) {
   const { t } = useI18n();
 
   useEffect(() => {
@@ -47,7 +48,23 @@ export default function GuideModal({ open, onClose }: GuideModalProps) {
               </span>
               <div>
                 <div className="text-[14px] font-medium text-[var(--abu-text-primary)]">{step.title}</div>
-                <div className="text-[13px] text-[var(--abu-text-tertiary)] mt-0.5">{step.desc}</div>
+                <div className="text-[13px] text-[var(--abu-text-tertiary)] mt-0.5">
+                  {step.desc}
+                  {i === 0 && onNavigateToAIServices && (
+                    <>
+                      {'，'}
+                      <button
+                        onClick={() => {
+                          onClose();
+                          onNavigateToAIServices();
+                        }}
+                        className="text-[#3b82f6] hover:text-[#2563eb] hover:underline cursor-pointer"
+                      >
+                        {t.guide.step1Link}
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           ))}

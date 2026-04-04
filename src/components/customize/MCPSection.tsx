@@ -154,7 +154,7 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
   // "我的": user-added custom servers (not matching any template)
   const customServers = useMemo(() => {
     const list = mcpServers.filter((s) => !templateNames.has(s.config.name));
-    if (!toolboxSearchQuery) return list;
+    if (!searchLower) return list;
     return list.filter((s) => s.config.name.toLowerCase().includes(searchLower));
   }, [mcpServers, templateNames, searchLower]);
 
@@ -163,7 +163,7 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
   const exampleItems = useMemo(() => {
     const items: ExampleItem[] = [];
     for (const tmpl of mcpTemplates) {
-      if (toolboxSearchQuery && !tmpl.name.toLowerCase().includes(searchLower) && !tmpl.description.toLowerCase().includes(searchLower)) continue;
+      if (searchLower && !tmpl.name.toLowerCase().includes(searchLower) && !tmpl.description.toLowerCase().includes(searchLower)) continue;
       const entry = servers[tmpl.name];
       if (entry) {
         items.push({ kind: 'installed', entry });
@@ -194,6 +194,7 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
         setSelected({ kind: 'template', id: first.template.id });
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- servers omitted: it's an object ref that changes on every store update, would cause frequent re-runs overriding user selection
   }, [mcpServers, customServers, exampleItems, selected]);
 
   // Add or update custom server
@@ -320,6 +321,7 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
     const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowAddForm(false); };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- setShowAddForm is recreated each render (wraps onAddFormChange prop), adding it would cause infinite re-runs
   }, [showAddForm]);
 
   const handleCloseAddForm = () => {
@@ -428,10 +430,11 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
     : null;
 
   // Reset detail state when selection changes
+  const selectedKey = selected?.kind === 'server' ? selected.name : selected?.kind === 'template' ? selected.id : null;
   useEffect(() => {
     setExpandedTools(false);
     setShowLogs(false);
-  }, [selected?.kind === 'server' ? selected.name : selected?.kind === 'template' ? selected.id : null]);
+  }, [selectedKey]);
 
   return (
     <div className="flex h-full overflow-hidden">

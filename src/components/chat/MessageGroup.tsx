@@ -296,6 +296,7 @@ export default function MessageGroup({ messages, isLastGroup: isLastGroupProp = 
     if (previewableFile) {
       openPreview(previewableFile.path);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- isLastGroupProp omitted: adding it would re-trigger preview when a new group demotes this one
   }, [isAgentDone, fileOutputs, openPreview]);
 
   // Handle retry
@@ -387,7 +388,7 @@ export default function MessageGroup({ messages, isLastGroup: isLastGroupProp = 
                       </div>
                     )}
                     {cleanedText && (
-                      <div className="text-[var(--abu-text-primary)] break-words mb-2">
+                      <div className="text-[var(--abu-text-primary)] break-words mb-2 select-text">
                         <MarkdownRenderer
                           content={cleanedText}
                           searchResults={searchResults.length > 0 ? searchResults : undefined}

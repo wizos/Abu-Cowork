@@ -60,22 +60,35 @@ export async function resizeImageIfNeeded(bytes: Uint8Array, maxWidth: number): 
     return { data: base64, resized: false };
   }
 
-  // Use sips on macOS to resize
-  if (!isWindows()) {
-    try {
-      const tmpDir = await tempDir();
-      const tmpPath = `${tmpDir}abu-resize-${Date.now()}.png`;
-      await writeBinFile(tmpPath, bytes);
+  try {
+    const tmpDir = await tempDir();
+    const tmpPath = `${tmpDir}abu-resize-${Date.now()}.png`;
+    await writeBinFile(tmpPath, bytes);
+
+    if (isWindows()) {
+      // PowerShell + System.Drawing — sandboxEnabled: false because ConstrainedLanguage blocks Add-Type
+      const psPath = tmpPath.replace(/\\/g, '/').replace(/'/g, "''");
+      await invoke<CommandOutput>('run_shell_command', {
+        command: `Add-Type -AssemblyName System.Drawing; $img = [System.Drawing.Image]::FromFile('${psPath}'); $ratio = ${maxWidth} / $img.Width; $newH = [int]($img.Height * $ratio); $bmp = New-Object System.Drawing.Bitmap(${maxWidth}, $newH); $g = [System.Drawing.Graphics]::FromImage($bmp); $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic; $g.DrawImage($img, 0, 0, ${maxWidth}, $newH); $img.Dispose(); $bmp.Save('${psPath}'); $g.Dispose(); $bmp.Dispose()`,
+        cwd: null, background: false, timeout: 15,
+        sandboxEnabled: false,
+      });
+    } else {
+      // macOS: sips (works fine under Seatbelt sandbox — /tmp is writable)
       await invoke<CommandOutput>('run_shell_command', {
         command: `sips --resampleWidth ${maxWidth} "${tmpPath}" --out "${tmpPath}"`,
         cwd: null, background: false, timeout: 15,
       });
-      const resized = await readBinFile(tmpPath);
-      // Clean up
-      invoke<CommandOutput>('run_shell_command', { command: `rm -f "${tmpPath}"`, cwd: null, background: false, timeout: 5 }).catch(() => {});
-      return { data: uint8ArrayToBase64(new Uint8Array(resized)), resized: true };
-    } catch { /* fall through to original */ }
-  }
+    }
+
+    const resized = await readBinFile(tmpPath);
+    // Clean up temp file (fire-and-forget)
+    const rmCmd = isWindows()
+      ? `Remove-Item '${tmpPath.replace(/'/g, "''")}' -Force -ErrorAction SilentlyContinue`
+      : `rm -f "${tmpPath}"`;
+    invoke<CommandOutput>('run_shell_command', { command: rmCmd, cwd: null, background: false, timeout: 5 }).catch(() => {});
+    return { data: uint8ArrayToBase64(new Uint8Array(resized)), resized: true };
+  } catch { /* fall through to original */ }
 
   return { data: base64, resized: false };
 }

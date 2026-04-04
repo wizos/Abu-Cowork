@@ -326,7 +326,14 @@ export async function buildSystemPromptSections(
     // Normal mode: full persona + planning instruction
     sections.push({ name: 'persona', text: basePrompt, cacheable: true });
     // Append examples only on first turn to save ~400 tokens per subsequent turn
-    sections.push({ name: 'planning', text: turnCount === 0 ? PLANNING_INSTRUCTION + PLANNING_EXAMPLES : PLANNING_INSTRUCTION, cacheable: true });
+    const planningText = (turnCount === 0 ? PLANNING_INSTRUCTION + PLANNING_EXAMPLES : PLANNING_INSTRUCTION)
+      .replace(
+        '- 系统设置 → run_command（osascript/defaults），不要截屏操作系统设置',
+        isWindows()
+          ? '- 系统设置 → run_command（PowerShell），不要截屏操作系统设置'
+          : '- 系统设置 → run_command（osascript/defaults），不要截屏操作系统设置',
+      );
+    sections.push({ name: 'planning', text: planningText, cacheable: true });
   }
 
   // Inject current date and time so the model knows "today" — volatile, changes every turn
@@ -554,8 +561,11 @@ ${projectMemory}
 - 每个操作执行后会自动截图返回，不需手动调用 screenshot 确认
 
 ### 打开应用
-- 用 run_command: open -a "AppName"，不确定英文名时先 ls /Applications | grep -i 查找
-- 不要用 open URL 代替打开桌面应用
+${isWindows()
+  ? `- 用 run_command: Start-Process "AppName" 或 start "" "AppName"
+- 不确定程序名时用 Get-Command 或 where 查找`
+  : `- 用 run_command: open -a "AppName"，不确定英文名时先 ls /Applications | grep -i 查找
+- 不要用 open URL 代替打开桌面应用`}
 - 需要操作 GUI 时，打开后 wait 2 秒再截屏
 
 ### 操作规范

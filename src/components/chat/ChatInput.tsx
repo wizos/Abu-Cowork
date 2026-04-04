@@ -242,7 +242,11 @@ export default function ChatInput({ variant, onSend, disabled, scenarioPlacehold
     await processFilePaths(
       paths,
       (imgs) => setImages((prev) => [...prev, ...imgs]),
-      (items) => setFiles((prev) => [...prev, ...items]),
+      (items) => setFiles((prev) => {
+        const existingPaths = new Set(prev.map((f) => f.path));
+        const deduped = items.filter((f) => !existingPaths.has(f.path));
+        return deduped.length > 0 ? [...prev, ...deduped] : prev;
+      }),
     );
     textareaRef.current?.focus();
   });

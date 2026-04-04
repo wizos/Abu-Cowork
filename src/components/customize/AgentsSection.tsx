@@ -79,6 +79,7 @@ export default function AgentsSection({ manualCreateTrigger, onAICreate, onManua
       }
     };
     loadAgentDetails();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedAgent omitted: adding it would reload all agent details on every selection change
   }, [agents]);
 
   const disabledSet = useMemo(() => new Set(disabledAgents), [disabledAgents]);

@@ -16,7 +16,10 @@
     -moz-osx-font-smoothing: grayscale;
     font-size: 15px;
     line-height: 1.6;
+    user-select: none;
+    -webkit-user-select: none;
   }
+
 }
 
 @layer base {
@@ -24,6 +27,13 @@
   .font-mono, pre, code {
     font-family: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", "Fira Code", Menlo, monospace;
   }
+}
+
+/* Re-enable text selection for content areas (outside @layer for higher specificity) */
+.select-text,
+.select-text * {
+  user-select: text !important;
+  -webkit-user-select: text !important;
 }
 
 /* Scrollbar - default subtle style */

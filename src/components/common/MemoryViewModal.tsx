@@ -33,6 +33,8 @@ export default function MemoryViewModal(props: MemoryViewModalProps) {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const isPersonal = scope === 'personal';
+  // Only re-fetch when workspacePath changes in project mode; ignore it in personal mode
+  const effectivePath = isPersonal ? undefined : props.workspacePath;
 
   useEffect(() => {
     if (!open) return;
@@ -52,7 +54,7 @@ export default function MemoryViewModal(props: MemoryViewModalProps) {
     }
     load();
     return () => { cancelled = true; };
-  }, [open, isPersonal, isPersonal ? undefined : props.workspacePath]);
+  }, [open, isPersonal, effectivePath, props.workspacePath]);
 
   useEffect(() => {
     if (!open) return;

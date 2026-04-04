@@ -1,4 +1,4 @@
-import { readTextFile, readFile as readBinFile, writeTextFile, readDir, exists } from '@tauri-apps/plugin-fs';
+import { readTextFile, readFile as readBinFile, writeTextFile, readDir, exists, stat } from '@tauri-apps/plugin-fs';
 import { invoke } from '@tauri-apps/api/core';
 import type { ToolDefinition, ToolResultContent } from '../../../types';
 import { isWindows } from '../../../utils/platform';
@@ -39,19 +39,35 @@ function releaseFileLock(path: string): void {
   fileLocks.delete(path.replace(/\\/g, '/'));
 }
 
+/** Max file size (bytes) for full text reads without offset/limit. */
+const MAX_TEXT_READ_SIZE = 256 * 1024; // 256 KB
+
+/** Default number of lines to read when file exceeds size limit. */
+const DEFAULT_LINE_LIMIT = 2000;
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
 export const readFileTool: ToolDefinition = {
   name: TOOL_NAMES.READ_FILE,
-  description: '读取文件内容。支持文本文件、图片（png/jpg/gif/webp，返回视觉内容）、PDF（提取文字）、Office 文档（.docx/.xlsx/.pptx，提取文字）和压缩包（.zip/.tar.gz，列出内容）。返回文件内容或提取的文本。',
+  description: '读取文件内容。支持文本文件、图片（png/jpg/gif/webp，返回视觉内容）、PDF（提取文字）、Office 文档（.docx/.xlsx/.pptx，提取文字）和压缩包（.zip/.tar.gz，列出内容）。文本文件支持 offset（起始行号）和 limit（读取行数）参数进行分段读取。',
   inputSchema: {
     type: 'object',
     properties: {
       path: { type: 'string', description: 'Absolute path to the file to read' },
+      offset: { type: 'number', description: 'Line number to start reading from (0-based). Only use when the file is too large to read at once.' },
+      limit: { type: 'number', description: 'Number of lines to read. Only use when the file is too large to read at once.' },
     },
     required: ['path'],
   },
   execute: async (input) => {
     const filePath = input.path as string;
     const ext = getFileExtension(filePath);
+    const offset = typeof input.offset === 'number' ? Math.max(0, Math.floor(input.offset)) : undefined;
+    const limit = typeof input.limit === 'number' ? Math.max(1, Math.floor(input.limit)) : undefined;
 
     try {
       // --- Image files: return as vision content ---
@@ -122,8 +138,35 @@ export const readFileTool: ToolDefinition = {
         return await listArchiveContents(filePath, archiveExt);
       }
 
-      // --- Text files: read as UTF-8 ---
+      // --- Text files: read as UTF-8 with size gating and pagination ---
+      const fileStat = await stat(filePath);
+      const fileSize = fileStat.size;
+      const hasRange = offset !== undefined || limit !== undefined;
+
+      // File exceeds size limit and no range specified → reject with guidance
+      if (fileSize > MAX_TEXT_READ_SIZE && !hasRange) {
+        // Still read a small portion to count total lines via a fast heuristic
+        const fullContent = await readTextFile(filePath);
+        const totalLines = fullContent.split('\n').length;
+        return `File is too large to read at once (${formatSize(fileSize)}, ${totalLines} lines). ` +
+          `Use offset and limit parameters to read specific portions, or use search_files to find relevant content.\n` +
+          `Example: read_file(path, offset=0, limit=${DEFAULT_LINE_LIMIT}) to read the first ${DEFAULT_LINE_LIMIT} lines.`;
+      }
+
       const content = await readTextFile(filePath);
+      const allLines = content.split('\n');
+      const totalLines = allLines.length;
+
+      // Apply offset/limit if specified
+      if (hasRange) {
+        const startLine = offset ?? 0;
+        const lineCount = limit ?? DEFAULT_LINE_LIMIT;
+        const sliced = allLines.slice(startLine, startLine + lineCount);
+        const numLines = sliced.length;
+        const header = `[File: ${filePath} | ${formatSize(fileSize)} | Lines ${startLine}-${startLine + numLines - 1} of ${totalLines} total]`;
+        return `${header}\n${sliced.join('\n')}`;
+      }
+
       return content;
     } catch (err) {
       return `Error reading file: ${err instanceof Error ? err.message : String(err)}`;
