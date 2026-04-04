@@ -183,15 +183,21 @@ export class OpenAICompatibleAdapter implements LLMAdapter {
       baseUrl += '/v1';
     }
 
+    // Ollama: streaming + tool calling is broken in /v1/chat/completions.
+    // When tools are present and endpoint looks like Ollama, use non-streaming.
+    const isOllamaEndpoint = /localhost:\d{4,5}|127\.0\.0\.1:\d{4,5}|ollama/i.test(baseUrl);
+    const hasTools = !!(options.tools && options.tools.length > 0);
+    const useStreaming = !(isOllamaEndpoint && hasTools);
+
     const body: Record<string, unknown> = {
       model: options.model,
       messages: convertMessages(messages, options.systemPrompt, options.supportsVision),
       max_tokens: options.maxTokens ?? 4096,
-      stream: true,
+      stream: useStreaming,
     };
 
-    if (options.tools && options.tools.length > 0) {
-      body.tools = convertTools(options.tools);
+    if (hasTools) {
+      body.tools = convertTools(options.tools!);
     }
 
     // Inject built-in web search if configured
@@ -218,6 +224,56 @@ export class OpenAICompatibleAdapter implements LLMAdapter {
     if (!response.ok) {
       const errorText = await response.text();
       throw classifyError(response.status, errorText);
+    }
+
+    // ── Non-streaming path (Ollama + tools) ──
+    if (!useStreaming) {
+      const data = await response.json() as Record<string, unknown>;
+      const choices = data.choices as Array<Record<string, unknown>> | undefined;
+      const choice = choices?.[0];
+      const msg = choice?.message as Record<string, unknown> | undefined;
+
+      if (msg?.content && typeof msg.content === 'string') {
+        onEvent({ type: 'text', text: msg.content });
+      }
+
+      const toolCalls = msg?.tool_calls as Array<Record<string, unknown>> | undefined;
+      if (toolCalls && toolCalls.length > 0) {
+        for (const tc of toolCalls) {
+          const fn = tc.function as Record<string, unknown>;
+          let input: Record<string, unknown> = {};
+          try { input = JSON.parse(fn.arguments as string); } catch { /* empty */ }
+          onEvent({ type: 'tool_use', id: (tc.id as string) || `ollama-${Date.now()}`, name: fn.name as string, input });
+        }
+        onEvent({ type: 'done', stopReason: 'tool_use' });
+      } else {
+        // Fallback: parse <tool_call> XML from text content
+        const textContent = typeof msg?.content === 'string' ? msg.content : '';
+        const textToolCallRegex = /<tool_call>\s*(\{[\s\S]*?\})\s*<\/tool_call>/g;
+        const textMatches = [...textContent.matchAll(textToolCallRegex)];
+        if (textMatches.length > 0) {
+          for (const match of textMatches) {
+            try {
+              const parsed = JSON.parse(match[1]);
+              const name = parsed.name as string;
+              const args = parsed.arguments ?? parsed.parameters ?? {};
+              const parsedInput = typeof args === 'string' ? JSON.parse(args) : args;
+              const id = `text-tc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+              onEvent({ type: 'tool_use', id, name, input: parsedInput });
+            } catch { /* skip */ }
+          }
+          onEvent({ type: 'done', stopReason: 'tool_use' });
+        } else {
+          onEvent({ type: 'done', stopReason: 'end_turn' });
+        }
+      }
+
+      // Emit usage if present
+      const usage = data.usage as Record<string, number> | undefined;
+      if (usage) {
+        onEvent({ type: 'usage', usage: { inputTokens: usage.prompt_tokens ?? 0, outputTokens: usage.completion_tokens ?? 0 } });
+      }
+      return;
     }
 
     const reader = response.body?.getReader();
@@ -282,6 +338,14 @@ export class OpenAICompatibleAdapter implements LLMAdapter {
       }
     }
 
+    // Track all emitted text for fallback tool_call parsing
+    let accumulatedText = '';
+    const originalOnEvent = onEvent;
+    onEvent = (event: StreamEvent) => {
+      if (event.type === 'text') accumulatedText += event.text;
+      originalOnEvent(event);
+    };
+
     /** Flush any remaining buffered content */
     function flushPendingContent() {
       if (pendingContent) {
@@ -292,6 +356,31 @@ export class OpenAICompatibleAdapter implements LLMAdapter {
         }
         pendingContent = '';
       }
+    }
+
+    /**
+     * Fallback: parse <tool_call> XML tags from text content.
+     * Some providers (OpenRouter, etc.) don't return structured tool_calls;
+     * instead the model outputs tool invocations as <tool_call>...</tool_call> XML in text.
+     */
+    function tryParseTextToolCalls(): boolean {
+      const toolCallRegex = /<tool_call>\s*(\{[\s\S]*?\})\s*<\/tool_call>/g;
+      const matches = [...accumulatedText.matchAll(toolCallRegex)];
+      if (matches.length === 0) return false;
+
+      for (const match of matches) {
+        try {
+          const parsed = JSON.parse(match[1]);
+          const name = parsed.name as string;
+          const args = parsed.arguments ?? parsed.parameters ?? {};
+          const input = typeof args === 'string' ? JSON.parse(args) : args;
+          const id = `text-tc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+          originalOnEvent({ type: 'tool_use', id, name, input });
+        } catch {
+          // Skip unparseable tool calls
+        }
+      }
+      return matches.length > 0;
     }
 
     try {
@@ -318,10 +407,12 @@ export class OpenAICompatibleAdapter implements LLMAdapter {
               try { input = JSON.parse(tc.args); } catch {
                 input = { _parse_error: `Failed to parse tool input: ${tc.args.slice(0, 200)}` };
               }
-              onEvent({ type: 'tool_use', id: tc.id, name: tc.name, input });
+              originalOnEvent({ type: 'tool_use', id: tc.id, name: tc.name, input });
             }
-            const hasToolCalls = toolCallBuffers.size > 0;
-            onEvent({ type: 'done', stopReason: hasToolCalls ? 'tool_use' : 'end_turn' });
+            // Fallback: check for <tool_call> XML in text if no structured tool calls
+            const hasStructuredToolCalls = toolCallBuffers.size > 0;
+            const hasTextToolCalls = !hasStructuredToolCalls && tryParseTextToolCalls();
+            originalOnEvent({ type: 'done', stopReason: (hasStructuredToolCalls || hasTextToolCalls) ? 'tool_use' : 'end_turn' });
             return;
           }
 
@@ -371,7 +462,12 @@ export class OpenAICompatibleAdapter implements LLMAdapter {
               onEvent({ type: 'done', stopReason: 'tool_use' });
               return;
             } else if (choice.finish_reason === 'stop') {
-              onEvent({ type: 'done', stopReason: 'end_turn' });
+              // Fallback: check if model output tool calls as <tool_call> XML in text
+              if (toolCallBuffers.size === 0 && tryParseTextToolCalls()) {
+                originalOnEvent({ type: 'done', stopReason: 'tool_use' });
+                return;
+              }
+              originalOnEvent({ type: 'done', stopReason: 'end_turn' });
               return;
             }
           } catch {
