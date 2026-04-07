@@ -184,6 +184,69 @@ export interface MCPLogEntry {
   message: string;
 }
 
+// ============================================================
+// Schema helpers — shared by connectServer + refreshServerTools
+// ============================================================
+
+/** Extract the primary type string from a JSON Schema property (handles type arrays) */
+function getPropType(prop: Record<string, unknown>): string {
+  const t = prop.type;
+  if (typeof t === 'string') return t;
+  if (Array.isArray(t)) {
+    // e.g. ["number", "null"] — pick first non-null entry
+    const nonNull = (t as string[]).find((x) => x !== 'null');
+    return nonNull ?? 'string';
+  }
+  return 'string';
+}
+
+/** Build ToolParameter map from an MCP inputSchema */
+function buildToolProperties(
+  inputSchema: { properties?: Record<string, Record<string, unknown>>; required?: string[] },
+): Record<string, ToolParameter> {
+  const properties: Record<string, ToolParameter> = {};
+  if (inputSchema.properties) {
+    for (const [key, prop] of Object.entries(inputSchema.properties)) {
+      properties[key] = {
+        ...prop,
+        type: getPropType(prop),
+        description: (prop.description as string) ?? '',
+      } as ToolParameter;
+    }
+  }
+  return properties;
+}
+
+/**
+ * Coerce string values → number where the tool schema declares a numeric type.
+ * LLMs occasionally pass large integer IDs (e.g. Chrome tabId) as quoted strings.
+ * Returns the original object unchanged if no coercion was needed.
+ */
+function coerceNumericArgs(
+  tool: ToolDefinition,
+  args: Record<string, unknown>,
+): Record<string, unknown> {
+  const props = tool.inputSchema?.properties;
+  if (!props) return args;
+
+  let changed = false;
+  const result: Record<string, unknown> = { ...args };
+
+  for (const [key, param] of Object.entries(props)) {
+    const type = (param as ToolParameter).type;
+    const isNumeric = type === 'number' || type === 'integer';
+    if (isNumeric && typeof result[key] === 'string') {
+      const coerced = Number(result[key]);
+      if (!isNaN(coerced)) {
+        result[key] = coerced;
+        changed = true;
+      }
+    }
+  }
+
+  return changed ? result : args;
+}
+
 export class MCPClientManager {
   private servers: Map<string, ConnectedServer> = new Map();
   private listeners: Set<() => void> = new Set();
@@ -271,18 +334,7 @@ export class MCPClientManager {
           required?: string[];
         };
 
-        // Pass through the full JSON Schema for each property
-        // to preserve items, default, properties, etc.
-        const properties: Record<string, ToolParameter> = {};
-        if (inputSchema.properties) {
-          for (const [key, prop] of Object.entries(inputSchema.properties)) {
-            properties[key] = {
-              ...prop,
-              type: (prop.type as string) || 'string',
-              description: (prop.description as string) ?? '',
-            } as ToolParameter;
-          }
-        }
+        const properties = buildToolProperties(inputSchema);
 
         const toolDef: ToolDefinition = {
           name: `${config.name}__${tool.name}`,
@@ -575,16 +627,7 @@ export class MCPClientManager {
           required?: string[];
         };
 
-        const properties: Record<string, ToolParameter> = {};
-        if (inputSchema.properties) {
-          for (const [key, prop] of Object.entries(inputSchema.properties)) {
-            properties[key] = {
-              ...prop,
-              type: (prop.type as string) || 'string',
-              description: (prop.description as string) ?? '',
-            } as ToolParameter;
-          }
-        }
+        const properties = buildToolProperties(inputSchema);
 
         const config = server.config;
         const toolDef: ToolDefinition = {
@@ -632,6 +675,11 @@ export class MCPClientManager {
       throw new Error(`Server ${serverName} not connected`);
     }
 
+    // Coerce string → number for numeric-typed parameters before sending to MCP server.
+    // LLMs occasionally pass large integer IDs (e.g. Chrome tabId) as quoted strings.
+    const toolDef = server.tools.get(toolName);
+    const coercedArgs = toolDef ? coerceNumericArgs(toolDef, args) : args;
+
     let timerId: ReturnType<typeof setTimeout>;
     try {
       const client = server.client as {
@@ -646,7 +694,7 @@ export class MCPClientManager {
         timerId = setTimeout(() => reject(new Error(`MCP tool call timed out after ${serverTimeout / 1000}s: ${toolName}`)), serverTimeout);
       });
       const result = await Promise.race([
-        client.callTool({ name: toolName, arguments: args }),
+        client.callTool({ name: toolName, arguments: coercedArgs }),
         timeout,
       ]);
       clearTimeout(timerId!);

@@ -89,7 +89,7 @@ export function registerTools(server: McpServer): void {
     'snapshot',
     `Get a structured snapshot of all interactive elements on the page (buttons, inputs, links, selects, etc.). Returns each element with a short reference ID (e.g., "e1") that can be used in subsequent actions. This is the primary way to understand what's on a page before taking action.`,
     {
-      tabId: z.number().describe('Tab ID from get_tabs'),
+      tabId: z.coerce.number().describe('Tab ID from get_tabs'),
       selector: z.string().optional().describe('Optional CSS selector to scope the snapshot to a specific area of the page'),
     },
     async ({ tabId, selector }) => {
@@ -104,7 +104,7 @@ export function registerTools(server: McpServer): void {
     'click',
     'Click an element on the page. Returns the result of the click action.',
     {
-      tabId: z.number().describe('Tab ID from get_tabs'),
+      tabId: z.coerce.number().describe('Tab ID from get_tabs'),
       locator: z.string().describe(`JSON string of element locator. ${LocatorDescription}`),
     },
     async ({ tabId, locator }) => {
@@ -120,7 +120,7 @@ export function registerTools(server: McpServer): void {
     'fill',
     'Fill in a text input, textarea, or other editable field. Clears existing content and types the new value, triggering proper input/change events for framework compatibility (React, Vue, etc.).',
     {
-      tabId: z.number().describe('Tab ID from get_tabs'),
+      tabId: z.coerce.number().describe('Tab ID from get_tabs'),
       locator: z.string().describe(`JSON string of element locator. ${LocatorDescription}`),
       value: z.string().describe('The text value to fill into the field'),
     },
@@ -137,7 +137,7 @@ export function registerTools(server: McpServer): void {
     'select',
     'Select an option from a <select> dropdown element.',
     {
-      tabId: z.number().describe('Tab ID from get_tabs'),
+      tabId: z.coerce.number().describe('Tab ID from get_tabs'),
       locator: z.string().describe(`JSON string of element locator. ${LocatorDescription}`),
       value: z.string().describe('The option value or visible text to select'),
     },
@@ -154,7 +154,7 @@ export function registerTools(server: McpServer): void {
     'wait_for',
     `Wait for a condition to be met on the page. Useful for waiting for elements to appear after a click, waiting for loading to complete, or waiting for page navigation. Returns when the condition is met or times out.`,
     {
-      tabId: z.number().describe('Tab ID from get_tabs'),
+      tabId: z.coerce.number().describe('Tab ID from get_tabs'),
       condition: z.string().describe(
         `JSON string of wait condition. Options:
 - { "type": "appear", "locator": { "text": "成功" } } — wait for element to appear
@@ -163,7 +163,7 @@ export function registerTools(server: McpServer): void {
 - { "type": "textContains", "locator": { "css": "#status" }, "text": "完成" } — wait for text content
 - { "type": "urlContains", "pattern": "/success" } — wait for URL change`
       ),
-      timeout: z.number().optional().default(30000).describe('Maximum wait time in ms (default: 30000)'),
+      timeout: z.coerce.number().optional().default(30000).describe('Maximum wait time in ms (default: 30000)'),
     },
     async ({ tabId, condition, timeout }) => {
       ensureConnected();
@@ -178,7 +178,7 @@ export function registerTools(server: McpServer): void {
     'extract_text',
     'Extract text content from the page or a specific element. Useful for reading content, checking values, or verifying results.',
     {
-      tabId: z.number().describe('Tab ID from get_tabs'),
+      tabId: z.coerce.number().describe('Tab ID from get_tabs'),
       selector: z.string().optional().describe('CSS selector to extract text from. If omitted, extracts the full page text (may be large).'),
     },
     async ({ tabId, selector }) => {
@@ -193,7 +193,7 @@ export function registerTools(server: McpServer): void {
     'extract_table',
     'Extract structured data from an HTML table on the page. Returns headers and rows as arrays.',
     {
-      tabId: z.number().describe('Tab ID from get_tabs'),
+      tabId: z.coerce.number().describe('Tab ID from get_tabs'),
       selector: z.string().optional().describe('CSS selector for the target table. If omitted, extracts the largest table on the page.'),
     },
     async ({ tabId, selector }) => {
@@ -208,9 +208,9 @@ export function registerTools(server: McpServer): void {
     'scroll',
     'Scroll the page or a specific element.',
     {
-      tabId: z.number().describe('Tab ID from get_tabs'),
+      tabId: z.coerce.number().describe('Tab ID from get_tabs'),
       direction: z.enum(['up', 'down', 'left', 'right']).describe('Scroll direction'),
-      amount: z.number().optional().default(500).describe('Scroll amount in pixels (default: 500)'),
+      amount: z.coerce.number().optional().default(500).describe('Scroll amount in pixels (default: 500)'),
       selector: z.string().optional().describe('CSS selector for the scrollable element. If omitted, scrolls the whole page.'),
     },
     async ({ tabId, direction, amount, selector }) => {
@@ -225,7 +225,7 @@ export function registerTools(server: McpServer): void {
     'navigate',
     'Navigate a tab to a specific URL, or go back/forward in history.',
     {
-      tabId: z.number().describe('Tab ID from get_tabs'),
+      tabId: z.coerce.number().describe('Tab ID from get_tabs'),
       url: z.string().optional().describe('URL to navigate to. Omit for back/forward.'),
       action: z.enum(['goto', 'back', 'forward', 'reload']).optional().default('goto').describe('Navigation action (default: goto)'),
     },
@@ -241,7 +241,7 @@ export function registerTools(server: McpServer): void {
     'keyboard',
     'Send keyboard events to the page. Supports key combinations.',
     {
-      tabId: z.number().describe('Tab ID from get_tabs'),
+      tabId: z.coerce.number().describe('Tab ID from get_tabs'),
       key: z.string().describe('Key to press (e.g., "Enter", "Tab", "Escape", "a", "ArrowDown")'),
       modifiers: z.array(z.enum(['ctrl', 'shift', 'alt', 'meta'])).optional().describe('Modifier keys to hold'),
     },
@@ -257,7 +257,7 @@ export function registerTools(server: McpServer): void {
     'execute_js',
     'Execute arbitrary JavaScript code in the context of the page. Use this as a fallback when other tools cannot achieve the desired result. Returns the result of the expression.',
     {
-      tabId: z.number().describe('Tab ID from get_tabs'),
+      tabId: z.coerce.number().describe('Tab ID from get_tabs'),
       code: z.string().describe('JavaScript code to execute. The last expression value is returned.'),
     },
     async ({ tabId, code }) => {
@@ -272,7 +272,7 @@ export function registerTools(server: McpServer): void {
     'screenshot',
     'Take a screenshot of the visible area of a tab. Returns a base64-encoded PNG image. Useful for visual confirmation of actions.',
     {
-      tabId: z.number().describe('Tab ID from get_tabs'),
+      tabId: z.coerce.number().describe('Tab ID from get_tabs'),
     },
     async ({ tabId }) => {
       ensureConnected();
@@ -295,7 +295,7 @@ export function registerTools(server: McpServer): void {
     'screenshot_full_page',
     'Take a full-page screenshot by scrolling and stitching the entire page content. Returns a base64-encoded PNG image of the complete page. Use this when the user asks for a "long screenshot" or wants to capture content beyond the visible viewport. This is slower than a regular screenshot.',
     {
-      tabId: z.number().describe('Tab ID from get_tabs'),
+      tabId: z.coerce.number().describe('Tab ID from get_tabs'),
     },
     async ({ tabId }) => {
       ensureConnected();
@@ -347,7 +347,7 @@ export function registerTools(server: McpServer): void {
     'start_recording',
     'Start recording user interactions on a page (clicks, inputs, selects). The user performs actions manually, then call stop_recording to get a list of recorded steps that can be used as an automation template.',
     {
-      tabId: z.number().describe('Tab ID from get_tabs'),
+      tabId: z.coerce.number().describe('Tab ID from get_tabs'),
     },
     async ({ tabId }) => {
       ensureConnected();
@@ -361,7 +361,7 @@ export function registerTools(server: McpServer): void {
     'stop_recording',
     'Stop recording user interactions and return the captured steps. Each step includes the action type, element locator, and value. Use these steps as a template to replay the automation.',
     {
-      tabId: z.number().describe('Tab ID from get_tabs'),
+      tabId: z.coerce.number().describe('Tab ID from get_tabs'),
     },
     async ({ tabId }) => {
       ensureConnected();
