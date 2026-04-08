@@ -156,5 +156,74 @@
       "requiredTools": ["delegate_to_agent"]
     },
     "difficulty": "medium"
+  },
+
+  {
+    "id": "local-discovery-smartwork",
+    "category": "search",
+    "input": "我电脑上装了一个 SmartWork 应用，分析下底层是什么框架",
+    "expected": {
+      "requiredTools": [],
+      "forbiddenTools": ["web_search"]
+    },
+    "difficulty": "hard"
+  },
+  {
+    "id": "local-discovery-list-filter-apps",
+    "category": "search",
+    "input": "看看 /Applications 下有哪些含 Chrome 字样的应用",
+    "expected": {
+      "requiredTools": [],
+      "forbiddenTools": ["run_command", "web_search"]
+    },
+    "difficulty": "medium"
+  },
+  {
+    "id": "local-discovery-find-pdfs",
+    "category": "search",
+    "input": "找一下 ~/Downloads 里所有 .pdf 文件",
+    "expected": {
+      "requiredTools": ["find_files"],
+      "forbiddenTools": ["run_command", "web_search"]
+    },
+    "difficulty": "easy"
+  },
+  {
+    "id": "local-discovery-bare-list-apps",
+    "category": "search",
+    "input": "看下 /Applications 下都装了哪些应用",
+    "expected": {
+      "requiredTools": [],
+      "forbiddenTools": ["run_command", "web_search"]
+    },
+    "difficulty": "easy"
+  },
+  {
+    "id": "local-discovery-vague-installed",
+    "category": "search",
+    "input": "我装过一个叫 Cursor 的应用吗？",
+    "expected": {
+      "requiredTools": [],
+      "forbiddenTools": ["web_search"]
+    },
+    "difficulty": "medium"
+  },
+  {
+    "id": "negative-shell-ls-lh",
+    "category": "command",
+    "input": "看下 /Applications 里每个应用占多少磁盘空间",
+    "expected": {
+      "requiredTools": ["run_command"]
+    },
+    "difficulty": "medium"
+  },
+  {
+    "id": "negative-find-recent-modified",
+    "category": "command",
+    "input": "~/Downloads 里最近 7 天修改过的文件有哪些",
+    "expected": {
+      "requiredTools": ["run_command"]
+    },
+    "difficulty": "medium"
   }
 ]
