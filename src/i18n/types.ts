@@ -139,6 +139,19 @@ export interface TranslationDict {
     openInBrowser: string;
     openWithDefaultApp: string;
     clickToPreview: string;
+    fileMissing: string;
+    fileOversized: string;
+    fileBackupFailed: string;
+    cannotRevealOriginal: string;
+    restoreToOriginal: string;
+    restoreConfirmTitle: string;
+    restoreConfirmBody: string;
+    restoreSuccess: string;
+    restoreFailedNoSnapshot: string;
+    restoreFailedNoParent: string;
+    restoreFailedCopy: string;
+    saveSnapshotAs: string;
+    saveSnapshotAsSuccess: string;
     sources: string;
     showAllSources: string;
     collapseSources: string;
@@ -190,6 +203,8 @@ export interface TranslationDict {
     contextCritical: string;
     contextCompressBtn: string;
     contextNewChatBtn: string;
+    // Agent loop max turns
+    maxTurnsReached: string;
   };
 
   // Status Bar
@@ -612,6 +627,7 @@ export interface TranslationDict {
     skillContextInline: string;
     skillContextFork: string;
     skillMaxTurns: string;
+    maxTurnsInheritGlobalHint: string;
     skillContent: string;
     skillEnabled: string;
     skillDisabled: string;

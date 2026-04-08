@@ -31,6 +31,7 @@ import { createSubagentController } from './subagentAbort';
 import { drainQueuedInputs, clearInputQueue } from './userInputQueue';
 import { snapshotExecutionSteps } from './executionSnapshot';
 import { emitHook } from './lifecycleHooks';
+import { getI18n, format } from '../../i18n';
 import { clearAllSkillHooks } from '../tools/builtins';
 import { executeToolBatch } from './toolExecutor';
 import { formatTodosForPrompt } from './todoManager';
@@ -695,9 +696,9 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
   });
 
   let continueLoop = true;
-  // Computer use needs more turns (each click/type/key is a separate turn)
-  const defaultMaxTurns = useSettingsStore.getState().computerUseEnabled ? 50 : 20;
-  const maxTurns = route.skill?.maxTurns ?? route.definition?.maxTurns ?? defaultMaxTurns;
+  // maxTurns priority: skill > agent definition > global setting > undefined (unlimited)
+  const globalMaxTurns = useSettingsStore.getState().agentMaxTurns;
+  const maxTurns = route.skill?.maxTurns ?? route.definition?.maxTurns ?? globalMaxTurns;
   let turnCount = 0;
   const autoCompactTracker = new AutoCompactTracker();
   let maxOutputTokensRecoveryCount = 0;
@@ -759,11 +760,11 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       maxTurns,
     });
 
-    if (turnCount > maxTurns) {
+    if (maxTurns !== undefined && turnCount > maxTurns) {
       chatStore.addMessage(conversationId, {
         id: generateId(),
         role: 'assistant',
-        content: `已达到最大轮次限制 (${maxTurns})，停止执行。`,
+        content: format(getI18n().chat.maxTurnsReached, { n: maxTurns }),
         timestamp: Date.now(),
         loopId,
       });
@@ -1250,6 +1251,24 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
           contextUsagePercent: usagePercent,
         });
 
+        // ★ Persist this turn's full message state (including completed tool calls)
+        // to disk RIGHT NOW. We must use replaceMessageById (not updateLastMessage)
+        // because by the time the next turn's addMessage races with our write, the
+        // "last line" may already have shifted to the next turn's placeholder, and
+        // updateLastMessage would either clobber the new placeholder or update the
+        // wrong line. Awaiting here adds a few ms of latency but guarantees disk
+        // state matches in-memory state before the loop continues.
+        const turnMsg = useChatStore.getState().conversations[conversationId]
+          ?.messages.find((m) => m.id === assistantMsgId);
+        if (turnMsg) {
+          try {
+            const { replaceMessageById } = await import('../session/conversationStorage');
+            await replaceMessageById(conversationId, turnMsg);
+          } catch {
+            // Non-critical — message still lives in memory until next finishStreaming
+          }
+        }
+
         // Handle MCP tool changes — inject notification into conversation
         if (batchResult.mcpChanged) {
           const toolNames = new Set(tools.map(t => t.name));
@@ -1281,21 +1300,42 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       // Max Output Tokens recovery: if LLM output was truncated (not tool_use),
       // inject a continuation prompt and retry, up to MAX_OUTPUT_TOKENS_RECOVERY_LIMIT times.
       // This matches Claude Code's max_output_tokens_recovery pattern.
-      if (!continueLoop && lastStopReason === 'max_tokens' && collectedToolCalls.length === 0
-          && maxOutputTokensRecoveryCount < MAX_OUTPUT_TOKENS_RECOVERY_LIMIT) {
-        maxOutputTokensRecoveryCount++;
-        logger.info('Max output tokens recovery', { attempt: maxOutputTokensRecoveryCount, limit: MAX_OUTPUT_TOKENS_RECOVERY_LIMIT });
-        // Inject a system continuation message (not shown in UI)
-        const recoveryMsg = {
-          id: generateId(),
-          role: 'user' as const,
-          content: 'Output token limit reached. Resume directly — no apology, no recap of what you were doing. Pick up mid-thought if that is where the cut happened. Break remaining work into smaller pieces.',
-          timestamp: Date.now(),
-          loopId,
-          isSystem: true as const,
-        };
-        useChatStore.getState().addMessage(conversationId, recoveryMsg);
-        continueLoop = true;
+      let maxTokensRecoveryExhausted = false;
+      if (!continueLoop && lastStopReason === 'max_tokens' && collectedToolCalls.length === 0) {
+        if (maxOutputTokensRecoveryCount < MAX_OUTPUT_TOKENS_RECOVERY_LIMIT) {
+          maxOutputTokensRecoveryCount++;
+          logger.info('Max output tokens recovery', { attempt: maxOutputTokensRecoveryCount, limit: MAX_OUTPUT_TOKENS_RECOVERY_LIMIT });
+          // Inject a system continuation message (not shown in UI)
+          const recoveryMsg = {
+            id: generateId(),
+            role: 'user' as const,
+            content: 'Output token limit reached. Resume directly — no apology, no recap of what you were doing. Pick up mid-thought if that is where the cut happened. Break remaining work into smaller pieces.',
+            timestamp: Date.now(),
+            loopId,
+            isSystem: true as const,
+          };
+          useChatStore.getState().addMessage(conversationId, recoveryMsg);
+          continueLoop = true;
+        } else {
+          // Recovery exhausted: surface a visible error so the user knows the
+          // conversation didn't silently complete. Without this, the loop would
+          // fall through to the normal end_turn path and mark status='completed',
+          // hiding the failure (this used to happen before the openai-compatible
+          // length-branch fix made the escalation reachable at all).
+          maxTokensRecoveryExhausted = true;
+          logger.warn('Max output tokens recovery exhausted', {
+            attempts: MAX_OUTPUT_TOKENS_RECOVERY_LIMIT,
+            finalMaxTokens: maxOutputTokens,
+          });
+          chatStore.appendToLastMessage(
+            conversationId,
+            `\n\n**Error:** 模型连续 ${MAX_OUTPUT_TOKENS_RECOVERY_LIMIT} 次输出达到 token 上限仍未完成。建议：\n` +
+            `1. 缩短当前对话或开启新会话\n` +
+            `2. 把任务拆分成更小的步骤\n` +
+            `3. 切换到上下文更大的模型\n` +
+            `4. 写入大文件时让模型用 \`run_command\` + heredoc 追加（\`>>\`）而非单次 \`write_file\``
+          );
+        }
       }
 
       // If there are running background agents, wait for them to complete before ending
@@ -1315,9 +1355,10 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       if (!continueLoop) {
         chatStore.finishStreaming(conversationId);
         chatStore.clearAbortController(conversationId);
-        logger.info('Agent loop ended', { conversationId, loopId, turnCount, reason: 'end_turn' });
+        const endReason = maxTokensRecoveryExhausted ? 'max_tokens_exhausted' : 'end_turn';
+        logger.info('Agent loop ended', { conversationId, loopId, turnCount, reason: endReason });
         // Complete the TaskExecution
-        eventRouter.route({ type: 'done', loopId, reason: 'end_turn' });
+        eventRouter.route({ type: 'done', loopId, reason: endReason });
         persistExecutionSnapshot(conversationId, loopId);
         // Emit agentEnd hook
         await emitHook({
@@ -1326,7 +1367,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
           conversationId,
           agentName: route.name ?? 'abu',
           loopId,
-          reason: 'end_turn',
+          reason: endReason,
         });
         // Auto-deactivate skills after loop completes (single-turn lifecycle)
         deactivateAllSkills(conversationId);
@@ -1334,8 +1375,8 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
         import('../session/checkpoint').then(({ clearCheckpoint }) => {
           clearCheckpoint(conversationId);
         }).catch(() => {});
-        // Mark conversation as completed and send notification
-        chatStore.setConversationStatus(conversationId, 'completed');
+        // Mark conversation status — error if recovery exhausted, otherwise completed
+        chatStore.setConversationStatus(conversationId, maxTokensRecoveryExhausted ? 'error' : 'completed');
         indexConversationAsync(conversationId);
         // Auto-extract memories from desktop conversations (non-blocking)
         // IM conversations have their own extraction in channelRouter.ts
