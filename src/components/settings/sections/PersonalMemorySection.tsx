@@ -1,32 +1,26 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useI18n, format } from '@/i18n';
 import { HelpCircle, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
-import { getMemoryBackend } from '@/core/memory/router';
-import { loadAgentMemory } from '@/core/agent/agentMemory';
-import type { MemoryEntry, MemoryCategory } from '@/core/memory/types';
+import { scanMemoryFiles, readMemoryFile } from '@/core/memdir/scan';
+import { deleteMemory } from '@/core/memdir/write';
+import type { MemoryHeader, MemoryType } from '@/core/memdir/types';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 
-function getCategoryLabel(category: MemoryCategory, t: ReturnType<typeof useI18n>['t']): string {
-  const map: Record<MemoryCategory, string> = {
-    user_preference: t.memory.categoryPreference,
-    project_knowledge: t.memory.categoryProject,
-    conversation_fact: t.memory.categoryFact,
-    decision: t.memory.categoryDecision,
-    action_item: t.memory.categoryAction,
-    conversation_index: t.memory.categoryConversationIndex,
+function getTypeLabel(type: MemoryType, t: ReturnType<typeof useI18n>['t']): string {
+  const map: Record<MemoryType, string> = {
+    user: t.memory.categoryPreference,
+    project: t.memory.categoryProject,
     feedback: t.memory.categoryFeedback,
+    reference: t.memory.categoryFact,
   };
-  return map[category];
+  return map[type];
 }
 
-const CATEGORY_COLORS: Record<MemoryCategory, string> = {
-  user_preference: 'bg-orange-100 text-orange-700',
-  project_knowledge: 'bg-purple-100 text-purple-700',
-  conversation_fact: 'bg-blue-100 text-blue-700',
-  decision: 'bg-green-100 text-green-700',
-  action_item: 'bg-yellow-100 text-yellow-700',
-  conversation_index: 'bg-[var(--abu-bg-muted)] text-[var(--abu-text-secondary)]',
+const TYPE_COLORS: Record<MemoryType, string> = {
+  user: 'bg-orange-100 text-orange-700',
+  project: 'bg-purple-100 text-purple-700',
   feedback: 'bg-teal-100 text-teal-700',
+  reference: 'bg-blue-100 text-blue-700',
 };
 
 function formatAge(timestamp: number): string {
@@ -42,32 +36,22 @@ function formatAge(timestamp: number): string {
 
 export default function PersonalMemorySection() {
   const { t } = useI18n();
-  const [entries, setEntries] = useState<MemoryEntry[]>([]);
-  const [legacyContent, setLegacyContent] = useState<string | null>(null);
+  const [headers, setHeaders] = useState<MemoryHeader[]>([]);
+  const [expandedContent, setExpandedContent] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<MemoryEntry | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<MemoryHeader | null>(null);
   const [showTip, setShowTip] = useState(false);
   const tipRef = useRef<HTMLDivElement>(null);
 
   const loadEntries = useCallback(async () => {
     setLoading(true);
     try {
-      const backend = getMemoryBackend();
-      const items = await backend.list({ scope: 'user' });
-      // Filter out conversation_index entries — internal data, not user-facing
-      const visible = items.filter(e => e.category !== 'conversation_index');
-      if (visible.length > 0) {
-        setEntries(visible.sort((a, b) => b.updatedAt - a.updatedAt));
-        setLegacyContent(null);
-      } else {
-        // Fallback: show legacy memory.md content if structured entries are empty
-        const legacy = await loadAgentMemory('abu');
-        setLegacyContent(legacy.trim() || null);
-        setEntries([]);
-      }
+      // Load from global memdir (no workspace)
+      const items = await scanMemoryFiles(null);
+      setHeaders(items.sort((a, b) => b.updated - a.updated));
     } catch {
-      setEntries([]);
+      setHeaders([]);
     } finally {
       setLoading(false);
     }
@@ -87,11 +71,26 @@ export default function PersonalMemorySection() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showTip]);
 
+  const handleExpand = async (header: MemoryHeader) => {
+    const id = header.filename;
+    if (expandedId === id) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(id);
+    // Lazy load content
+    if (!expandedContent[id]) {
+      const file = await readMemoryFile(header.filePath);
+      if (file) {
+        setExpandedContent(prev => ({ ...prev, [id]: file.content }));
+      }
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
-      const backend = getMemoryBackend();
-      await backend.remove(deleteTarget.id);
+      await deleteMemory(deleteTarget.filename, null);
       setDeleteTarget(null);
       await loadEntries();
     } catch (err) {
@@ -104,7 +103,7 @@ export default function PersonalMemorySection() {
       <ConfirmDialog
         open={!!deleteTarget}
         title={t.memory.deleteTitle}
-        message={deleteTarget?.summary ?? ''}
+        message={deleteTarget?.name ?? ''}
         confirmText={t.common.delete}
         cancelText={t.common.cancel}
         onConfirm={handleDelete}
@@ -148,58 +147,49 @@ export default function PersonalMemorySection() {
           <div className="flex items-center justify-center py-16">
             <div className="w-5 h-5 border-2 border-[var(--abu-clay)] border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : entries.length > 0 ? (
+        ) : headers.length > 0 ? (
           <div className="space-y-2">
             <div className="text-[12px] text-[var(--abu-text-placeholder)] mb-2">
-              {format(t.memory.entryCount, { count: String(entries.length) })}
+              {format(t.memory.entryCount, { count: String(headers.length) })}
             </div>
-            {entries.map((entry) => (
+            {headers.map((header) => (
               <div
-                key={entry.id}
+                key={header.filename}
                 className="border border-[var(--abu-border)] rounded-lg bg-[var(--abu-bg-muted)] overflow-hidden"
               >
                 <div
                   className="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-[var(--abu-bg-muted)] transition-colors"
-                  onClick={() => setExpandedId(expandedId === entry.id ? null : entry.id)}
+                  onClick={() => handleExpand(header)}
                 >
-                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${CATEGORY_COLORS[entry.category]}`}>
-                    {getCategoryLabel(entry.category, t)}
+                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${TYPE_COLORS[header.type]}`}>
+                    {getTypeLabel(header.type, t)}
                   </span>
                   <span className="text-[13px] text-[var(--abu-text-primary)] flex-1 truncate">
-                    {entry.summary}
+                    {header.name}
                   </span>
                   <span className="text-[11px] text-[var(--abu-text-placeholder)] whitespace-nowrap">
-                    {formatAge(entry.updatedAt)}
+                    {formatAge(header.updated)}
                   </span>
-                  {expandedId === entry.id ? (
+                  {expandedId === header.filename ? (
                     <ChevronUp className="h-3.5 w-3.5 text-[var(--abu-text-placeholder)]" />
                   ) : (
                     <ChevronDown className="h-3.5 w-3.5 text-[var(--abu-text-placeholder)]" />
                   )}
                 </div>
 
-                {expandedId === entry.id && (
+                {expandedId === header.filename && (
                   <div className="px-3 pb-3 border-t border-[var(--abu-bg-active)]">
                     <p className="text-[12px] text-[var(--abu-text-tertiary)] leading-relaxed mt-2 whitespace-pre-wrap">
-                      {entry.content}
+                      {expandedContent[header.filename] ?? header.description}
                     </p>
-                    {entry.keywords.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {entry.keywords.map((kw, i) => (
-                          <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--abu-bg-muted)] text-[var(--abu-text-muted)]">
-                            {kw}
-                          </span>
-                        ))}
-                      </div>
-                    )}
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-[var(--abu-bg-muted)]">
                       <span className="text-[10px] text-[var(--abu-text-placeholder)]">
-                        {entry.sourceType === 'auto_flush' ? t.memory.sourceAutoFlush : entry.sourceType === 'agent_explicit' ? t.memory.sourceAgentExplicit : t.memory.sourceUserManual}
+                        {header.source === 'auto_flush' ? t.memory.sourceAutoFlush : header.source === 'agent_explicit' ? t.memory.sourceAgentExplicit : t.memory.sourceUserManual}
                         {' · '}
-                        {format(t.memory.recallCount, { count: String(entry.accessCount) })}
+                        {format(t.memory.recallCount, { count: String(header.accessCount) })}
                       </span>
                       <button
-                        onClick={(e) => { e.stopPropagation(); setDeleteTarget(entry); }}
+                        onClick={(e) => { e.stopPropagation(); setDeleteTarget(header); }}
                         className="p-1 rounded text-[var(--abu-text-placeholder)] hover:text-red-500 hover:bg-red-50 transition-colors"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -209,15 +199,6 @@ export default function PersonalMemorySection() {
                 )}
               </div>
             ))}
-          </div>
-        ) : legacyContent ? (
-          <div className="space-y-2">
-            <div className="text-[12px] text-[var(--abu-text-placeholder)]">
-              {t.memory.legacyHint}
-            </div>
-            <div className="px-3 py-3 rounded-lg border border-[var(--abu-border)] text-[13px] text-[var(--abu-text-tertiary)] bg-[var(--abu-bg-muted)] font-mono leading-relaxed whitespace-pre-wrap">
-              {legacyContent}
-            </div>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-12 text-center">

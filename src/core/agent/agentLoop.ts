@@ -1434,8 +1434,9 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
         // Auto-extract memories from desktop conversations (non-blocking)
         // IM conversations have their own extraction in channelRouter.ts
         if (!options?.imContext) {
+          const wsPath = useWorkspaceStore.getState().currentPath;
           import('../memory/extractor').then(({ extractMemoriesFromConversation }) =>
-            extractMemoriesFromConversation(conversationId)
+            extractMemoriesFromConversation(conversationId, wsPath)
           ).catch(() => {});
         }
         const convTitle = useChatStore.getState().conversationIndex[conversationId]?.title ?? '任务';
