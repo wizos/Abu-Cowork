@@ -672,9 +672,9 @@ export default function SkillsSection({ manualCreateTrigger, onAICreate, onManua
             /* Show skill detail */
             <div className="px-6 py-6">
               {/* Row 1: Name + Toggle + Menu */}
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-[var(--abu-text-primary)]">{selected.name}</h2>
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <h2 className="text-xl font-semibold text-[var(--abu-text-primary)] truncate min-w-0" title={selected.name}>{selected.name}</h2>
+                <div className="flex items-center gap-2 shrink-0">
                   <Toggle
                     checked={!disabledSet.has(selected.name)}
                     onChange={() => toggleSkillEnabled(selected.name)}

@@ -757,14 +757,14 @@ function ServerDetail({
 
   return (
     <div className="px-6 py-6">
-      {/* Header: Name + Status + Actions */}
-      <div className="flex items-center justify-between mb-5">
-        <div className="flex items-center gap-3">
-          <Server className="h-5 w-5 text-[var(--abu-text-muted)]" />
-          <h2 className="text-xl font-semibold text-[var(--abu-text-primary)]">{config.name}</h2>
-          <span className={cn('text-xs font-medium', statusColor)}>{statusLabel}</span>
-        </div>
-        <div className="flex items-center gap-1">
+      {/* Header: Name + Actions / Status */}
+      <div className="flex flex-col gap-1.5 mb-5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <Server className="h-5 w-5 shrink-0 text-[var(--abu-text-muted)]" />
+            <h2 className="text-xl font-semibold text-[var(--abu-text-primary)] truncate" title={config.name}>{config.name}</h2>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
           <button onClick={onToggleLogs} className="p-1.5 rounded-lg text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)] transition-colors" title={t.toolbox.viewLogs}>
             <ScrollText className="h-4 w-4" />
           </button>
@@ -784,6 +784,10 @@ function ServerDetail({
           <button onClick={onRemove} className="p-1.5 rounded-lg text-[var(--abu-text-muted)] hover:text-red-500 hover:bg-red-50 transition-colors">
             <Trash2 className="h-4 w-4" />
           </button>
+        </div>
+        </div>
+        <div className="flex items-center gap-2 pl-8">
+          <span className={cn('text-xs font-medium', statusColor)}>{statusLabel}</span>
         </div>
       </div>
 

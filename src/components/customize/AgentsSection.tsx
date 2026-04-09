@@ -290,12 +290,12 @@ export default function AgentsSection({ manualCreateTrigger, onAICreate, onManua
         {selected ? (
           <div className="px-6 py-6">
             {/* Row 1: Name + Toggle + Menu */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <AgentAvatar agent={selected} />
-                <h2 className="text-xl font-semibold text-[var(--abu-text-primary)]">{displayName(selected)}</h2>
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="shrink-0"><AgentAvatar agent={selected} /></span>
+                <h2 className="text-xl font-semibold text-[var(--abu-text-primary)] truncate" title={displayName(selected)}>{displayName(selected)}</h2>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 {selected.name !== 'abu' && (
                   <>
                     <Toggle
