@@ -55,6 +55,19 @@ const MIME_TO_EXT: Record<string, string> = {
   'image/webp': 'webp',
 };
 
+/** Check whether any message in the conversation contains image content (user images or tool result images). */
+function conversationHasImages(messages: import('../../types').Message[]): boolean {
+  for (const msg of messages) {
+    // User-attached images
+    if (Array.isArray(msg.content) && msg.content.some(c => c.type === 'image')) return true;
+    // Tool result images
+    if (msg.toolCalls?.some(tc =>
+      tc.resultContent?.some(rc => rc.type === 'image')
+    )) return true;
+  }
+  return false;
+}
+
 /**
  * Save user-pasted images to disk so they survive localStorage persistence.
  * Returns array of file paths (one per image). On failure, returns undefined for that slot.
@@ -1479,9 +1492,19 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       const errorCode = err instanceof LLMError ? err.code : undefined;
       logger.error('LLM call failed', { error: errorMessage, code: errorCode });
       logger.info('Agent loop ended', { conversationId, loopId, turnCount, reason: 'error' });
+
+      // Friendly message when a 400 error is likely caused by image content
+      // sent to a model that doesn't support vision
+      const isLikelyVisionError = errorCode === 'invalid_request'
+        && err instanceof LLMError && err.statusCode === 400
+        && conversationHasImages(useChatStore.getState().conversations[conversationId]?.messages ?? []);
+      const displayError = isLikelyVisionError
+        ? '当前模型可能不支持图片/视觉输入，请尝试移除图片或切换到支持视觉的模型（如 Claude、GPT-4o）。'
+        : errorMessage;
+
       chatStore.appendToLastMessage(
         conversationId,
-        `\n\n**Error:** ${errorMessage}`,
+        `\n\n**Error:** ${displayError}`,
         assistantMsgId
       );
       chatStore.finishStreaming(conversationId, assistantMsgId);
