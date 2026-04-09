@@ -241,7 +241,12 @@ export default function SkillsSection({ manualCreateTrigger, onAICreate, onManua
     try {
       const skillDir = getParentDir(skill.filePath);
       await remove(skillDir, { recursive: true });
-      if (selectedSkill === skill.name) setSelectedSkill(null);
+      // Select adjacent item so the user stays in context after deletion
+      if (selectedSkill === skill.name) {
+        const names = filteredSkills.map((s) => s.name);
+        const idx = names.indexOf(skill.name);
+        setSelectedSkill(names[idx - 1] ?? names[idx + 1] ?? null);
+      }
       await refresh();
     } catch (err) {
       console.error('Failed to delete skill:', err);

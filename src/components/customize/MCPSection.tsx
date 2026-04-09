@@ -177,9 +177,10 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
   // Auto-select first visible item when none selected (initial load or after deletion)
   useEffect(() => {
     if (selected) {
-      // Verify the selected item still exists
+      // If the selected server was removed, fall back to its template view (or clear)
       if (selected.kind === 'server' && !servers[selected.name]) {
-        setSelected(null);
+        const tmpl = mcpTemplates.find((t) => t.name === selected.name);
+        setSelected(tmpl ? { kind: 'template', id: tmpl.id } : null);
       }
       return;
     }
@@ -370,8 +371,19 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
   };
 
   const handleRemoveServer = async (name: string) => {
-    // Clear selection first so the right panel stops showing stale data
-    if (selected?.kind === 'server' && selected.name === name) setSelected(null);
+    // Keep selection in context after removal
+    if (selected?.kind === 'server' && selected.name === name) {
+      // If it's a template MCP, switch to template view (stays on same item)
+      const tmpl = mcpTemplates.find((t) => t.name === name);
+      if (tmpl) {
+        setSelected({ kind: 'template', id: tmpl.id });
+      } else {
+        // Custom server: select adjacent item
+        const idx = customServers.findIndex((s) => s.config.name === name);
+        const nextName = customServers[idx - 1]?.config.name ?? customServers[idx + 1]?.config.name;
+        setSelected(nextName ? { kind: 'server', name: nextName } : null);
+      }
+    }
     // Disconnect before removing to avoid stale connected state
     try { await disconnectServer(name); } catch { /* ignore */ }
     removeServer(name);

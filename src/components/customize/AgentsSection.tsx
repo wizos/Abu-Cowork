@@ -115,7 +115,12 @@ export default function AgentsSection({ manualCreateTrigger, onAICreate, onManua
     try {
       const agentDir = getParentDir(agent.filePath);
       await remove(agentDir, { recursive: true });
-      if (selectedAgent === agent.name) setSelectedAgent(null);
+      // Select adjacent item so the user stays in context after deletion
+      if (selectedAgent === agent.name) {
+        const names = filteredAgents.map((a) => a.name);
+        const idx = names.indexOf(agent.name);
+        setSelectedAgent(names[idx - 1] ?? names[idx + 1] ?? null);
+      }
       await refresh();
     } catch (err) {
       console.error('Failed to delete agent:', err);
