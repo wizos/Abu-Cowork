@@ -6,6 +6,7 @@ import { useI18n } from '@/i18n';
 import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { exists } from '@tauri-apps/plugin-fs';
+import { getMemoryBackend } from '@/core/memory/router';
 import {
   FolderOpen,
   ExternalLink,
@@ -79,8 +80,17 @@ export default function WorkspaceSection() {
         setHasInstructions(false);
       }
       try {
+        // Check both legacy MEMORY.md and structured memory backend
         const memoryPath = joinPath(currentPath, '.abu', 'MEMORY.md');
-        setHasMemory(await exists(memoryPath));
+        const legacyExists = await exists(memoryPath);
+        if (legacyExists) {
+          setHasMemory(true);
+        } else {
+          // Check structured memory entries
+          const backend = getMemoryBackend();
+          const entries = await backend.list({ scope: 'project', projectPath: currentPath });
+          setHasMemory(entries.length > 0);
+        }
       } catch {
         setHasMemory(false);
       }
@@ -174,9 +184,20 @@ export default function WorkspaceSection() {
       {currentPath && (
         <MemoryViewModal
           open={showMemoryModal}
-          onClose={() => {
+          onClose={async () => {
             setShowMemoryModal(false);
-            exists(joinPath(currentPath, '.abu', 'MEMORY.md')).then(setHasMemory).catch(() => setHasMemory(false));
+            try {
+              const legacyExists = await exists(joinPath(currentPath, '.abu', 'MEMORY.md'));
+              if (legacyExists) {
+                setHasMemory(true);
+              } else {
+                const backend = getMemoryBackend();
+                const entries = await backend.list({ scope: 'project', projectPath: currentPath });
+                setHasMemory(entries.length > 0);
+              }
+            } catch {
+              setHasMemory(false);
+            }
           }}
           scope="project"
           workspacePath={currentPath}

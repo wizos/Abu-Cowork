@@ -143,15 +143,6 @@ export interface TranslationDict {
     fileOversized: string;
     fileBackupFailed: string;
     cannotRevealOriginal: string;
-    restoreToOriginal: string;
-    restoreConfirmTitle: string;
-    restoreConfirmBody: string;
-    restoreSuccess: string;
-    restoreFailedNoSnapshot: string;
-    restoreFailedNoParent: string;
-    restoreFailedCopy: string;
-    saveSnapshotAs: string;
-    saveSnapshotAsSuccess: string;
     sources: string;
     showAllSources: string;
     collapseSources: string;

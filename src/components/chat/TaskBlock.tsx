@@ -482,6 +482,16 @@ function TaskStepItem({ step, showConnector, locale, t }: {
     return null;
   }, [step, isCompleted, locale]);
 
+  // Auto-scroll the streaming thinking pane to the bottom as new tokens arrive,
+  // so the latest reasoning text stays in view instead of being clipped by max-height.
+  const thinkingScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!isThinking || !isRunning) return;
+    const el = thinkingScrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [isThinking, isRunning, step.detail]);
+
   // Handle detail block toggle
   const handleToggleDetailBlock = (blockId: string) => {
     if (step.executionId) {
@@ -515,7 +525,7 @@ function TaskStepItem({ step, showConnector, locale, t }: {
     if (isRunning) {
       return (
         <div className="mt-1 rounded-lg bg-[var(--abu-bg-muted)] border border-[var(--abu-bg-hover)] overflow-hidden">
-          <div className="px-3 py-2 max-h-48 overflow-y-auto">
+          <div ref={thinkingScrollRef} className="px-3 py-2 max-h-48 overflow-y-auto">
             <pre className="text-[12px] text-[var(--abu-text-tertiary)] italic whitespace-pre-wrap break-words leading-relaxed font-sans m-0">
               {step.detail}
               <span className="streaming-cursor inline-block ml-0.5" />
