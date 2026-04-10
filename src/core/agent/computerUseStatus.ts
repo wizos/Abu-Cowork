@@ -14,6 +14,9 @@ export interface CUState {
   stepCount: number;
   currentAction: string | null;
   latestScreenshot: string | null; // base64
+  activeConversationId: string | null; // for abort targeting
+  /** Whether Abu window is hidden and border/stop-btn are shown (session-level, survives across batches) */
+  sessionWindowHidden: boolean;
 }
 
 let state: CUState = {
@@ -21,6 +24,8 @@ let state: CUState = {
   stepCount: 0,
   currentAction: null,
   latestScreenshot: null,
+  activeConversationId: null,
+  sessionWindowHidden: false,
 };
 
 const listeners = new Set<() => void>();
@@ -37,11 +42,21 @@ function update(partial: Partial<CUState>) {
 // ─── Actions (called by toolExecutor) ───
 
 /** Enter Computer Use session. */
-export function setComputerUseActive(active: boolean) {
+export function setComputerUseActive(active: boolean, conversationId?: string) {
   if (active) {
-    update({ status: 'active', stepCount: 0, currentAction: null, latestScreenshot: null });
+    update({ status: 'active', stepCount: 0, currentAction: null, latestScreenshot: null, activeConversationId: conversationId ?? null });
+    setupAbortListener();
   } else {
-    update({ status: 'idle', stepCount: 0, currentAction: null, latestScreenshot: null });
+    const wasHidden = state.sessionWindowHidden;
+    update({ status: 'idle', stepCount: 0, currentAction: null, latestScreenshot: null, activeConversationId: null, sessionWindowHidden: false });
+    cleanupAbortListener();
+    // Session-level cleanup: restore window and hide overlay
+    if (wasHidden) {
+      import('@tauri-apps/api/core').then(({ invoke }) => {
+        invoke('window_show').catch(() => {});
+        invoke('hide_screen_border').catch(() => {});
+      }).catch(() => {});
+    }
   }
 }
 
@@ -59,9 +74,47 @@ export function updateLatestScreenshot(base64: string) {
   }
 }
 
+/** Mark that the window has been hidden for this CU session. */
+export function setSessionWindowHidden(hidden: boolean) {
+  update({ sessionWindowHidden: hidden });
+}
+
+/** Check if window is already hidden for this session (avoid re-hiding across batches). */
+export function isSessionWindowHidden(): boolean {
+  return state.sessionWindowHidden;
+}
+
 /** Set current action description. */
 export function setCurrentAction(action: string | null) {
   update({ currentAction: action });
+}
+
+// ─── Stop button abort listener ───
+
+let abortUnlisten: (() => void) | null = null;
+
+async function setupAbortListener() {
+  if (abortUnlisten) return;
+  try {
+    const { listen } = await import('@tauri-apps/api/event');
+    const unlisten = await listen('computer-use-abort', () => {
+      const convId = state.activeConversationId;
+      if (convId) {
+        // Dynamic import to avoid circular dependency
+        import('../../stores/chatStore').then(({ useChatStore }) => {
+          useChatStore.getState().cancelStreaming(convId);
+        }).catch(() => {});
+      }
+    });
+    abortUnlisten = unlisten;
+  } catch { /* ignore — event API unavailable */ }
+}
+
+function cleanupAbortListener() {
+  if (abortUnlisten) {
+    abortUnlisten();
+    abortUnlisten = null;
+  }
 }
 
 // ─── React integration (useSyncExternalStore) ───

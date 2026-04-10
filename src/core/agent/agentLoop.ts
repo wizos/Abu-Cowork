@@ -1416,6 +1416,10 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
         });
         // Auto-deactivate skills after loop completes (single-turn lifecycle)
         deactivateAllSkills(conversationId);
+        // Clean up Computer Use session (restore window, hide overlay)
+        import('./computerUseStatus').then(({ setComputerUseActive }) => {
+          setComputerUseActive(false);
+        }).catch(() => {});
         // Clear crash recovery checkpoint — loop completed normally
         import('../session/checkpoint').then(({ clearCheckpoint }) => {
           clearCheckpoint(conversationId);
@@ -1507,6 +1511,10 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       persistExecutionSnapshot(conversationId, loopId);
       // Auto-deactivate skills on error
       deactivateAllSkills(conversationId);
+      // Clean up Computer Use session
+      import('./computerUseStatus').then(({ setComputerUseActive }) => {
+        setComputerUseActive(false);
+      }).catch(() => {});
       // Clear crash recovery checkpoint — loop ended with error
       import('../session/checkpoint').then(({ clearCheckpoint }) => {
         clearCheckpoint(conversationId);

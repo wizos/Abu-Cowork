@@ -15,7 +15,7 @@ import { processToolResult } from '../session/sessionMemory';
 import { emitHook } from './lifecycleHooks';
 import type { PreToolCallEvent } from './lifecycleHooks';
 import { setComputerUseBatchMode, setSkipAutoScreenshot } from '../tools/builtins';
-import { setComputerUseActive, incrementComputerUseStep, setCurrentAction } from './computerUseStatus';
+import { setComputerUseActive, incrementComputerUseStep, setCurrentAction, isSessionWindowHidden, setSessionWindowHidden } from './computerUseStatus';
 import { TOOL_NAMES } from '../tools/toolNames';
 import { invoke } from '@tauri-apps/api/core';
 import { useChatStore } from '../../stores/chatStore';
@@ -259,15 +259,14 @@ export async function executeToolBatch(params: ToolBatchParams): Promise<ToolBat
       tc.name === TOOL_NAMES.COMPUTER && ACTION_TYPES.has(tc.input.action as string)
     );
 
-    // Show screen border overlay + status bar for interactive actions
-    if (hasInteractiveAction) {
+    // Session-level window management: only hide on first interactive batch.
+    // Subsequent batches in the same agent loop skip hide/show to avoid flickering.
+    if (hasInteractiveAction && !isSessionWindowHidden()) {
       try { await invoke('show_screen_border'); } catch { /* ignore */ }
-      // Remember the foreground app before hiding Abu, so we can re-activate it
-      // after Abu hides (focus may shift to a random window otherwise)
+      // Remember the foreground app before hiding Abu
       let targetAppName: string | null = null;
       try {
         const activeWin = await invoke<{ app_name: string }>('get_active_window');
-        // Don't re-activate Abu itself
         if (activeWin.app_name && activeWin.app_name !== 'Abu' && activeWin.app_name !== 'Abu Dev') {
           targetAppName = activeWin.app_name;
         }
@@ -275,6 +274,7 @@ export async function executeToolBatch(params: ToolBatchParams): Promise<ToolBat
 
       try { await invoke('window_hide'); } catch { /* ignore */ }
       await new Promise(r => setTimeout(r, 200));
+      setSessionWindowHidden(true);
 
       // Re-activate the target app after Abu is hidden
       if (targetAppName) {
@@ -282,7 +282,7 @@ export async function executeToolBatch(params: ToolBatchParams): Promise<ToolBat
         await new Promise(r => setTimeout(r, 100));
       }
     }
-    setComputerUseActive(true);
+    setComputerUseActive(true, conversationId);
     setComputerUseBatchMode(true);
 
     const sequentialResults: PromiseSettledResult<ToolExecResult>[] = [];
@@ -307,12 +307,10 @@ export async function executeToolBatch(params: ToolBatchParams): Promise<ToolBat
     } finally {
       setSkipAutoScreenshot(false);
       setComputerUseBatchMode(false);
-      // Always clean up — restore window, hide overlay, reset status
-      if (hasInteractiveAction) {
-        try { await invoke('window_show'); } catch { /* ignore */ }
-      }
-      try { await invoke('hide_screen_border'); } catch { /* ignore */ }
-      setComputerUseActive(false);
+      // NOTE: window_show and hide_screen_border are NOT called here.
+      // They are managed at session level — restored when the agent loop ends
+      // (via cancelStreaming cleanup or natural loop completion).
+      // This prevents window flickering between consecutive CU batches.
     }
     results = sequentialResults;
   } else {
