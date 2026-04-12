@@ -73,6 +73,95 @@ pub struct CommandOutput {
     code: i32,
 }
 
+/// Spawn a pre-built command, stream stdout/stderr line-by-line with an
+/// output-line cap, enforce `timeout_secs`, and collect the final
+/// CommandOutput. Must be called from a blocking context (e.g. inside
+/// `async_runtime::spawn_blocking`).
+///
+/// Precondition: the caller has already applied `cmd.stdout(Stdio::piped())`
+/// and `cmd.stderr(Stdio::piped())`, and any `current_dir` / env setup.
+fn execute_foreground_command(
+    mut cmd: StdCommand,
+    timeout_secs: u64,
+) -> Result<CommandOutput, String> {
+    let mut child = cmd.spawn().map_err(|e| format!("Failed to spawn command: {}", e))?;
+
+    let stdout = child.stdout.take();
+    let stderr = child.stderr.take();
+
+    let stdout_lines = Arc::new(Mutex::new(Vec::new()));
+    let stderr_lines = Arc::new(Mutex::new(Vec::new()));
+
+    let stdout_lines_clone = Arc::clone(&stdout_lines);
+    if let Some(out) = stdout {
+        thread::spawn(move || {
+            let reader = BufReader::new(out);
+            for line in reader.lines().map_while(Result::ok) {
+                if let Ok(mut lines) = stdout_lines_clone.lock() {
+                    if lines.len() >= MAX_OUTPUT_LINES {
+                        lines.push(format!("[truncated: exceeded {} lines]", MAX_OUTPUT_LINES));
+                        break;
+                    }
+                    lines.push(line);
+                }
+            }
+        });
+    }
+
+    let stderr_lines_clone = Arc::clone(&stderr_lines);
+    if let Some(err) = stderr {
+        thread::spawn(move || {
+            let reader = BufReader::new(err);
+            for line in reader.lines().map_while(Result::ok) {
+                if let Ok(mut lines) = stderr_lines_clone.lock() {
+                    if lines.len() >= MAX_OUTPUT_LINES {
+                        lines.push(format!("[truncated: exceeded {} lines]", MAX_OUTPUT_LINES));
+                        break;
+                    }
+                    lines.push(line);
+                }
+            }
+        });
+    }
+
+    let start = Instant::now();
+    let timeout_duration = Duration::from_secs(timeout_secs);
+
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                thread::sleep(Duration::from_millis(100));
+                let stdout_result = stdout_lines.lock().unwrap_or_else(|e| e.into_inner()).join("\n");
+                let stderr_result = stderr_lines.lock().unwrap_or_else(|e| e.into_inner()).join("\n");
+                return Ok(CommandOutput {
+                    stdout: stdout_result,
+                    stderr: stderr_result,
+                    code: status.code().unwrap_or(-1),
+                });
+            }
+            Ok(None) => {
+                if start.elapsed() >= timeout_duration {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    thread::sleep(Duration::from_millis(100));
+                    let stdout_result = stdout_lines.lock().unwrap_or_else(|e| e.into_inner()).join("\n");
+                    let stderr_result = stderr_lines.lock().unwrap_or_else(|e| e.into_inner()).join("\n");
+                    return Ok(CommandOutput {
+                        stdout: stdout_result,
+                        stderr: format!(
+                            "{}\n[Command timed out after {}s and was killed]",
+                            stderr_result, timeout_secs
+                        ),
+                        code: -1,
+                    });
+                }
+                thread::sleep(Duration::from_millis(100));
+            }
+            Err(e) => return Err(format!("Error checking process status: {}", e)),
+        }
+    }
+}
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! Welcome to ABU.", name)
@@ -210,82 +299,7 @@ async fn run_shell_command(
             }
         } else {
             // 前台模式：spawn + try_wait 循环，支持超时
-            let mut child = cmd.spawn().map_err(|e| format!("Failed to spawn command: {}", e))?;
-
-            let stdout = child.stdout.take();
-            let stderr = child.stderr.take();
-
-            let stdout_lines = Arc::new(Mutex::new(Vec::new()));
-            let stderr_lines = Arc::new(Mutex::new(Vec::new()));
-
-            // 启动线程读取 stdout
-            let stdout_lines_clone = Arc::clone(&stdout_lines);
-            if let Some(out) = stdout {
-                thread::spawn(move || {
-                    let reader = BufReader::new(out);
-                    for line in reader.lines().map_while(Result::ok) {
-                        if let Ok(mut lines) = stdout_lines_clone.lock() {
-                            if lines.len() >= MAX_OUTPUT_LINES {
-                                lines.push(format!("[truncated: exceeded {} lines]", MAX_OUTPUT_LINES));
-                                break;
-                            }
-                            lines.push(line);
-                        }
-                    }
-                });
-            }
-
-            // 启动线程读取 stderr
-            let stderr_lines_clone = Arc::clone(&stderr_lines);
-            if let Some(err) = stderr {
-                thread::spawn(move || {
-                    let reader = BufReader::new(err);
-                    for line in reader.lines().map_while(Result::ok) {
-                        if let Ok(mut lines) = stderr_lines_clone.lock() {
-                            if lines.len() >= MAX_OUTPUT_LINES {
-                                lines.push(format!("[truncated: exceeded {} lines]", MAX_OUTPUT_LINES));
-                                break;
-                            }
-                            lines.push(line);
-                        }
-                    }
-                });
-            }
-
-            let start = Instant::now();
-            let timeout_duration = Duration::from_secs(timeout_secs);
-
-            loop {
-                match child.try_wait() {
-                    Ok(Some(status)) => {
-                        thread::sleep(Duration::from_millis(100));
-                        let stdout_result = stdout_lines.lock().unwrap_or_else(|e| e.into_inner()).join("\n");
-                        let stderr_result = stderr_lines.lock().unwrap_or_else(|e| e.into_inner()).join("\n");
-                        return Ok(CommandOutput {
-                            stdout: stdout_result,
-                            stderr: stderr_result,
-                            code: status.code().unwrap_or(-1),
-                        });
-                    }
-                    Ok(None) => {
-                        if start.elapsed() >= timeout_duration {
-                            // 超时，kill 进程并返回部分输出
-                            let _ = child.kill();
-                            let _ = child.wait();
-                            thread::sleep(Duration::from_millis(100));
-                            let stdout_result = stdout_lines.lock().unwrap_or_else(|e| e.into_inner()).join("\n");
-                            let stderr_result = stderr_lines.lock().unwrap_or_else(|e| e.into_inner()).join("\n");
-                            return Ok(CommandOutput {
-                                stdout: stdout_result,
-                                stderr: format!("{}\n[Command timed out after {}s and was killed]", stderr_result, timeout_secs),
-                                code: -1,
-                            });
-                        }
-                        thread::sleep(Duration::from_millis(100));
-                    }
-                    Err(e) => return Err(format!("Error checking process status: {}", e)),
-                }
-            }
+            execute_foreground_command(cmd, timeout_secs)
         }
     })
     .await
