@@ -244,16 +244,14 @@ function App() {
 
       {/* Sidebar & panel toggle buttons — positioned in title bar area on macOS, top bar on Windows */}
       <div className={cn('fixed left-0 right-0 z-40 pointer-events-none', mac ? 'top-0 h-11' : 'top-0 h-8')}>
-        {viewMode !== 'toolbox' && (
-          <button
-            onClick={toggleSidebar}
-            className="absolute btn-ghost p-1 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)] rounded-md transition-[left] duration-200 pointer-events-auto"
-            style={{ top: mac ? 8 : 4, left: sidebarCollapsed ? 96 : 232 }}
-            title={sidebarCollapsed ? t.sidebar.showSidebar : t.sidebar.hideSidebar}
-          >
-            <PanelLeft className="h-3.5 w-[18px]" strokeWidth={1.5} />
-          </button>
-        )}
+        <button
+          onClick={toggleSidebar}
+          className="absolute btn-ghost p-1 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)] rounded-md transition-[left] duration-200 pointer-events-auto"
+          style={{ top: mac ? 8 : 4, left: sidebarCollapsed ? 96 : 232 }}
+          title={sidebarCollapsed ? t.sidebar.showSidebar : t.sidebar.hideSidebar}
+        >
+          <PanelLeft className="h-3.5 w-[18px]" strokeWidth={1.5} />
+        </button>
 
         {showRightPanelToggle && (
           <button

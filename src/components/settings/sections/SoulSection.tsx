@@ -1,74 +1,94 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useI18n } from '@/i18n';
 import { loadSoul, saveSoul, getDefaultSoulTemplate } from '@/core/agent/soulConfig';
 import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
+import ConfirmDialog from '@/components/common/ConfirmDialog';
+
+type SaveStatus = 'idle' | 'saving' | 'saved';
 
 export default function SoulSection() {
   const { t } = useI18n();
-  const [content, setContent] = useState('');
-  const [isCustomized, setIsCustomized] = useState(false);
-  const [editing, setEditing] = useState(false);
+  const defaultTemplate = getDefaultSoulTemplate();
+  const [content, setContent] = useState(defaultTemplate);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
+
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const contentRef = useRef(content);
+  contentRef.current = content;
+  const lastSavedRef = useRef('');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const soul = await loadSoul();
-      if (soul) {
-        setContent(soul);
-        setIsCustomized(true);
-        setEditing(true);
-      } else {
-        setContent('');
-        setIsCustomized(false);
-        setEditing(false);
-      }
+      const text = soul || defaultTemplate;
+      setContent(text);
+      lastSavedRef.current = soul || '';
     } catch {
       // ignore
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [defaultTemplate]);
 
   useEffect(() => { load(); }, [load]);
 
-  const handleCustomize = () => {
-    setContent(getDefaultSoulTemplate());
-    setEditing(true);
-  };
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    };
+  }, []);
 
-  const handleSave = async () => {
-    setSaving(true);
+  const doSave = useCallback(async (text: string) => {
+    setSaveStatus('saving');
     try {
-      await saveSoul(content);
-      setIsCustomized(!!content.trim());
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      await saveSoul(text);
+      lastSavedRef.current = text;
+      setSaveStatus('saved');
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+      savedTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (err) {
       console.error('Failed to save soul:', err);
-    } finally {
-      setSaving(false);
+      setSaveStatus('idle');
     }
+  }, []);
+
+  const handleChange = (value: string) => {
+    setContent(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      if (contentRef.current !== lastSavedRef.current) {
+        doSave(contentRef.current);
+      }
+    }, 800);
   };
 
   const handleRestore = async () => {
-    setSaving(true);
+    setShowRestoreConfirm(false);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setContent(defaultTemplate);
+    setSaveStatus('saving');
     try {
       await saveSoul('');
-      setContent('');
-      setIsCustomized(false);
-      setEditing(false);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      lastSavedRef.current = '';
+      setSaveStatus('saved');
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+      savedTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (err) {
       console.error('Failed to restore soul:', err);
-    } finally {
-      setSaving(false);
+      setSaveStatus('idle');
     }
   };
+
+  const isModified = content !== defaultTemplate;
+
+  const statusLabel = saveStatus === 'saving' ? t.soul.saving
+    : saveStatus === 'saved' ? t.soul.saved
+    : null;
 
   if (loading) {
     return (
@@ -89,54 +109,51 @@ export default function SoulSection() {
         </p>
       </div>
 
-      {!editing ? (
-        /* Not customized — show default preview + customize button */
-        <div className="space-y-3">
-          <div className="px-4 py-3 rounded-lg border border-[var(--abu-border)] bg-[var(--abu-bg-muted)]">
-            <p className="text-[12px] text-[var(--abu-text-placeholder)] mb-2">{t.soul.defaultLabel}</p>
-            <pre className="text-[13px] text-[var(--abu-text-tertiary)] font-mono leading-relaxed whitespace-pre-wrap">
-              {getDefaultSoulTemplate()}
-            </pre>
-          </div>
-          <Button variant="outline" size="sm" onClick={handleCustomize}>
-            {t.soul.customize}
-          </Button>
-        </div>
-      ) : (
-        /* Editing mode — textarea + save/restore */
-        <div className="space-y-3">
-          <div className="relative">
-            <Textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              className="font-mono text-[13px] leading-relaxed min-h-[300px] resize-y"
-              placeholder={t.soul.placeholder}
-            />
-            <span className={`absolute bottom-2 right-3 text-[11px] ${content.length > 2000 ? 'text-red-500' : 'text-[var(--abu-text-placeholder)]'}`}>
+      <div className="space-y-3">
+        <div className="relative">
+          <Textarea
+            value={content}
+            onChange={(e) => handleChange(e.target.value)}
+            className="font-mono text-[13px] leading-relaxed min-h-[300px] resize-y"
+            placeholder={t.soul.placeholder}
+          />
+          <div className="absolute bottom-2 right-3 flex items-center gap-2 text-[11px]">
+            {statusLabel && (
+              <span className="text-[var(--abu-text-placeholder)] transition-opacity duration-200">
+                {statusLabel}
+              </span>
+            )}
+            <span className={content.length > 2000 ? 'text-red-500' : 'text-[var(--abu-text-placeholder)]'}>
               {content.length} / 2000
             </span>
           </div>
+        </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              onClick={handleSave}
-              disabled={saving || content.length > 2000}
-            >
-              {saved ? t.soul.saved : t.soul.save}
-            </Button>
-            {isCustomized && (
-              <Button variant="ghost" size="sm" onClick={handleRestore} disabled={saving}>
-                {t.soul.restore}
-              </Button>
-            )}
-          </div>
-
+        <div className="flex items-center justify-between">
           <p className="text-[11px] text-[var(--abu-text-placeholder)]">
             {t.soul.filePath}
           </p>
+          {isModified && (
+            <button
+              onClick={() => setShowRestoreConfirm(true)}
+              className="text-[12px] text-[var(--abu-text-placeholder)] hover:text-[var(--abu-text-tertiary)] underline underline-offset-2 transition-colors"
+            >
+              {t.soul.restore}
+            </button>
+          )}
         </div>
-      )}
+      </div>
+
+      <ConfirmDialog
+        open={showRestoreConfirm}
+        title={t.soul.restoreConfirmTitle}
+        message={t.soul.restoreConfirmMessage}
+        confirmText={t.common.confirm}
+        cancelText={t.common.cancel}
+        onConfirm={handleRestore}
+        onCancel={() => setShowRestoreConfirm(false)}
+        variant="danger"
+      />
     </div>
   );
 }

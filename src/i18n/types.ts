@@ -62,12 +62,12 @@ export interface TranslationDict {
   soul: {
     title: string;
     subtitle: string;
-    defaultLabel: string;
-    customize: string;
     placeholder: string;
-    save: string;
+    saving: string;
     saved: string;
     restore: string;
+    restoreConfirmTitle: string;
+    restoreConfirmMessage: string;
     filePath: string;
   };
 
