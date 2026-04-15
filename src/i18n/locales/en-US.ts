@@ -48,12 +48,12 @@ const enUS: TranslationDict = {
   soul: {
     title: 'Abu\'s Personality',
     subtitle: 'Abu comes with a default personality — customize it to your liking',
-    defaultLabel: 'Using default personality',
-    customize: 'Customize',
     placeholder: 'Describe Abu\'s personality in markdown...',
-    save: 'Save',
+    saving: 'Saving...',
     saved: 'Saved',
     restore: 'Restore Default',
+    restoreConfirmTitle: 'Restore Default Personality',
+    restoreConfirmMessage: 'Your custom personality will be cleared and reset to the factory default. Are you sure?',
     filePath: 'File: ~/.abu/SOUL.md (advanced users can edit directly)',
   },
 

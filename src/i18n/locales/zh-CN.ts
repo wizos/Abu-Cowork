@@ -48,12 +48,12 @@ const zhCN: TranslationDict = {
   soul: {
     title: '性格',
     subtitle: '阿布出厂自带性格，你可以按自己的喜好调整',
-    defaultLabel: '当前使用默认性格',
-    customize: '自定义',
     placeholder: '用 markdown 描述阿布的性格...',
-    save: '保存',
+    saving: '保存中...',
     saved: '已保存',
     restore: '恢复默认',
+    restoreConfirmTitle: '恢复默认性格',
+    restoreConfirmMessage: '当前自定义内容将被清除，恢复为出厂默认性格。确定要继续吗？',
     filePath: '文件位置：~/.abu/SOUL.md（高级用户可直接编辑）',
   },
 
