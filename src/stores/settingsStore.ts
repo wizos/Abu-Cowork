@@ -9,23 +9,37 @@ import type { UpdateInfo } from '@/core/updates/checker';
 import {
   SECRET_KEYS,
   getSecret,
+  setSecret,
   writeSecretOrDelete,
   deleteSecret,
 } from '@/utils/secretStore';
 
 /**
- * Fire-and-forget helper for secret-store side effects. We intentionally
- * swallow failures here: the in-memory state is authoritative for the
- * session and localStorage still has a copy during Phase 2, so a transient
- * secret-store error (e.g. Tauri not ready during early boot tests) must
- * not break the UI setter. Phase 3 will harden this once the plaintext
- * fallback is removed.
+ * Fire-and-forget helper for secret-store side effects. Swallowing failures
+ * here is intentional: the in-memory state is authoritative for the session,
+ * and if the encrypted store is unavailable `persistApiKeyPlaintextFallback`
+ * stays true so localStorage keeps the plaintext as a safety net.
  */
 function fafSecret(promise: Promise<void>, label: string): void {
   promise.catch((err) => {
     console.warn(`[secrets] ${label} failed:`, err);
   });
 }
+
+/**
+ * Module-level gate controlling whether `partialize` strips apiKey fields
+ * before writing to localStorage. Starts `true` (safe default: persist
+ * plaintext as Phase 2 did) and flips to `false` only after
+ * `bootstrapSecrets` has fully confirmed that every in-memory apiKey is
+ * also present in the encrypted store — either because we read it from
+ * there, or because we just backfilled it.
+ *
+ * This means: a user with a broken secret store (Tauri IPC down, macOS
+ * file corruption, etc.) will keep seeing plaintext in localStorage and
+ * will not lose their keys. Once the store is healthy again on a later
+ * launch, the flag flips and subsequent saves strip the plaintext.
+ */
+let persistApiKeyPlaintextFallback = true;
 
 // ============================================================
 // Static Provider Registry (used for defaults, guides, initialization)
@@ -806,9 +820,20 @@ export const useSettingsStore = create<SettingsStore>()(
     }),
     {
       name: 'abu-settings',
-      version: 16,
+      version: 17,
       migrate: (persisted: unknown, version: number) => {
         const state = persisted as Record<string, unknown>;
+
+        // ════════════════════════════════════════════════
+        // V17: API keys moved to the encrypted secret store.
+        // Actual data move happens asynchronously in bootstrapSecrets
+        // (migrate can't await Tauri IPC); this branch only bumps the
+        // version marker so the next persist-save will strip the
+        // plaintext via the new partialize.
+        // ════════════════════════════════════════════════
+        if (version < 17) {
+          void state;
+        }
 
         // ════════════════════════════════════════════════
         // V16: Agent max turns — added optional agentMaxTurns
@@ -1079,12 +1104,26 @@ export const useSettingsStore = create<SettingsStore>()(
         return state;
       },
       partialize: (state) => ({
-        // V2 provider fields
-        providers: state.providers,
+        // V2 provider fields — apiKey is stripped once bootstrapSecrets has
+        // confirmed the encrypted store is healthy. Until then we fall back
+        // to Phase 2 behavior (plaintext in localStorage) so a broken secret
+        // backend can't cause silent data loss on save.
+        providers: persistApiKeyPlaintextFallback
+          ? state.providers
+          : state.providers.map((p) => ({ ...p, apiKey: '' })),
         activeModel: state.activeModel,
         recentModels: state.recentModels,
         favoriteModels: state.favoriteModels,
-        auxiliaryServices: state.auxiliaryServices,
+        auxiliaryServices: persistApiKeyPlaintextFallback
+          ? state.auxiliaryServices
+          : {
+              ...(state.auxiliaryServices.webSearch && {
+                webSearch: { ...state.auxiliaryServices.webSearch, apiKey: '' },
+              }),
+              ...(state.auxiliaryServices.imageGen && {
+                imageGen: { ...state.auxiliaryServices.imageGen, apiKey: '' },
+              }),
+            },
         // General settings
         theme: state.theme,
         language: state.language,
@@ -1139,16 +1178,26 @@ export const useSettingsStore = create<SettingsStore>()(
 
 /**
  * Hydrate API keys from the encrypted secret store into the in-memory settings
- * state. Called once after Zustand rehydration completes, typically from
- * `App.tsx`. Failures are logged but never thrown: during Phase 2 the
- * localStorage-persisted plaintext still works as a fallback, so a transient
- * secret-store error must not block the UI.
+ * state, and backfill any plaintext legacy keys (still present in state from
+ * localStorage rehydration) into the secret store. Called once after Zustand
+ * rehydration completes, typically from `App.tsx`.
  *
- * On first run after Phase 2 rollout, the secret store is empty and this
- * function is a no-op — existing apiKeys remain in place from persist
- * rehydration. Backfill-on-save happens naturally through the setter
- * write-through; Phase 3 will add an explicit migration pass to bulk-move
- * legacy keys.
+ * Flow on each launch:
+ *   1. Read every known key from the encrypted store in parallel.
+ *   2. For any provider / aux service where the in-memory state carries a
+ *      non-empty apiKey but the store does not, write it to the store
+ *      (this is the legacy-to-encrypted migration path; happens exactly
+ *      once per user on upgrade from 0.11 / Phase 2).
+ *   3. For every key the store returned, overwrite the in-memory apiKey
+ *      so the store is the source of truth.
+ *   4. If steps 1-3 all succeeded, flip
+ *      `persistApiKeyPlaintextFallback` to false so subsequent persist
+ *      saves strip apiKey from localStorage.
+ *
+ * Any failure (Tauri IPC down, secrets file corrupted, etc.) leaves the
+ * fallback flag at true, so localStorage keeps plaintext and no data is
+ * lost. The next healthy launch retries the migration and eventually
+ * strips the plaintext.
  */
 export async function bootstrapSecrets(): Promise<void> {
   const state = useSettingsStore.getState();
@@ -1182,23 +1231,52 @@ export async function bootstrapSecrets(): Promise<void> {
   try {
     results = await Promise.all(tasks);
   } catch (err) {
-    console.warn('[secrets] bootstrap failed:', err);
+    console.warn('[secrets] bootstrap read failed, staying in plaintext-fallback mode:', err);
     return;
   }
 
-  useSettingsStore.setState((s) => {
-    const providerUpdates = new Map<string, string>();
-    let webSearchSecret: string | null = null;
-    let imageGenSecret: string | null = null;
+  const providerUpdates = new Map<string, string>();
+  let webSearchSecret: string | null = null;
+  let imageGenSecret: string | null = null;
+  for (const r of results) {
+    if (r.kind === 'provider' && r.value) providerUpdates.set(r.providerId, r.value);
+    else if (r.kind === 'webSearch') webSearchSecret = r.value;
+    else if (r.kind === 'imageGen') imageGenSecret = r.value;
+  }
 
-    for (const r of results) {
-      if (r.kind === 'provider' && r.value) providerUpdates.set(r.providerId, r.value);
-      else if (r.kind === 'webSearch') webSearchSecret = r.value;
-      else if (r.kind === 'imageGen') imageGenSecret = r.value;
+  // Backfill: state has plaintext key but encrypted store doesn't.
+  // Happens on first 0.12 launch for users whose keys came from 0.11 or
+  // Phase 2 if some provider was never edited (write-through never fired).
+  const backfills: Promise<void>[] = [];
+  for (const p of state.providers) {
+    const plain = p.apiKey?.trim() ?? '';
+    if (plain.length > 0 && !providerUpdates.has(p.id)) {
+      backfills.push(setSecret(SECRET_KEYS.provider(p.id), plain));
     }
+  }
+  if (!webSearchSecret) {
+    const plain = state.auxiliaryServices.webSearch?.apiKey?.trim() ?? '';
+    if (plain.length > 0) backfills.push(setSecret(SECRET_KEYS.auxWebSearch, plain));
+  }
+  if (!imageGenSecret) {
+    const plain = state.auxiliaryServices.imageGen?.apiKey?.trim() ?? '';
+    if (plain.length > 0) backfills.push(setSecret(SECRET_KEYS.auxImageGen, plain));
+  }
 
-    // Only overwrite when we got a non-null secret — leaves in-memory
-    // plaintext (from persist rehydration) untouched when the store is empty.
+  let backfillOk = true;
+  if (backfills.length > 0) {
+    try {
+      await Promise.all(backfills);
+      console.log(`[secrets] migrated ${backfills.length} legacy plaintext key(s) to encrypted store`);
+    } catch (err) {
+      backfillOk = false;
+      console.warn('[secrets] backfill failed, staying in plaintext-fallback mode:', err);
+    }
+  }
+
+  // Apply hydration — overwrite in-memory apiKey only when we fetched a
+  // non-null value from the store (backfilled keys already match in-memory).
+  useSettingsStore.setState((s) => {
     const providers = s.providers.map((p) => {
       const fetched = providerUpdates.get(p.id);
       return fetched ? { ...p, apiKey: fetched } : p;
@@ -1214,4 +1292,10 @@ export async function bootstrapSecrets(): Promise<void> {
 
     return { providers, auxiliaryServices };
   });
+
+  // Flip the gate only if everything round-tripped cleanly. Subsequent
+  // persist saves will now strip apiKey from localStorage.
+  if (backfillOk) {
+    persistApiKeyPlaintextFallback = false;
+  }
 }
