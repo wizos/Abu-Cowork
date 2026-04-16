@@ -155,7 +155,7 @@ export default function CreateProjectDialog({ open, onClose }: CreateProjectDial
   return (
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 animate-in fade-in duration-150"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="bg-white rounded-2xl shadow-xl w-[480px] max-h-[80vh] overflow-y-auto animate-in zoom-in-95 duration-150">
         {/* Header */}

@@ -63,7 +63,7 @@ export default function ProjectSettingsDialog({ open, onClose, projectId }: Proj
     <>
       <div
         className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 animate-in fade-in duration-150"
-        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
       >
         <div className="bg-white rounded-2xl shadow-xl w-[440px] animate-in zoom-in-95 duration-150">
           {/* Header */}
@@ -139,7 +139,7 @@ export default function ProjectSettingsDialog({ open, onClose, projectId }: Proj
       {showArchiveConfirm && (
         <div
           className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 animate-in fade-in duration-150"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowArchiveConfirm(false); }}
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setShowArchiveConfirm(false); }}
         >
           <div className="bg-white rounded-2xl shadow-xl w-[380px] p-6 animate-in zoom-in-95 duration-150">
             <h3 className="text-[16px] font-semibold text-[var(--abu-text-primary)] mb-2">

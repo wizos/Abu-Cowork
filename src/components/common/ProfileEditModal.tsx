@@ -67,7 +67,7 @@ export default function ProfileEditModal({ open, onClose }: ProfileEditModalProp
   return (
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 animate-in fade-in duration-150"
-      onClick={(e) => {
+      onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
