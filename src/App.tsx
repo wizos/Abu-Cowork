@@ -200,12 +200,22 @@ function App() {
     }
   }, [pendingWsReq, activeConvIdForDrain]);
 
-  // Check for updates on startup (throttled to once per 24h)
+  // Update checks: delayed startup check (avoid launch contention) +
+  // 6h background poll (reach users who keep app running for days).
+  // checker.ts has a 6h throttle, so overlapping calls won't duplicate requests.
   useEffect(() => {
-    // Use void to suppress floating promise lint; errors are caught internally
-    void checkForUpdate().catch((err) => {
-      console.warn('[App] Update check error:', err);
-    });
+    const run = () =>
+      void checkForUpdate().catch((err) => {
+        console.warn('[App] Update check error:', err);
+      });
+
+    const startupTimer = setTimeout(run, 30_000);
+    const pollTimer = setInterval(run, 6 * 60 * 60 * 1000);
+
+    return () => {
+      clearTimeout(startupTimer);
+      clearInterval(pollTimer);
+    };
   }, []);
 
   // Catch unhandled rejections from Tauri plugin resource cleanup
