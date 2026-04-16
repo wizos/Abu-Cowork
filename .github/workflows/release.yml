@@ -52,9 +52,15 @@ jobs:
 
       - name: Build Tauri app
         env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: npx tauri build --target ${{ matrix.target }}
+        shell: bash
+        run: |
+          # Write signing key to file — avoids Windows env var corruption
+          # (Windows appends stray chars to multi-line secrets, causing base64 decode errors)
+          echo "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" > "$RUNNER_TEMP/tauri-signing-key.txt"
+          export TAURI_SIGNING_PRIVATE_KEY_PATH="$RUNNER_TEMP/tauri-signing-key.txt"
+          npx tauri build --target ${{ matrix.target }}
+          rm -f "$RUNNER_TEMP/tauri-signing-key.txt"
 
       - name: Create GitHub Release (idempotent)
         env:
@@ -82,9 +88,19 @@ jobs:
           ls -la "$BUNDLE"/nsis/ 2>/dev/null || true
 
           if [[ "$TARGET" == *"apple"* ]]; then
+            # macOS .app.tar.gz has the same filename across architectures —
+            # rename to include arch suffix to avoid Release upload collision.
+            if [[ "$TARGET" == *"aarch64"* ]]; then
+              ARCH_SUFFIX="aarch64"
+            else
+              ARCH_SUFFIX="x64"
+            fi
+            cp "$BUNDLE"/macos/Abu.app.tar.gz "$BUNDLE"/macos/Abu_${ARCH_SUFFIX}.app.tar.gz
+            cp "$BUNDLE"/macos/Abu.app.tar.gz.sig "$BUNDLE"/macos/Abu_${ARCH_SUFFIX}.app.tar.gz.sig
+
             gh release upload "$TAG" "$BUNDLE"/dmg/*.dmg --clobber || true
-            gh release upload "$TAG" "$BUNDLE"/macos/*.tar.gz --clobber
-            gh release upload "$TAG" "$BUNDLE"/macos/*.tar.gz.sig --clobber
+            gh release upload "$TAG" "$BUNDLE"/macos/Abu_${ARCH_SUFFIX}.app.tar.gz --clobber
+            gh release upload "$TAG" "$BUNDLE"/macos/Abu_${ARCH_SUFFIX}.app.tar.gz.sig --clobber
           else
             gh release upload "$TAG" "$BUNDLE"/nsis/*-setup.exe --clobber || true
             gh release upload "$TAG" "$BUNDLE"/nsis/*-setup.nsis.zip --clobber
