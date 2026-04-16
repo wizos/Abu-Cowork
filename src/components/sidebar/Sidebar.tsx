@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState, useRef } from 'react';
+import { useEffect, useLayoutEffect, useCallback, useState, useRef } from 'react';
 import { useChatStore } from '@/stores/chatStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useProjectStore } from '@/stores/projectStore';
@@ -81,7 +81,9 @@ export default function Sidebar() {
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; convId: string } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
+  const moveSubmenuRef = useRef<HTMLDivElement>(null);
   const [showMoveSubmenu, setShowMoveSubmenu] = useState(false);
+  const [moveSubmenuStyle, setMoveSubmenuStyle] = useState<React.CSSProperties>({});
   const projectsMap = useProjectStore((s) => s.projects);
   const [recentsCollapsed, setRecentsCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -132,6 +134,42 @@ export default function Sidebar() {
     return () => document.removeEventListener('click', handleClick);
   }, [contextMenu]);
 
+  // Clamp context menu inside viewport once its real size is known.
+  useLayoutEffect(() => {
+    if (!contextMenu) return;
+    const el = contextMenuRef.current;
+    if (!el) return;
+    const margin = 8;
+    const rect = el.getBoundingClientRect();
+    const overflowX = rect.right - (window.innerWidth - margin);
+    const overflowY = rect.bottom - (window.innerHeight - margin);
+    if (overflowX <= 0 && overflowY <= 0) return;
+    setContextMenu((prev) => prev && {
+      ...prev,
+      x: Math.max(margin, prev.x - Math.max(0, overflowX)),
+      y: Math.max(margin, prev.y - Math.max(0, overflowY)),
+    });
+  }, [contextMenu]);
+
+  // Position "move to project" submenu: clamp to viewport, flip up when there isn't enough space below.
+  useLayoutEffect(() => {
+    if (!showMoveSubmenu) { setMoveSubmenuStyle({}); return; }
+    const el = moveSubmenuRef.current;
+    const trigger = el?.parentElement;
+    if (!el || !trigger) return;
+    const margin = 8;
+    const triggerRect = trigger.getBoundingClientRect();
+    const viewportH = window.innerHeight;
+    const spaceBelow = viewportH - triggerRect.top - margin;
+    const spaceAbove = triggerRect.bottom - margin;
+    const contentH = el.scrollHeight;
+    const flipUp = contentH > spaceBelow && spaceAbove > spaceBelow;
+    const maxH = Math.max(120, flipUp ? spaceAbove : spaceBelow);
+    setMoveSubmenuStyle(flipUp
+      ? { bottom: 0, top: 'auto', maxHeight: `${maxH}px` }
+      : { top: 0, maxHeight: `${maxH}px` });
+  }, [showMoveSubmenu]);
+
   // Sort by createdAt to keep positions stable during status updates
   // Filter out conversations belonging to projects, scheduled tasks, or triggers — they appear in their own sections
   // Use conversationIndex (lightweight metadata) instead of full conversations for listing
@@ -170,11 +208,8 @@ export default function Sidebar() {
   const handleContextMenu = (e: React.MouseEvent, convId: string) => {
     e.preventDefault();
     e.stopPropagation();
-    // Clamp to viewport to prevent overflow
-    const menuWidth = 160, menuHeight = 120;
-    const x = Math.min(e.clientX, window.innerWidth - menuWidth - 8);
-    const y = Math.min(e.clientY, window.innerHeight - menuHeight - 8);
-    setContextMenu({ x, y, convId });
+    // Initial position — useLayoutEffect below fine-tunes after measuring real size.
+    setContextMenu({ x: e.clientX, y: e.clientY, convId });
   };
 
   const handleExport = async (convId: string) => {
@@ -483,7 +518,11 @@ export default function Sidebar() {
                   <ChevronRight className="h-3 w-3" />
                 </button>
                 {showMoveSubmenu && (
-                  <div className="absolute left-full top-0 ml-1 bg-white rounded-lg shadow-lg border border-[var(--abu-border)] py-1 min-w-[140px] z-10">
+                  <div
+                    ref={moveSubmenuRef}
+                    style={moveSubmenuStyle}
+                    className="absolute left-full ml-1 bg-white rounded-lg shadow-lg border border-[var(--abu-border)] py-1 min-w-[140px] overflow-y-auto overscroll-contain z-10"
+                  >
                     {activeProjects.map((p) => (
                       <button
                         key={p.id}
