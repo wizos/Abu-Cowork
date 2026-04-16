@@ -675,7 +675,13 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       subagentCleanup();
       chatStore.removeActiveAgent(delegateAgent.name);
       chatStore.setAgentStatus('idle');
-      if (err instanceof Error && (err.name === 'AbortError' || abortController.signal.aborted)) {
+      // Treat retry-layer cancellation sentinel (LLMError code='cancelled', thrown
+      // from retry.ts's abort-aware sleep) as a user abort, not a user-facing error.
+      const isUserAbort = err instanceof Error
+        && (err.name === 'AbortError'
+          || abortController.signal.aborted
+          || (err instanceof LLMError && err.code === 'cancelled'));
+      if (isUserAbort) {
         chatStore.cancelStreaming(conversationId);
         chatStore.clearAbortController(conversationId);
         taskExecutionStore.cancelExecution(execution.id);
@@ -1462,8 +1468,14 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
         notifyTaskCompleted(convTitle);
       }
     } catch (err) {
-      // Handle abort errors gracefully
-      if (err instanceof Error && (err.name === 'AbortError' || abortController.signal.aborted)) {
+      // Handle abort errors gracefully.
+      // retry.ts wraps signal-aborted sleeps in LLMError(code='cancelled'); treat
+      // it as a user abort too, otherwise it would surface as "Error: Request cancelled".
+      const isUserAbort = err instanceof Error
+        && (err.name === 'AbortError'
+          || abortController.signal.aborted
+          || (err instanceof LLMError && err.code === 'cancelled'));
+      if (isUserAbort) {
         logger.warn('Agent loop aborted', { conversationId, loopId });
 
         // Backfill missing tool results for interrupted tool calls.
