@@ -152,7 +152,7 @@ jobs:
           "
 
       - name: Install ossutil
-        run: curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | bash
+        run: curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
 
       - name: Configure ossutil
         run: |
