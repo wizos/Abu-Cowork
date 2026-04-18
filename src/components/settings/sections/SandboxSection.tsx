@@ -264,6 +264,15 @@ export default function SandboxSection() {
         </p>
         <PermissionModeSelector />
       </div>
+      {/* Content Guard toggle — Task #26, Module H kill switch.
+          Separate from sandbox because it governs content patterns
+          (exfiltration, injection, destructive commands) not file-path
+          access. Default ON; turning off skips the 120-pattern scan for
+          agent-initiated writes (memory + skill drafts). */}
+      <div className="mt-6 pt-6 border-t border-[var(--abu-border)]">
+        <ContentGuardToggle />
+      </div>
+
       {/* Authorized Writable Paths */}
       {sandboxEnabled && (
         <div className="mt-6 pt-6 border-t border-[var(--abu-border)]">
@@ -274,6 +283,58 @@ export default function SandboxSection() {
         </div>
       )}
     </div>
+  );
+}
+
+function ContentGuardToggle() {
+  const { t } = useI18n();
+  const enabled = useSettingsStore((s) => s.safety.enableContentGuard);
+  const setEnabled = useSettingsStore((s) => s.setContentGuardEnabled);
+  const [showDisableConfirm, setShowDisableConfirm] = useState(false);
+
+  const handleClick = () => {
+    if (enabled) setShowDisableConfirm(true);
+    else setEnabled(true);
+  };
+
+  return (
+    <>
+      <button
+        onClick={handleClick}
+        className={cn(
+          'w-full flex items-center justify-between p-4 rounded-xl border transition-all text-left',
+          enabled
+            ? 'border-emerald-500/50 bg-emerald-50'
+            : 'border-amber-500/50 bg-amber-50',
+        )}
+      >
+        <div className="flex items-center gap-3">
+          <ShieldCheck className={cn('h-5 w-5', enabled ? 'text-emerald-600' : 'text-amber-600')} />
+          <div>
+            <p className={cn('text-sm font-medium', enabled ? 'text-emerald-700' : 'text-amber-700')}>
+              {t.settings.contentGuardTitle}
+            </p>
+            <p className="text-xs text-[var(--abu-text-muted)] mt-0.5">
+              {t.settings.contentGuardDesc}
+            </p>
+          </div>
+        </div>
+        <Toggle checked={enabled} onChange={handleClick} size="md" />
+      </button>
+      <ConfirmDialog
+        open={showDisableConfirm}
+        title={t.settings.contentGuardDisableTitle}
+        message={t.settings.contentGuardDisableMessage}
+        confirmText={t.common.confirm}
+        cancelText={t.common.cancel}
+        onConfirm={() => {
+          setShowDisableConfirm(false);
+          setEnabled(false);
+        }}
+        onCancel={() => setShowDisableConfirm(false)}
+        variant="danger"
+      />
+    </>
   );
 }
 

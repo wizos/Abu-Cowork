@@ -423,6 +423,10 @@ const enUS: TranslationDict = {
     // Permission mode
     permissionMode: 'Permission Mode',
     permissionModeDesc: 'Controls confirmation behavior for tool execution',
+    contentGuardTitle: 'Content Safety Scanner',
+    contentGuardDesc: 'Scans agent-authored skills / memories and blocks dangerous patterns (exfiltration, prompt injection, destructive commands — 120 categories). Keep it on.',
+    contentGuardDisableTitle: 'Disable content safety scanner?',
+    contentGuardDisableMessage: 'When off, agent-proposed skills and memories skip the safety scan — they may contain dangerous instructions. Only disable temporarily to debug false positives, then re-enable.',
     permissionModeDefault: 'Default',
     permissionModeDefaultDesc: 'Dangerous commands and new directory writes require confirmation',
     permissionModeAuto: 'Auto',

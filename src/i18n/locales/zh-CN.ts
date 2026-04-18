@@ -423,6 +423,10 @@ const zhCN: TranslationDict = {
     // Permission mode
     permissionMode: '权限模式',
     permissionModeDesc: '控制工具执行时的确认行为',
+    contentGuardTitle: '内容安全扫描',
+    contentGuardDesc: '扫描 agent 写入的 skill / 记忆，拦截危险指令（数据窃取、prompt 注入、破坏性命令等 120 类）。建议保持开启。',
+    contentGuardDisableTitle: '关闭内容安全扫描？',
+    contentGuardDisableMessage: '关闭后 agent 自发创建的 skill 和记忆不会被扫描，可能写入包含危险指令的内容。只在明确需要调试误报时关闭，测试完请立即打开。',
     permissionModeDefault: '标准',
     permissionModeDefaultDesc: '危险命令和新目录写入需要确认',
     permissionModeAuto: '自动',

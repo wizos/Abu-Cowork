@@ -397,6 +397,11 @@ export interface TranslationDict {
     // Permission mode
     permissionMode: string;
     permissionModeDesc: string;
+    // Content Guard kill switch (Task #26)
+    contentGuardTitle: string;
+    contentGuardDesc: string;
+    contentGuardDisableTitle: string;
+    contentGuardDisableMessage: string;
     permissionModeDefault: string;
     permissionModeDefaultDesc: string;
     permissionModeAuto: string;

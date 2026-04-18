@@ -436,6 +436,12 @@ interface SettingsActions {
   setSoulInitialized: (initialized: boolean) => void;
   setProactivity: (level: 'shy' | 'companion' | 'butler') => void;
   setDraftsOnboardingShown: (shown: boolean) => void;
+  /**
+   * Toggle the contentGuard safety scanner globally. When off, agent-
+   * initiated writes (memory + skill drafts) skip the 120-pattern scan.
+   * Intended as an escape hatch for power users debugging false positives.
+   */
+  setContentGuardEnabled: (enabled: boolean) => void;
   setPermissionMode: (mode: PermissionMode) => void;
 
   /**
@@ -882,6 +888,8 @@ export const useSettingsStore = create<SettingsStore>()(
         set((s) => ({ soul: { ...s.soul, proactivity: level } })),
       setDraftsOnboardingShown: (shown) =>
         set((s) => ({ soul: { ...s.soul, draftsOnboardingShown: shown } })),
+      setContentGuardEnabled: (enabled) =>
+        set((s) => ({ safety: { ...s.safety, enableContentGuard: enabled } })),
       setPermissionMode: (mode) => set({ permissionMode: mode }),
 
       clearAllStoredKeys: async () => {
