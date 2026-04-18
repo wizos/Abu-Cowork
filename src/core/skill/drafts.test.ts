@@ -31,6 +31,7 @@ const renameMock = vi.mocked(fs.rename);
 
 import {
   writeDraft,
+  writeSkillDirect,
   readDraft,
   listDrafts,
   acceptDraft,
@@ -186,6 +187,48 @@ describe('drafts · writeDraft', () => {
       WS,
     );
     expect(custom.expiresAt - custom.createdAt).toBe(1000);
+  });
+});
+
+describe('drafts · writeSkillDirect', () => {
+  it('writes to workspace-auto skills/{name}/SKILL.md bypassing drafts/', async () => {
+    const vfs = makeVfs();
+    vfs.install();
+
+    const result = await writeSkillDirect(
+      'daily-report',
+      '---\nname: daily-report\n---\n# body',
+      WS,
+    );
+
+    expect(result.skillMdPath).toBe(`${SKILLS}/daily-report/SKILL.md`);
+    expect(result.skillDir).toBe(`${SKILLS}/daily-report`);
+    // Crucially, path must NOT contain /drafts/
+    expect(result.skillMdPath).not.toContain('/drafts/');
+  });
+
+  it('writes SKILL.md without creating a sidecar', async () => {
+    const vfs = makeVfs();
+    vfs.install();
+
+    await writeSkillDirect('x', '---\n---\nbody', WS);
+
+    const writes = mockInvoke.mock.calls.filter(([c]) => c === 'atomic_write_text');
+    expect(writes).toHaveLength(1); // only SKILL.md, no sidecar
+    expect((writes[0][1] as { path: string }).path).toMatch(/SKILL\.md$/);
+  });
+
+  it('creates parent skill directory recursively', async () => {
+    const vfs = makeVfs();
+    vfs.install();
+
+    await writeSkillDirect('deep-skill', '---\n---\n', WS);
+
+    // mkdir should have been called to establish the skill dir.
+    expect(mockMkdir).toHaveBeenCalledWith(
+      `${SKILLS}/deep-skill`,
+      { recursive: true },
+    );
   });
 });
 

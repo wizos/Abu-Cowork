@@ -73,7 +73,7 @@ describe('skill_manage · workspace requirement', () => {
 // ── create ─────────────────────────────────────────────────────────────
 
 describe('skill_manage · create', () => {
-  it('writes a draft skill and returns pending-user-approval', async () => {
+  it('default (omitted agent_proposed) writes directly to workspace-auto, skipping drafts', async () => {
     vi.spyOn(skillLoader, 'getSkill').mockReturnValue(undefined);
 
     // Freeze the input — real Tauri tool invocations pass frozen objects,
@@ -89,18 +89,46 @@ describe('skill_manage · create', () => {
     );
 
     expect(result.success).toBe(true);
-    expect(result.status).toBe('pending-user-approval');
-    expect(result.path).toContain('drafts/weekly-report/SKILL.md');
+    expect(result.status).toBe('applied'); // direct-write, not pending-user-approval
+    // Path must be the workspace-auto skills dir, NOT the drafts/ subdir.
+    expect(result.path).toMatch(/skills\/weekly-report\/SKILL\.md$/);
+    expect(result.path).not.toContain('/drafts/');
 
-    // create now goes through drafts.writeDraft, which writes SKILL.md plus
-    // the sidecar — both via plain atomicWrite.
+    // Direct writes don't use a sidecar file — just one SKILL.md write.
+    const writes = writtenByAtomicWrite();
+    const sidecar = writes.find((w) => w.path.endsWith('.abu-draft-meta.json'));
+    expect(sidecar).toBeUndefined();
+    const skillMd = writes.find((w) => w.path.endsWith('SKILL.md'));
+    expect(skillMd?.content).toContain('name: weekly-report');
+    expect(skillMd?.content).toContain('# Procedure');
+  });
+
+  it('agent_proposed=true routes through drafts with sidecar', async () => {
+    vi.spyOn(skillLoader, 'getSkill').mockReturnValue(undefined);
+
+    const input = Object.freeze({
+      action: 'create',
+      name: 'auto-digest',
+      agent_proposed: true,
+      trigger_reason: '5 步任务成功',
+      frontmatter: Object.freeze({ name: 'auto-digest', description: '自动摘要' }),
+      content: '# body',
+    });
+    const result = JSON.parse(
+      (await skillManageTool.execute(input, {})) as string,
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.status).toBe('pending-user-approval');
+    expect(result.path).toContain('/drafts/auto-digest/SKILL.md');
+
+    // Drafts path writes both SKILL.md and the sidecar via atomicWrite.
     const writes = writtenByAtomicWrite();
     const skillMd = writes.find((w) => w.path.endsWith('SKILL.md'));
     const sidecar = writes.find((w) => w.path.endsWith('.abu-draft-meta.json'));
-    expect(skillMd?.path).toContain('drafts/weekly-report/SKILL.md');
-    expect(skillMd?.content).toContain('name: weekly-report');
-    expect(skillMd?.content).toContain('# Procedure');
+    expect(skillMd?.path).toContain('/drafts/auto-digest/SKILL.md');
     expect(sidecar).toBeDefined();
+    expect(sidecar?.content).toContain('"triggerReason": "5 步任务成功"');
   });
 
   it('accepts flat description when LLM flattens the schema', async () => {
@@ -117,6 +145,8 @@ describe('skill_manage · create', () => {
     expect(result.success).toBe(true);
     const skillMd = writtenByAtomicWrite().find((w) => w.path.endsWith('SKILL.md'));
     expect(skillMd?.content).toContain('description: from flat description field');
+    // Default is direct — result path must NOT be under drafts/.
+    expect(result.path).not.toContain('/drafts/');
   });
 
   it('rejects invalid names', async () => {

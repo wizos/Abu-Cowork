@@ -59,7 +59,7 @@ import {
 } from '../../safety/contentGuard';
 import { skillLoader, serializeSkillMd } from '../../skill/loader';
 import { fuzzyFindAndReplace } from '../../skill/fuzzyPatch';
-import { writeDraft } from '../../skill/drafts';
+import { writeDraft, writeSkillDirect, rejectDraft } from '../../skill/drafts';
 import { joinPath, normalizeSeparators } from '../../../utils/pathUtils';
 import { sanitizePath } from '../../memdir/paths';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
@@ -412,21 +412,76 @@ async function createAction(input: Record<string, unknown>): Promise<ActionResul
     }
   }
 
-  // Delegate the write to drafts.ts so one module owns the draft filesystem
-  // layout (SKILL.md + sidecar + trash). TTL is chosen from the caller's
-  // current proactivity preset.
+  // Split point: who asked for this skill?
+  //   - agent_proposed=true  → agent自发, needs review → drafts/ path
+  //   - omitted / false      → user explicitly asked    → direct workspace-auto
+  //
+  // Default is direct write because the common case is the user saying
+  // "帮我建 X"; making them review their own explicit ask is friction.
+  // Agent must actively claim `agent_proposed=true` when it's自发 — the
+  // asymmetric default keeps drafts as a review queue for agent autonomy,
+  // not a mandatory gate for every create.
+  const agentProposed = input.agent_proposed === true;
   const proactivity =
     useSettingsStore.getState().soul?.proactivity ?? 'companion';
-  const triggerReason =
-    typeof input.trigger_reason === 'string' ? input.trigger_reason : '';
-  let record: Awaited<ReturnType<typeof writeDraft>>;
+
+  if (agentProposed) {
+    // ── Agent-proposed: write to drafts, notify per preset ──────────────
+    const triggerReason =
+      typeof input.trigger_reason === 'string' ? input.trigger_reason : '';
+    let record: Awaited<ReturnType<typeof writeDraft>>;
+    try {
+      record = await writeDraft(
+        name,
+        serialized,
+        { action: 'create', proactivity, triggerReason },
+        workspacePath,
+      );
+    } catch (e) {
+      return {
+        success: false,
+        error: `write failed: ${e instanceof Error ? e.message : String(e)}`,
+      };
+    }
+
+    await skillLoader.discoverSkills(workspacePath).catch(() => {
+      /* best-effort refresh */
+    });
+
+    const { useSkillDraftsStore } = await import('../../../stores/skillDraftsStore');
+    await useSkillDraftsStore.getState().refresh().catch(() => {
+      /* best-effort refresh */
+    });
+
+    const { notifyDraftProposal } = await import('../../../utils/notifications');
+    await notifyDraftProposal(name, proactivity).catch(() => {
+      /* notification is best-effort */
+    });
+
+    return {
+      success: true,
+      status: 'pending-user-approval',
+      message:
+        `草稿 "${name}" 已提议，待用户审核。路径：${record.skillMdPath}。用户可在「工具箱 → 技能」的草稿面板里采纳或拒绝。`,
+      path: record.skillMdPath,
+    };
+  }
+
+  // ── Explicit (default): write directly to workspace-auto ──────────────
+  //
+  // Sweep any same-name draft first so the loader's first-win rule doesn't
+  // leave a phantom visible in the drafts panel that can never be accepted
+  // (workspace-auto already owns the name). rejectDraft moves it to trash
+  // for a 7-day recovery window.
+  if (existing && existing.source === 'draft') {
+    await rejectDraft(name, workspacePath).catch(() => {
+      /* best-effort sweep — if trash rename fails we still proceed with direct write */
+    });
+  }
+
+  let directResult: Awaited<ReturnType<typeof writeSkillDirect>>;
   try {
-    record = await writeDraft(
-      name,
-      serialized,
-      { action: 'create', proactivity, triggerReason },
-      workspacePath,
-    );
+    directResult = await writeSkillDirect(name, serialized, workspacePath);
   } catch (e) {
     return {
       success: false,
@@ -434,33 +489,24 @@ async function createAction(input: Record<string, unknown>): Promise<ActionResul
     };
   }
 
-  // Refresh loader so the draft shows up on the next getSkill() call.
-  await skillLoader.discoverSkills(workspacePath).catch(() => {
-    /* best-effort refresh */
+  // Refresh both skill discovery (for main skills list UI) and drafts
+  // store (in case we swept a same-name draft above). discoveryStore's
+  // refresh internally calls skillLoader.discoverSkills, so we don't
+  // duplicate that call.
+  const { useDiscoveryStore } = await import('../../../stores/discoveryStore');
+  await useDiscoveryStore.getState().refresh().catch(() => {
+    /* best-effort */
   });
-
-  // Surface the new draft in the drafts store so the UI (Task #21) and
-  // notification layer know immediately. Best-effort: a refresh failure
-  // mustn't break the tool response.
   const { useSkillDraftsStore } = await import('../../../stores/skillDraftsStore');
   await useSkillDraftsStore.getState().refresh().catch(() => {
-    /* best-effort refresh */
-  });
-
-  // Notify per proactivity preset (shy=silent, companion=badge, butler=system).
-  const { notifyDraftProposal } = await import('../../../utils/notifications');
-  await notifyDraftProposal(name, proactivity).catch(() => {
-    /* notification is best-effort */
+    /* best-effort */
   });
 
   return {
     success: true,
-    status: 'pending-user-approval',
-    message:
-      `Draft "${name}" saved as pending. Path: ${record.skillMdPath}. ` +
-      `The draft is on disk only — an interactive review UI is planned (Module G / Task #21) ` +
-      `but not yet built. The user can inspect the file directly until that lands.`,
-    path: record.skillMdPath,
+    status: 'applied',
+    message: `技能 "${name}" 已创建，立即生效。路径：${directResult.skillMdPath}`,
+    path: directResult.skillMdPath,
   };
 }
 
@@ -685,10 +731,13 @@ async function writeFileAction(input: Record<string, unknown>): Promise<ActionRe
 export const skillManageTool: ToolDefinition = {
   name: TOOL_NAMES.SKILL_MANAGE,
   description:
-    '管理 skills（agent 的程序性记忆）。MVP 支持 3 个 action：create（提议新 skill，进草稿区待用户采纳）/ patch（改已有 skill，自动 Copy-on-Modify）/ write_file（加/改支撑文件 references / templates / scripts / assets）。' +
+    '管理 skills（agent 的程序性记忆）。MVP 支持 3 个 action：create / patch（改已有 skill，自动 Copy-on-Modify）/ write_file（加/改支撑文件 references / templates / scripts / assets）。' +
     '\n\n⚠️ create 必填参数：action="create" + name + content + frontmatter.description。' +
     '漏任何一个会立即失败。最小示例：' +
     '\n`skill_manage({ action:"create", name:"my-skill", frontmatter:{ description:"一句话说明这个 skill 干啥" }, content:"# My Skill\\n正文…" })`' +
+    '\n\n**create 的两种模式**（由 agent_proposed 区分）：' +
+    '\n- **省略 agent_proposed（默认）** = 用户明确要求建 → **直接生效**，立刻出现在主技能列表' +
+    '\n- **agent_proposed=true** = 你自发提议（用户没明说要建） → 进草稿区等用户审核采纳' +
     '\n\n使用时机：完成 5+ 次工具调用的复杂任务、从错误恢复、用户纠正了做法、发现非直觉工作流，' +
     '考虑 create 沉淀。使用 skill 时发现过时或错误，立即 patch 修正。' +
     '\n\nscope 默认 workspace-auto（本项目 agent 自治区），建议 99% 情况都保持默认。' +
@@ -760,7 +809,14 @@ export const skillManageTool: ToolDefinition = {
       trigger_reason: {
         type: 'string',
         description:
-          '[create] 可选。用一句话说明为什么在此刻提议这个 skill，例如"6 步数据导出任务成功"。用户在草稿面板审核时会看到。',
+          '[create] 可选。用一句话说明为什么在此刻提议这个 skill，例如"6 步数据导出任务成功"。仅在 agent_proposed=true 时会被用户在草稿面板看到；直写模式下忽略。',
+      },
+      agent_proposed: {
+        type: 'boolean',
+        description:
+          '[create] 默认省略（=false）= 直接生效到主技能列表。' +
+          '仅当你自发觉得值得沉淀、用户没明说要建时设 true，进草稿区等用户审核。' +
+          '不确定时省略（走直写）——用户可随时删；草稿误伤反而打扰用户。',
       },
     },
     required: ['action', 'name'],

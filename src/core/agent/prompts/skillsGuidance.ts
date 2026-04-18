@@ -41,7 +41,16 @@ const COMPANION_GUIDANCE = `## 使用技能
 
 **创建粒度**：一个 skill = "怎么做 X 这类任务"手册，不是"这次干了什么"日志。
 
-**create 最小 payload 示例**（frontmatter.description 必填，漏了会立即失败）：
+## create 参数 · 是谁要求的（关键）
+
+**两种模式**，通过 agent_proposed 参数切换：
+
+1. **用户明确要求**（用户说了"建/保存/存一下/创建/记下 skill X"）→ **省略 agent_proposed**（默认 false）→ 技能**直接生效**，立刻出现在主技能列表。不要把用户的明确要求塞进草稿区让他再审核一次。
+2. **你自发提议**（用户没明说要建，但你觉得这次任务值得沉淀）→ **agent_proposed=true** → 进草稿区，用户到技能面板审核采纳。
+
+不确定时省略参数（走直写）。误伤成本低——用户可随时在技能面板删掉；草稿误伤反而打扰用户。
+
+**直写 create 最小 payload 示例**（用户明确要求场景）：
 \`\`\`json
 {
   "action": "create",
@@ -53,9 +62,19 @@ const COMPANION_GUIDANCE = `## 使用技能
 }
 \`\`\`
 
-**修正原则**：使用技能时发现过时/错误，立即 skill_manage(action='patch')，别等用户问。
+**自发提议示例**（加 agent_proposed 和 trigger_reason）：
+\`\`\`json
+{
+  "action": "create",
+  "name": "jira-weekly-digest",
+  "agent_proposed": true,
+  "trigger_reason": "刚完成 8 步 Jira 周报生成任务",
+  "frontmatter": { "description": "..." },
+  "content": "..."
+}
+\`\`\`
 
-**不用担心污染**：创建的技能先进草稿区，用户采纳后才生效。你的责任是积极沉淀。
+**修正原则**：使用技能时发现过时/错误，立即 skill_manage(action='patch')，别等用户问。
 
 ## 写入 scope 选择（默认 workspace-auto，99% 场景）
 
@@ -85,21 +104,38 @@ const BUTLER_GUIDANCE = `## 使用技能（强制）
 **创建前必读**：扫描记忆索引里 type='feedback' 的条目。如有类似
 "不要为 X 类任务建议 skill"的规则，**跳过本次 create**。尊重用户历史反馈。
 
-**create 最小 payload 示例**（frontmatter.description 必填，漏了会立即失败）：
+## create 参数 · 是谁要求的（关键）
+
+**两种模式**，通过 agent_proposed 参数切换：
+
+1. **用户明确要求**（"建/保存/存一下/创建/记下 skill X"）→ **省略 agent_proposed**（默认 false）→ 技能**直接生效**。
+2. **你自发提议**（用户没明说要建）→ **agent_proposed=true** → 进草稿区待审核。
+
+管家档虽然主动，但**仍要尊重用户意图**：用户明说让建的 → 直写；你自己判断"值得沉淀"的 → 走草稿。不要两种模式混用。
+
+**直写 create 示例**：
 \`\`\`json
 {
   "action": "create",
   "name": "daily-report",
-  "frontmatter": {
-    "description": "生成每日工作日报，汇总任务进度与风险"
-  },
-  "content": "# 每日日报\\n\\n## 步骤\\n1. 读取 ~/Documents/work.md\\n2. 提取 today 章节\\n3. 按「完成/进行中/阻塞」分类输出"
+  "frontmatter": { "description": "生成每日工作日报" },
+  "content": "# 每日日报\\n\\n## 步骤\\n..."
+}
+\`\`\`
+
+**自发提议示例**（你主动沉淀）：
+\`\`\`json
+{
+  "action": "create",
+  "name": "jira-weekly-digest",
+  "agent_proposed": true,
+  "trigger_reason": "8 步 Jira 周报任务成功，值得复用",
+  "frontmatter": { "description": "..." },
+  "content": "..."
 }
 \`\`\`
 
 **修正原则**：使用技能过程中发现任何可改进，立即 patch。
-
-**不用担心污染**：创建的技能先进草稿区，用户采纳后才生效。你的责任是积极沉淀。
 
 ## 写入 scope 选择（默认 workspace-auto，99% 场景）
 

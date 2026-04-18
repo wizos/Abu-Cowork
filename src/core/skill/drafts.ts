@@ -206,6 +206,32 @@ export async function writeDraft(
   return toRecord(skillName, draftDir, sidecar);
 }
 
+/**
+ * Write a SKILL.md directly to the workspace-auto skills dir, bypassing the
+ * drafts/review flow. Used by `skill_manage(create)` when the user explicitly
+ * asked for the skill (i.e. `agent_proposed` is false / omitted). No sidecar,
+ * no TTL, no trash — this is the "立即生效" path.
+ *
+ * Caller is still responsible for:
+ *   - name / frontmatter validation
+ *   - contentGuard pre-scan (refuse on block)
+ *   - collision check against non-draft skills
+ *   - best-effort reject of any same-name draft (so the loader's first-win
+ *     rule doesn't leave a phantom in the drafts panel)
+ */
+export async function writeSkillDirect(
+  skillName: string,
+  skillMdContent: string,
+  workspacePath: string,
+): Promise<{ skillDir: string; skillMdPath: string }> {
+  const skillsRoot = await getProjectSkillsDir(workspacePath);
+  const skillDir = joinPath(skillsRoot, skillName);
+  const skillMdPath = joinPath(skillDir, 'SKILL.md');
+  await mkdir(skillDir, { recursive: true });
+  await atomicWrite(skillMdPath, skillMdContent);
+  return { skillDir, skillMdPath };
+}
+
 /** Load one draft by name. Returns null if not found. */
 export async function readDraft(
   skillName: string,

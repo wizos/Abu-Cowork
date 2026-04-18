@@ -65,6 +65,22 @@ describe('skillsGuidance', () => {
     }
   });
 
+  it('companion + butler prompts explain agent_proposed explicit vs auto split', () => {
+    // After the scope-A regression fix: default create writes direct to
+    // workspace-auto; agent_proposed=true is the opt-in flag for auto
+    // proposals. Guidance must teach both modes + show a worked example
+    // with agent_proposed=true, otherwise the agent will never use drafts.
+    for (const level of ['companion', 'butler'] as const) {
+      const prompt = SKILLS_GUIDANCE_BY_LEVEL[level];
+      expect(prompt).toContain('agent_proposed');
+      // Must explicitly distinguish the user-asked case from the auto case.
+      expect(prompt).toMatch(/用户明确要求/);
+      expect(prompt).toMatch(/自发/);
+      // And a concrete payload example showing the flag on.
+      expect(prompt).toMatch(/"agent_proposed":\s*true/);
+    }
+  });
+
   it('butler prompt is most aggressive about consumption', () => {
     const butler = SKILLS_GUIDANCE_BY_LEVEL.butler;
     expect(butler).toMatch(/必须|强制|激进/);
