@@ -209,7 +209,7 @@ export function getCapabilityPrompt(): string {
 - **skills/** - 技能目录，每个技能包含 SKILL.md 文件，路径：${skillPathTmpl}SKILL.md
 - **agents/** - 代理目录，每个代理包含 AGENT.md 文件，路径：${agentPathTmpl}AGENT.md
 
-用 save_skill / save_agent 工具可以创建新的技能或代理。
+用 skill_manage（create/patch/write_file）工具创建或修改技能，用 save_agent 工具创建新的代理。
 
 ## 并行代理能力
 当用户的任务可以拆分为多个**独立子任务**时，可以使用 delegate_to_agent 的 async 参数并行执行：

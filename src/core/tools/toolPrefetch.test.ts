@@ -79,7 +79,7 @@ describe('toolPrefetch', () => {
 
     it('should match skill/agent creation keywords', () => {
       const result = prefetchTools(makeCtx({ userInput: '帮我创建一个新技能' }));
-      expect(result).toContain('save_skill');
+      expect(result).toContain('skill_manage');
       expect(result).toContain('save_agent');
     });
 

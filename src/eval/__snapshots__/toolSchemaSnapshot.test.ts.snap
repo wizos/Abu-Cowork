@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`Tool count stability > total builtin tool count matches snapshot 1`] = `37`;
+exports[`Tool count stability > total builtin tool count matches snapshot 1`] = `36`;
 
 exports[`Tool schema snapshot > all tool schemas match snapshot 1`] = `
 [
@@ -310,18 +310,6 @@ exports[`Tool schema snapshot > all tool schemas match snapshot 1`] = `
   },
   {
     "name": "save_agent",
-    "paramNames": [
-      "content",
-      "files",
-      "name",
-    ],
-    "requiredParams": [
-      "name",
-      "content",
-    ],
-  },
-  {
-    "name": "save_skill",
     "paramNames": [
       "content",
       "files",

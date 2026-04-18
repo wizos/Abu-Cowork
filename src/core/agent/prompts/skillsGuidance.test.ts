@@ -52,6 +52,19 @@ describe('skillsGuidance', () => {
     expect(companion).toContain('feedback');
   });
 
+  it('companion + butler prompts carry a concrete create payload example', () => {
+    // LLMs miss required nested fields without a worked example.
+    // Fix B: guidance must show what a successful create call looks like.
+    for (const level of ['companion', 'butler'] as const) {
+      const prompt = SKILLS_GUIDANCE_BY_LEVEL[level];
+      expect(prompt).toContain('"action": "create"');
+      expect(prompt).toContain('frontmatter');
+      // description is the field we saw LLMs omit in production — make sure
+      // the example explicitly shows it inside frontmatter.
+      expect(prompt).toMatch(/"description":\s*"/);
+    }
+  });
+
   it('butler prompt is most aggressive about consumption', () => {
     const butler = SKILLS_GUIDANCE_BY_LEVEL.butler;
     expect(butler).toMatch(/必须|强制|激进/);

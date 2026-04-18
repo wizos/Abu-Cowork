@@ -647,6 +647,9 @@ export const skillManageTool: ToolDefinition = {
   name: TOOL_NAMES.SKILL_MANAGE,
   description:
     '管理 skills（agent 的程序性记忆）。MVP 支持 3 个 action：create（提议新 skill，进草稿区待用户采纳）/ patch（改已有 skill，自动 Copy-on-Modify）/ write_file（加/改支撑文件 references / templates / scripts / assets）。' +
+    '\n\n⚠️ create 必填参数：action="create" + name + content + frontmatter.description。' +
+    '漏任何一个会立即失败。最小示例：' +
+    '\n`skill_manage({ action:"create", name:"my-skill", frontmatter:{ description:"一句话说明这个 skill 干啥" }, content:"# My Skill\\n正文…" })`' +
     '\n\n使用时机：完成 5+ 次工具调用的复杂任务、从错误恢复、用户纠正了做法、发现非直觉工作流，' +
     '考虑 create 沉淀。使用 skill 时发现过时或错误，立即 patch 修正。' +
     '\n\nscope 默认 workspace-auto（本项目 agent 自治区），建议 99% 情况都保持默认。' +
@@ -670,7 +673,26 @@ export const skillManageTool: ToolDefinition = {
       },
       frontmatter: {
         type: 'object',
-        description: '[create] SKILL.md 前置 YAML（需含 name + description）',
+        description: '[create] SKILL.md 前置 YAML。description 必填；trigger / user-invocable / argument-hint 可选。',
+        properties: {
+          description: {
+            type: 'string',
+            description: '一句话说明这个 skill 的用途（必填，最长 1024 字符）。例如："生成小红书风格的图文内容"。',
+          },
+          trigger: {
+            type: 'string',
+            description: '可选。自动触发条件，例如"用户要求做日报"。不填则 skill 只能被 /name 主动调用。',
+          },
+          'user-invocable': {
+            type: 'boolean',
+            description: '可选，默认 true。是否允许用户通过 /name 主动调用。',
+          },
+          'argument-hint': {
+            type: 'string',
+            description: '可选。/name 调用时的参数提示，例如"主题或关键词"。',
+          },
+        },
+        required: ['description'],
       },
       content: {
         type: 'string',

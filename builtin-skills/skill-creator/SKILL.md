@@ -491,31 +491,47 @@ Instructions go here...
 **Required fields**: `name`, `description`
 **Recommended fields**: `trigger`, `do-not-trigger`, `tags`
 
-### Saving Skills — Use `save_skill` Tool, NOT `write_file`
+### Saving Skills — Use `skill_manage` Tool, NOT `write_file`
 
-**CRITICAL**: Always use the `save_skill` tool to save skills. Never use `write_file` to write SKILL.md directly. The `save_skill` tool:
-- Automatically saves to `~/.abu/skills/{name}/SKILL.md`
-- Refreshes the skill discovery so the new skill appears in the UI immediately
-- Supports a `files` parameter for bundling scripts and references
+**CRITICAL**: Always use the `skill_manage` tool (action=`create` for the SKILL.md, action=`write_file` for supporting files) to save skills. Never use `write_file` to write SKILL.md directly. The `skill_manage` tool:
+- Writes SKILL.md to the project-local drafts area (`~/.abu/projects/<key>/skills/drafts/{name}/`) pending user review
+- Runs content-safety scanning + atomic-write-with-rollback
+- Refreshes the skill discovery after success
+
+Step 1 — create the SKILL.md (description is REQUIRED inside frontmatter):
 
 ```json
 {
+  "action": "create",
   "name": "infographic-gen",
-  "content": "---\nname: infographic-gen\ndescription: |\n  Generate infographics...\n---\n\n# Infographic Generator\n...",
-  "files": [
-    {
-      "path": "scripts/render.mjs",
-      "content": "#!/usr/bin/env node\nimport { renderToString } from '@antv/infographic/ssr';\n..."
-    },
-    {
-      "path": "references/template-list.md",
-      "content": "# Available Templates\n- list-grid-badge-card\n- sequence-timeline-horizontal\n..."
-    }
-  ]
+  "frontmatter": {
+    "description": "Generate infographics from structured data — turns tables/bullet lists into visual SVG/HTML layouts"
+  },
+  "content": "# Infographic Generator\n\n## Steps\n1. Parse input into sections...\n2. Pick template from references/template-list.md\n3. Call scripts/render.mjs to produce SVG"
 }
 ```
 
-If the skill needs executable scripts (renderers, data processors, format converters), **put them in `files` with path `scripts/...`**. If the skill references external documentation, use `references/...`.
+Step 2 — add any supporting scripts / references via separate `write_file` calls (one per file):
+
+```json
+{
+  "action": "write_file",
+  "name": "infographic-gen",
+  "file_path": "scripts/render.mjs",
+  "file_content": "#!/usr/bin/env node\nimport { renderToString } from '@antv/infographic/ssr';\n..."
+}
+```
+
+```json
+{
+  "action": "write_file",
+  "name": "infographic-gen",
+  "file_path": "references/template-list.md",
+  "file_content": "# Available Templates\n- list-grid-badge-card\n- sequence-timeline-horizontal\n..."
+}
+```
+
+Supporting files must live under `references/`, `templates/`, `scripts/`, or `assets/`. Use `scripts/...` for executable renderers/processors and `references/...` for external docs.
 
 ### Research-First Workflow — No Hallucinating
 
@@ -523,9 +539,9 @@ When creating a skill that references a specific library, framework, or technolo
 
 1. **Research first** — Use `web_search` and `http_fetch` to verify the library exists, read its API docs, and understand how it works.
 2. **Install if needed** — Use `run_command` to `npm install` or set up the dependency.
-3. **Write working scripts** — If the skill needs a renderer/processor, write the script and bundle it via `save_skill`'s `files` parameter.
+3. **Write working scripts** — If the skill needs a renderer/processor, plan the script content so you can later write it via `skill_manage(action="write_file")`.
 4. **Test the script** — Use `run_command` to actually execute the script and verify it produces correct output.
-5. **Save with `save_skill`** — Only after testing, save the complete skill.
+5. **Save with `skill_manage`** — Only after testing, call `skill_manage(action="create")` for the SKILL.md, then one `skill_manage(action="write_file")` per supporting file.
 
 **NEVER claim a skill uses a library if you haven't verified it exists and written working code for it.** If you cannot get a library to work, be honest in the SKILL.md description — say "generates pure HTML/CSS" rather than falsely claiming to use a specific library.
 
@@ -577,7 +593,7 @@ Abu has subagents (`delegate_to_agent`) so the eval pipeline works, but with the
 1. **Capture intent** (same as main instructions)
 2. **Interview & research** (same, but use `web_search`/`http_fetch` actively)
 3. **Write SKILL.md + scripts** (research-first, test scripts before saving)
-4. **Save with `save_skill`** (with `files` parameter if scripts needed)
+4. **Save with `skill_manage`** — `action="create"` for the SKILL.md, then one `action="write_file"` call per supporting script/reference
 5. **Quick test** — Tell the user to try `/{skill-name}` in the current conversation
 6. **Trigger testing** — Run `test_skill_trigger` with 6-10 queries
 7. **Optimize description** — If pass rate <80%, run `improve_skill_description`
@@ -585,7 +601,7 @@ Abu has subagents (`delegate_to_agent`) so the eval pipeline works, but with the
 
 ### What NOT to Do
 
-- ❌ Do NOT use `write_file` to create SKILL.md — use `save_skill`
+- ❌ Do NOT use `write_file` to create SKILL.md — use `skill_manage(action="create")`
 - ❌ Do NOT omit YAML frontmatter — the skill will be invisible
 - ❌ Do NOT claim to use a library without verifying it exists
 - ❌ Do NOT run `run_eval.py`, `improve_description.py`, or `generate_review.py` — they need `claude` CLI

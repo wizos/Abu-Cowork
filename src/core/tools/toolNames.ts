@@ -28,6 +28,10 @@ export const TOOL_NAMES = {
   SKILL_MANAGE: 'skill_manage',
   DELEGATE_TO_AGENT: 'delegate_to_agent',
   REPORT_PLAN: 'report_plan',
+  /** @deprecated save_skill was removed in favor of skill_manage. The constant
+   *  is kept solely because the shared factory in agentTools.ts still references
+   *  it in an unreachable branch; delete both once save_agent gets its own
+   *  bespoke implementation. */
   SAVE_SKILL: 'save_skill',
   SAVE_AGENT: 'save_agent',
   TEST_SKILL_TRIGGER: 'test_skill_trigger',

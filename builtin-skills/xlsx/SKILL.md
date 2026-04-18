@@ -18,7 +18,6 @@ blocked-tools:
   - system_notify
   - manage_mcp_server
   - log_task_completion
-  - save_skill
   - save_agent
   - computer
 ---

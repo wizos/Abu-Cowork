@@ -41,6 +41,18 @@ const COMPANION_GUIDANCE = `## 使用技能
 
 **创建粒度**：一个 skill = "怎么做 X 这类任务"手册，不是"这次干了什么"日志。
 
+**create 最小 payload 示例**（frontmatter.description 必填，漏了会立即失败）：
+\`\`\`json
+{
+  "action": "create",
+  "name": "daily-report",
+  "frontmatter": {
+    "description": "生成每日工作日报，汇总任务进度与风险"
+  },
+  "content": "# 每日日报\\n\\n## 步骤\\n1. 读取 ~/Documents/work.md\\n2. 提取 today 章节\\n3. 按「完成/进行中/阻塞」分类输出"
+}
+\`\`\`
+
 **修正原则**：使用技能时发现过时/错误，立即 skill_manage(action='patch')，别等用户问。
 
 **不用担心污染**：创建的技能先进草稿区，用户采纳后才生效。你的责任是积极沉淀。
@@ -72,6 +84,18 @@ const BUTLER_GUIDANCE = `## 使用技能（强制）
 
 **创建前必读**：扫描记忆索引里 type='feedback' 的条目。如有类似
 "不要为 X 类任务建议 skill"的规则，**跳过本次 create**。尊重用户历史反馈。
+
+**create 最小 payload 示例**（frontmatter.description 必填，漏了会立即失败）：
+\`\`\`json
+{
+  "action": "create",
+  "name": "daily-report",
+  "frontmatter": {
+    "description": "生成每日工作日报，汇总任务进度与风险"
+  },
+  "content": "# 每日日报\\n\\n## 步骤\\n1. 读取 ~/Documents/work.md\\n2. 提取 today 章节\\n3. 按「完成/进行中/阻塞」分类输出"
+}
+\`\`\`
 
 **修正原则**：使用技能过程中发现任何可改进，立即 patch。
 

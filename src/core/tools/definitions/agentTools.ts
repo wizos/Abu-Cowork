@@ -502,7 +502,9 @@ function createSaveItemTool(kind: 'skill' | 'agent'): ToolDefinition {
   };
 }
 
-export const saveSkillTool = createSaveItemTool('skill');
+// save_skill was removed in favor of skill_manage (Module E self-evolution).
+// The factory below is retained because save_agent still uses it; once agent
+// authoring gets its own workflow, both can be deleted.
 export const saveAgentTool = createSaveItemTool('agent');
 
 // Mapping from user-friendly folder hints to system info keys

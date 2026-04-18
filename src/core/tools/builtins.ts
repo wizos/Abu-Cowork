@@ -8,7 +8,9 @@ import { readFileTool, writeFileTool, editFileTool, listDirectoryTool, searchFil
 import { runCommandTool } from './definitions/commandTools';
 
 // --- Agent tools ---
-import { useSkillTool, delegateToAgentTool, readSkillFileTool, saveSkillTool, saveAgentTool, requestWorkspaceTool } from './definitions/agentTools';
+// save_skill was deprecated in favor of skill_manage (Module E self-evolution).
+// save_agent is kept — no equivalent agent_manage yet.
+import { useSkillTool, delegateToAgentTool, readSkillFileTool, saveAgentTool, requestWorkspaceTool } from './definitions/agentTools';
 export { clearAllSkillHooks, clearSkillHooksByConversation } from './definitions/agentTools';
 
 // --- Automation tools ---
@@ -63,7 +65,6 @@ export function registerBuiltinTools(): void {
   toolRegistry.register(todoWriteTool);
   toolRegistry.register(manageScheduledTaskTool);
   toolRegistry.register(manageTriggerTool);
-  toolRegistry.register(saveSkillTool);
   toolRegistry.register(saveAgentTool);
   toolRegistry.register(logTaskCompletionTool);
   toolRegistry.register(manageMCPServerTool);
