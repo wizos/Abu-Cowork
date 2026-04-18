@@ -342,18 +342,33 @@ async function scanOrRollback(
 
 async function createAction(input: Record<string, unknown>): Promise<ActionResult> {
   const name = input.name as string;
-  const frontmatter = input.frontmatter as Partial<SkillMetadata>;
   const content = input.content as string;
 
   // Validate
   const nameErr = validateName(name);
   if (nameErr) return { success: false, error: nameErr };
 
-  if (!frontmatter || !content) {
-    return { success: false, error: 'create requires both frontmatter and content' };
+  if (!content) {
+    return { success: false, error: 'create requires content (the SKILL.md body)' };
   }
-  // Force the name to match across input.name and frontmatter.name
+
+  // Accept two input shapes: the strict schema with `frontmatter: {...}`, or
+  // a flattened shape where description/trigger/etc live at the top level.
+  // LLMs occasionally flatten the schema despite the docstring, so we copy
+  // into a fresh object (tool input is frozen — mutating it throws).
+  const rawFrontmatter = input.frontmatter as Partial<SkillMetadata> | undefined;
+  const frontmatter: Partial<SkillMetadata> = rawFrontmatter
+    ? { ...rawFrontmatter }
+    : {};
+  // name must always agree with `input.name`
   frontmatter.name = name;
+  // Pull top-level fallbacks if the nested form didn't supply them
+  if (!frontmatter.description && typeof input.description === 'string') {
+    frontmatter.description = input.description;
+  }
+  if (!frontmatter.trigger && typeof input.trigger === 'string') {
+    frontmatter.trigger = input.trigger;
+  }
 
   const fmErr = validateFrontmatter(frontmatter);
   if (fmErr) return { success: false, error: fmErr };

@@ -70,16 +70,16 @@ describe('skill_manage · create', () => {
   it('writes a draft skill and returns pending-user-approval', async () => {
     vi.spyOn(skillLoader, 'getSkill').mockReturnValue(undefined);
 
+    // Freeze the input — real Tauri tool invocations pass frozen objects,
+    // any mutation of input in the tool throws TypeError ("readonly property").
+    const frozenInput = Object.freeze({
+      action: 'create',
+      name: 'weekly-report',
+      frontmatter: Object.freeze({ name: 'weekly-report', description: '每周订单' }),
+      content: '# Procedure\n1. fetch\n2. send',
+    });
     const result = JSON.parse(
-      (await skillManageTool.execute(
-        {
-          action: 'create',
-          name: 'weekly-report',
-          frontmatter: { name: 'weekly-report', description: '每周订单' },
-          content: '# Procedure\n1. fetch\n2. send',
-        },
-        {},
-      )) as string,
+      (await skillManageTool.execute(frozenInput, {})) as string,
     );
 
     expect(result.success).toBe(true);
@@ -92,6 +92,22 @@ describe('skill_manage · create', () => {
     expect(writtenPath).toContain('.drafts/weekly-report/SKILL.md');
     expect(writtenContent).toContain('name: weekly-report');
     expect(writtenContent).toContain('# Procedure');
+  });
+
+  it('accepts flat description when LLM flattens the schema', async () => {
+    // Some LLM tool-call encodings flatten nested objects; the tool should
+    // fall back to top-level fields rather than failing with "frontmatter required".
+    vi.spyOn(skillLoader, 'getSkill').mockReturnValue(undefined);
+    const input = Object.freeze({
+      action: 'create',
+      name: 'flat-form',
+      description: 'from flat description field', // top-level, not nested
+      content: '# body',
+    });
+    const result = JSON.parse((await skillManageTool.execute(input, {})) as string);
+    expect(result.success).toBe(true);
+    const [, writtenContent] = mockAtomicWriteWithBackup.mock.calls[0];
+    expect(writtenContent).toContain('description: from flat description field');
   });
 
   it('rejects invalid names', async () => {
