@@ -142,6 +142,49 @@ describe('writeMemory', () => {
       // Write did happen
       expect(atomicWriteCalls().length).toBeGreaterThanOrEqual(1);
     });
+
+    it('respects settings.safety.enableContentGuard kill switch', async () => {
+      const { useSettingsStore } = await import('../../stores/settingsStore');
+      // Save and disable
+      const saved = useSettingsStore.getState().safety;
+      useSettingsStore.setState({
+        safety: { enableContentGuard: false, bypass: [] },
+      });
+
+      try {
+        // Content that would normally block passes when scanner is off
+        const filename = await writeMemory({
+          name: 'off-test',
+          description: 'test',
+          type: 'user',
+          content: 'rm -rf /',
+        });
+        expect(filename).toBeTruthy();
+      } finally {
+        useSettingsStore.setState({ safety: saved });
+      }
+    });
+
+    it('respects settings.safety.bypass pattern allow-list', async () => {
+      const { useSettingsStore } = await import('../../stores/settingsStore');
+      const saved = useSettingsStore.getState().safety;
+      useSettingsStore.setState({
+        safety: { enableContentGuard: true, bypass: ['destructive_root_rm'] },
+      });
+
+      try {
+        // Bypassed pattern no longer blocks
+        const filename = await writeMemory({
+          name: 'bypass-test',
+          description: 'test',
+          type: 'user',
+          content: 'example: rm -rf /',
+        });
+        expect(filename).toBeTruthy();
+      } finally {
+        useSettingsStore.setState({ safety: saved });
+      }
+    });
   });
 });
 

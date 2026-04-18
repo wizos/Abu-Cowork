@@ -327,6 +327,23 @@ interface SettingsState {
   permissionMode: PermissionMode;
 
   /**
+   * Content safety scanner settings (see `src/core/safety/contentGuard.ts`).
+   *
+   * Intentionally **no Settings UI** — these are an escape hatch for power
+   * users debugging false positives. Edit via `~/Library/Application
+   * Support/com.abu.app/abu-settings` directly.
+   */
+  safety: {
+    /** Kill switch — off skips scan entirely (default: true). */
+    enableContentGuard: boolean;
+    /**
+     * Pattern IDs to skip during scan. Useful when a legitimate skill
+     * content trips a false positive. Empty by default.
+     */
+    bypass: string[];
+  };
+
+  /**
    * Secret-store keys (e.g. `provider:claude`, `aux:webSearch`) that failed
    * to decrypt at app start. Ephemeral — never persisted — repopulated each
    * launch by `bootstrapSecrets`. The AI-services UI reads this to show a
@@ -593,6 +610,10 @@ export const useSettingsStore = create<SettingsStore>()(
       soulInitialized: false,
       skillRegistry: '',
       permissionMode: 'default' as PermissionMode,
+      safety: {
+        enableContentGuard: true,
+        bypass: [],
+      },
       failedSecretKeys: [],
 
       // ════════════════════════════════════════════════
@@ -870,9 +891,19 @@ export const useSettingsStore = create<SettingsStore>()(
     }),
     {
       name: 'abu-settings',
-      version: 17,
+      version: 18,
       migrate: (persisted: unknown, version: number) => {
         const state = persisted as Record<string, unknown>;
+
+        // ════════════════════════════════════════════════
+        // V18: Content safety settings (scanner feature flag + bypass list).
+        // Additive — defaults installed if missing.
+        // ════════════════════════════════════════════════
+        if (version < 18) {
+          if (state.safety === undefined) {
+            state.safety = { enableContentGuard: true, bypass: [] };
+          }
+        }
 
         // ════════════════════════════════════════════════
         // V17: API keys moved to the encrypted secret store.
@@ -1202,6 +1233,7 @@ export const useSettingsStore = create<SettingsStore>()(
         soulInitialized: state.soulInitialized,
         skillRegistry: state.skillRegistry,
         permissionMode: state.permissionMode,
+        safety: state.safety,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;

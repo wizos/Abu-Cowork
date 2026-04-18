@@ -179,10 +179,20 @@ export async function writeMemory(options: WriteMemoryOptions): Promise<string> 
   // Safety scan before any disk I/O. Memory content is injected into the
   // system prompt — a blocked injection pattern here is as bad as a prompt
   // injection attack, so we fail fast.
+  //
+  // Scanner can be disabled entirely via `settings.safety.enableContentGuard`
+  // (kill switch — no UI, JSON only), and individual pattern IDs can be
+  // allow-listed via `settings.safety.bypass`. Lazy-import settings to avoid
+  // a module cycle on cold start (memdir is used during settingsStore
+  // rehydration in some edge cases).
   if (!bypassScan) {
-    const scan = scanContent(content);
-    if (evaluate(scan, 'memory') === 'block') {
-      throw new ContentSafetyError(scan, 'memory');
+    const { useSettingsStore } = await import('../../stores/settingsStore');
+    const safety = useSettingsStore.getState().safety;
+    if (safety.enableContentGuard) {
+      const scan = scanContent(content, { bypass: new Set(safety.bypass) });
+      if (evaluate(scan, 'memory') === 'block') {
+        throw new ContentSafetyError(scan, 'memory');
+      }
     }
   }
 
