@@ -761,6 +761,7 @@ export interface TranslationDict {
     skillProposalCardRejected: string;
     skillProposalCardRejectedCategory: string;
     skillProposalCardMissing: string;   // draft file gone (accepted/expired elsewhere)
+    skillProposalCardJump: string;      // "→ 打开技能面板" link label
   };
 
   // Permission Dialog

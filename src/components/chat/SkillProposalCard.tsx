@@ -20,6 +20,7 @@ import { useState } from 'react';
 import { Sparkles, Check, X, Ban, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { useChatStore } from '@/stores/chatStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { useSkillDraftsStore } from '@/stores/skillDraftsStore';
 import { useToastStore } from '@/stores/toastStore';
 import { writeMemory } from '@/core/memdir/write';
@@ -132,10 +133,38 @@ export default function SkillProposalCard({
         : settledAction === 'rejected-category'
           ? t.toolbox.skillProposalCardRejectedCategory
           : t.toolbox.skillProposalCardRejected;
-    return (
-      <div className="my-2 px-3 py-2 rounded-lg border border-[var(--abu-border-subtle)] bg-[var(--abu-bg-muted)] text-xs text-[var(--abu-text-tertiary)]">
+
+    // Task #33: clicking an "accepted" pill deep-links to the Toolbox
+    // with the skill pre-filtered in the search box. Rejected pills stay
+    // non-interactive — the skill isn't live, nothing useful to jump to.
+    const isAccepted = settledAction === 'accepted';
+    const handleJumpToToolbox = () => {
+      const { openToolbox, setToolboxSearchQuery } = useSettingsStore.getState();
+      openToolbox('skills');
+      // openToolbox clears the search query first; set it after so the
+      // toolbox opens already narrowed to this skill.
+      setToolboxSearchQuery(proposal.skillName);
+    };
+
+    const baseClass = 'my-2 px-3 py-2 rounded-lg border border-[var(--abu-border-subtle)] bg-[var(--abu-bg-muted)] text-xs text-[var(--abu-text-tertiary)]';
+    const content = (
+      <>
         <span className="font-medium">{proposal.skillName}</span> — {label}
-      </div>
+        {isAccepted && (
+          <span className="ml-2 text-[var(--abu-clay)]">{t.toolbox.skillProposalCardJump}</span>
+        )}
+      </>
+    );
+
+    return isAccepted ? (
+      <button
+        onClick={handleJumpToToolbox}
+        className={`${baseClass} w-full text-left hover:bg-[var(--abu-bg-elevated)] hover:border-[var(--abu-clay-ring)] transition-colors cursor-pointer`}
+      >
+        {content}
+      </button>
+    ) : (
+      <div className={baseClass}>{content}</div>
     );
   }
 
