@@ -723,6 +723,32 @@ export interface TranslationDict {
     jsonConfigHint: string;
     jsonConfigInvalid: string;
     jsonConfigEmpty: string;
+    // Skill drafts panel (Module G)
+    draftsTitle: string;
+    draftsCount: string;               // e.g. "{count} 个草稿"
+    draftsAcceptAll: string;
+    draftsRejectAll: string;
+    draftsAccept: string;
+    draftsReject: string;
+    draftsConfirmAcceptAll: string;    // e.g. "确认采纳全部 {count} 个草稿？"
+    draftsConfirmRejectAll: string;
+    draftsAcceptError: string;
+    draftsRejectError: string;
+    draftsTriggerReason: string;
+    draftsCreatedAgo: string;          // "{when} 前"
+    draftsExpiresIn: string;           // "{when} 后过期"
+    draftsExpired: string;
+    draftsEmpty: string;
+    // Drafts onboarding (first draft ever)
+    draftsOnboardTitle: string;
+    draftsOnboardBody: string;
+    draftsOnboardPickShy: string;
+    draftsOnboardPickCompanion: string;
+    draftsOnboardPickButler: string;
+    draftsOnboardShyDesc: string;
+    draftsOnboardCompanionDesc: string;
+    draftsOnboardButlerDesc: string;
+    draftsOnboardConfirm: string;
   };
 
   // Permission Dialog

@@ -335,6 +335,11 @@ interface SettingsState {
    */
   soul: {
     proactivity: 'shy' | 'companion' | 'butler';
+    /**
+     * True once the user has seen the first-time drafts onboarding flow and
+     * picked a proactivity preset. Flips false → true on first confirm.
+     */
+    draftsOnboardingShown: boolean;
   };
 
   /**
@@ -429,6 +434,8 @@ interface SettingsActions {
   setBehaviorSensorEnabled: (enabled: boolean) => void;
   setComputerUseEnabled: (enabled: boolean) => void;
   setSoulInitialized: (initialized: boolean) => void;
+  setProactivity: (level: 'shy' | 'companion' | 'butler') => void;
+  setDraftsOnboardingShown: (shown: boolean) => void;
   setPermissionMode: (mode: PermissionMode) => void;
 
   /**
@@ -623,6 +630,7 @@ export const useSettingsStore = create<SettingsStore>()(
       permissionMode: 'default' as PermissionMode,
       soul: {
         proactivity: 'companion',
+        draftsOnboardingShown: false,
       },
       safety: {
         enableContentGuard: true,
@@ -870,6 +878,10 @@ export const useSettingsStore = create<SettingsStore>()(
       setBehaviorSensorEnabled: (behaviorSensorEnabled) => set({ behaviorSensorEnabled }),
       setComputerUseEnabled: (computerUseEnabled) => set({ computerUseEnabled }),
       setSoulInitialized: (soulInitialized) => set({ soulInitialized }),
+      setProactivity: (level) =>
+        set((s) => ({ soul: { ...s.soul, proactivity: level } })),
+      setDraftsOnboardingShown: (shown) =>
+        set((s) => ({ soul: { ...s.soul, draftsOnboardingShown: shown } })),
       setPermissionMode: (mode) => set({ permissionMode: mode }),
 
       clearAllStoredKeys: async () => {
@@ -905,9 +917,24 @@ export const useSettingsStore = create<SettingsStore>()(
     }),
     {
       name: 'abu-settings',
-      version: 19,
+      version: 20,
       migrate: (persisted: unknown, version: number) => {
         const state = persisted as Record<string, unknown>;
+
+        // ════════════════════════════════════════════════
+        // V20: Drafts onboarding flag — add draftsOnboardingShown to soul
+        // (defaults to false so existing users also see the onboarding once
+        // when their first draft appears).
+        // ════════════════════════════════════════════════
+        if (version < 20) {
+          const soul = (state.soul as Record<string, unknown> | undefined) ?? {
+            proactivity: 'companion',
+          };
+          if (soul.draftsOnboardingShown === undefined) {
+            soul.draftsOnboardingShown = false;
+          }
+          state.soul = soul;
+        }
 
         // ════════════════════════════════════════════════
         // V19: Soul personality — add proactivity preset
@@ -917,7 +944,7 @@ export const useSettingsStore = create<SettingsStore>()(
         // ════════════════════════════════════════════════
         if (version < 19) {
           if (state.soul === undefined) {
-            state.soul = { proactivity: 'companion' };
+            state.soul = { proactivity: 'companion', draftsOnboardingShown: false };
           }
         }
 

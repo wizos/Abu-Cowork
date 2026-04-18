@@ -6,6 +6,7 @@ import { useI18n } from '@/i18n';
 import { skillTemplates } from '@/data/marketplace/skills';
 import { skillLoader } from '@/core/skill/loader';
 import SkillEditor from './SkillEditor';
+import SkillDraftsPanel from './SkillDraftsPanel';
 import { Toggle } from '@/components/ui/toggle';
 import { Trash2, FileText, Folder, ChevronDown, ChevronRight, Pencil, MoreHorizontal, Eye, Code, Info, MessageCircle, Search, Plus, X, Wand2, PenLine, Upload, Download, Package, Loader2, Check, AlertCircle, Globe } from 'lucide-react';
 import { remove } from '@tauri-apps/plugin-fs';
@@ -568,6 +569,8 @@ export default function SkillsSection({ manualCreateTrigger, onAICreate, onManua
             </div>
           )}
         </div>
+        {/* Drafts review panel — hidden entirely when there are no drafts. */}
+        <SkillDraftsPanel />
         <div className="flex-1 overflow-y-auto overlay-scroll py-2">
           {filteredSkills.length === 0 ? (
             <div className="text-xs text-[var(--abu-text-muted)] py-8 text-center">{t.toolbox.noSkillsFound}</div>
