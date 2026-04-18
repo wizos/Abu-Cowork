@@ -36,6 +36,7 @@ xcap = "0.3"
 enigo = { version = "0.3", features = ["serde"] }
 base64 = "0.22"
 image = { version = "0.25", default-features = false, features = ["png"] }
+tempfile = "3"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
@@ -54,7 +55,7 @@ machine-uid = "0.5"
 keyring = { version = "3", features = ["windows-native", "sync-secret-service"] }
 
 [dev-dependencies]
-tempfile = "3"
+# tempfile moved to [dependencies] (used at runtime by atomic_write module).
 
 [profile.release]
 strip = true

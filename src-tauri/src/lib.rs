@@ -17,6 +17,7 @@ mod window_info;
 mod computer_use;
 mod overlay;
 mod secrets;
+mod atomic_write;
 
 /// Maximum number of output lines to collect from a shell command.
 /// Prevents OOM when commands produce unbounded output.
@@ -1284,7 +1285,11 @@ pub fn run() {
             secret_has,
             secret_list,
             secret_failed_keys,
-            secret_clear_all
+            secret_clear_all,
+            atomic_write::atomic_write_text,
+            atomic_write::atomic_write_with_backup,
+            atomic_write::restore_from_backup,
+            atomic_write::cleanup_old_backups
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
