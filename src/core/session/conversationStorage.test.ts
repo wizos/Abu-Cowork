@@ -118,6 +118,59 @@ describe('conversationStorage', () => {
     });
   });
 
+  describe('loadMessages · corruption resilience', () => {
+    // Path shape matches ensureBase() + messagesPath() (see conversationStorage.ts).
+    // appDataDir is mocked globally to '/Users/testuser/.abu'.
+    const PATH = '/Users/testuser/.abu/conversations/corrupt-conv/messages.jsonl';
+
+    it('skips a single corrupt line and returns intact messages', async () => {
+      const good1 = JSON.stringify(makeMsg({ id: 'a', content: 'First' }));
+      const corrupt = '"toolCallsForContext":[{orphaned fragment with no leading {';
+      const good2 = JSON.stringify(makeMsg({ id: 'b', content: 'Second' }));
+      memFs.files.set(PATH, `${good1}\n${corrupt}\n${good2}\n`);
+
+      const loaded = await storage.loadMessages('corrupt-conv');
+      expect(loaded).toHaveLength(2);
+      expect(loaded[0].content).toBe('First');
+      expect(loaded[1].content).toBe('Second');
+    });
+
+    it('returns intact messages when multiple lines are corrupt', async () => {
+      const good1 = JSON.stringify(makeMsg({ id: 'a', content: 'Kept' }));
+      const bad1 = '{broken opening';
+      const bad2 = 'totally not JSON';
+      const good2 = JSON.stringify(makeMsg({ id: 'b', content: 'Also kept' }));
+      memFs.files.set(PATH, `${good1}\n${bad1}\n${bad2}\n${good2}\n`);
+
+      const loaded = await storage.loadMessages('corrupt-conv');
+      expect(loaded.map((m) => m.content)).toEqual(['Kept', 'Also kept']);
+    });
+
+    it('returns empty when every line is corrupt', async () => {
+      memFs.files.set(PATH, 'garbage line 1\ngarbage line 2\n');
+      const loaded = await storage.loadMessages('corrupt-conv');
+      expect(loaded).toEqual([]);
+    });
+
+    it('does not put corrupt messages in the dedup cache', async () => {
+      const good = JSON.stringify(makeMsg({ id: 'kept', content: 'original' }));
+      const corrupt = '{broken line';
+      memFs.files.set(PATH, `${good}\n${corrupt}\n`);
+
+      await storage.loadMessages('corrupt-conv');
+
+      // The corrupt line's id is unrecoverable; a new append with the same
+      // "kept" id should still be deduped, but a new id should append cleanly.
+      const newMsg = makeMsg({ id: 'kept', content: 'would dupe' });
+      await storage.appendMessage('corrupt-conv', newMsg);
+      await storage.flushWrites();
+
+      const reloaded = await storage.loadMessages('corrupt-conv');
+      expect(reloaded.filter((m) => m.id === 'kept')).toHaveLength(1);
+      expect(reloaded[0].content).toBe('original'); // dedup kept the original
+    });
+  });
+
   describe('UUID dedup', () => {
     it('skips duplicate message IDs', async () => {
       const msg = makeMsg({ id: 'dedup-1', content: 'Original' });

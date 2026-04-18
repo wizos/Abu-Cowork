@@ -403,21 +403,42 @@ export async function loadMessages(convId: string): Promise<Message[]> {
   const path = messagesPath(convId);
   if (!(await exists(path))) return [];
 
+  // File-level read failure → empty list (same contract as before).
+  let raw: string;
   try {
-    const raw = await readTextFile(path);
-    const messages = raw
-      .trimEnd()
-      .split('\n')
-      .filter((l) => l.length > 0)
-      .map((l) => JSON.parse(l) as Message);
-
-    // Populate dedup cache
-    populateWrittenIds(messages);
-
-    return messages;
-  } catch {
+    raw = await readTextFile(path);
+  } catch (err) {
+    console.warn(
+      `[conversationStorage] loadMessages(${convId}) readTextFile failed:`,
+      err,
+    );
     return [];
   }
+
+  // Per-line parse failures are tolerated: skip the bad line, keep the rest.
+  // Previously we .map()'d + caught the whole block, which meant any single
+  // corrupt line nuked the entire conversation for the UI even though most
+  // lines were fine. This is pure damage reduction for a storage bug we
+  // eventually need to fix on the write side (see conversationStorage write
+  // race / TODO in Task #15 follow-up).
+  const lines = raw.trimEnd().split('\n').filter((l) => l.length > 0);
+  const messages: Message[] = [];
+  let corruptCount = 0;
+  for (const line of lines) {
+    try {
+      messages.push(JSON.parse(line) as Message);
+    } catch {
+      corruptCount++;
+    }
+  }
+  if (corruptCount > 0) {
+    console.warn(
+      `[conversationStorage] loadMessages(${convId}): skipped ${corruptCount}/${lines.length} corrupt line(s). ` +
+        `The affected messages are lost, but ${messages.length} intact message(s) recovered.`,
+    );
+  }
+  populateWrittenIds(messages);
+  return messages;
 }
 
 /**
