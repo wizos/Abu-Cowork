@@ -394,8 +394,7 @@ export type SkillSource =
   | 'project'
   | 'project-standard'
   | 'workspace-auto'
-  | 'draft'
-  | 'third-party';     // Installed from a registry (CLAWhub etc.)
+  | 'draft';
 
 /**
  * User-facing skill categories surfaced in the Toolbox. This is a
@@ -407,7 +406,6 @@ export type SkillSource =
 export type SkillUXCategory =
   | 'mine'           // user / standard / project / project-standard
   | 'agent-evolved'  // workspace-auto / draft
-  | 'third-party'    // future registries
   | 'builtin';       // bundled with Abu
 
 export interface SkillMetadata {

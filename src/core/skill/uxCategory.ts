@@ -1,15 +1,13 @@
 /**
  * Source-to-UX-category mapping.
  *
- * The Toolbox shows 4 top-level skill buckets (`SkillUXCategory`):
+ * The Toolbox shows 3 top-level skill buckets (`SkillUXCategory`):
  *
  *   - **mine** — user/standard/project/project-standard. Everything
  *     the human (or their team's repo) explicitly put on disk.
  *   - **agent-evolved** — workspace-auto + draft. Everything Abu's
  *     self-evolution produced. Kept separate from `mine` so users
  *     can tell "I made this" from "Abu made this".
- *   - **third-party** — installed from a registry (CLAWhub, future
- *     sources). Empty in MVP; reserved for v0.14+.
  *   - **builtin** — bundled with the app binary.
  *
  * All Toolbox grouping goes through this function, so the enum-to-
@@ -31,8 +29,6 @@ export function sourceToUXCategory(source: SkillSource | undefined): SkillUXCate
     case 'workspace-auto':
     case 'draft':
       return 'agent-evolved';
-    case 'third-party':
-      return 'third-party';
     case 'builtin':
       return 'builtin';
     case undefined:

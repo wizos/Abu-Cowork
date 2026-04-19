@@ -10,7 +10,6 @@ import SkillEditor from './SkillEditor';
 import SkillDraftsPanel from './SkillDraftsPanel';
 import SkillCategoryBlocksPanel from './SkillCategoryBlocksPanel';
 import SkillHistoryModal from './SkillHistoryModal';
-import RegistryBrowserModal from './RegistryBrowserModal';
 import { Toggle } from '@/components/ui/toggle';
 import { Trash2, FileText, Folder, ChevronDown, ChevronRight, Pencil, MoreHorizontal, Eye, Code, Info, MessageCircle, Search, Plus, X, Wand2, PenLine, Upload, Download, Package, Loader2, Check, AlertCircle, Globe, Clock } from 'lucide-react';
 import { remove } from '@tauri-apps/plugin-fs';
@@ -176,7 +175,6 @@ export default function SkillsSection({ manualCreateTrigger, onAICreate, onManua
   const [editorSkill, setEditorSkill] = useState<Skill | 'new' | null>(null);
   const [menuSkill, setMenuSkill] = useState<string | null>(null);
   const [historySkill, setHistorySkill] = useState<Skill | null>(null);
-  const [registryBrowserOpen, setRegistryBrowserOpen] = useState(false);
   // Selected file within skill tree: null = show skill detail, string = show file content
   const [selectedFile, setSelectedFile] = useState<{ skillName: string; path: string } | null>(null);
   const [fileContent, setFileContent] = useState<string | null>(null);
@@ -254,7 +252,6 @@ export default function SkillsSection({ manualCreateTrigger, onAICreate, onManua
     const groups: Record<SkillUXCategory, Skill[]> = {
       mine: [],
       'agent-evolved': [],
-      'third-party': [],
       builtin: [],
     };
     for (const s of filteredSkills) {
@@ -795,58 +792,6 @@ export default function SkillsSection({ manualCreateTrigger, onAICreate, onManua
                 );
               })()}
 
-              {/* Category · Third-party — empty for now, but shown as a
-                  placeholder so users learn the feature exists. When
-                  the CLAWhub adapter ships, skills populate here with
-                  0 UI changes. The "浏览第三方市场" button opens
-                  RegistryBrowserModal (Task #25 D-UI) regardless of
-                  whether any skill has actually been installed yet. */}
-              <div>
-                <div
-                  className="flex items-center gap-1.5 px-5 py-2.5 cursor-pointer text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)]"
-                  onClick={() => toggleCategory('third-party')}
-                >
-                  {collapsedCategories.has('third-party')
-                    ? <ChevronRight className="h-3 w-3" />
-                    : <ChevronDown className="h-3 w-3" />
-                  }
-                  <span className="text-[13px] font-medium">{t.toolbox.categoryThirdParty}</span>
-                  {skillGroups['third-party'].length > 0 && (
-                    <span className="text-[11px] text-[var(--abu-text-placeholder)] ml-1">{skillGroups['third-party'].length}</span>
-                  )}
-                </div>
-                {!collapsedCategories.has('third-party') && (
-                  <>
-                    {skillGroups['third-party'].map((skill) => renderSkillRow(skill))}
-                    <div className="mx-5 mb-2 px-3 py-2 rounded-lg border border-dashed border-[var(--abu-border-subtle)] text-[11px] text-[var(--abu-text-muted)] leading-relaxed">
-                      <p className="mb-2">{t.toolbox.categoryThirdPartyEmpty}</p>
-                      {/* Close-the-loop: browse + import are shown side by
-                          side so users don't have to hunt the import
-                          command in the "+" menu after downloading an
-                          .askill from the external registry. Two buttons
-                          == two sides of the same flow. */}
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => setRegistryBrowserOpen(true)}
-                          className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--abu-clay)] hover:text-[var(--abu-clay-hover)] transition-colors"
-                        >
-                          <Package className="h-3 w-3" />
-                          {t.toolbox.registryBrowse}
-                        </button>
-                        <button
-                          onClick={handleImport}
-                          disabled={importInProgress}
-                          className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] transition-colors disabled:opacity-50"
-                        >
-                          <Upload className="h-3 w-3" />
-                          {t.toolbox.importSkill}
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-
               {/* Category · Built-in — bundled with Abu. Read-only. */}
               {skillGroups.builtin.length > 0 && (
                 <div>
@@ -1238,13 +1183,6 @@ export default function SkillsSection({ manualCreateTrigger, onAICreate, onManua
           skillName={historySkill.name}
           onClose={() => setHistorySkill(null)}
         />
-      )}
-
-      {/* Third-party registry browser (Task #25 D-UI). Opens from the
-          third-party category placeholder. Lists every registered
-          adapter; currently empty because no adapter is shipped yet. */}
-      {registryBrowserOpen && (
-        <RegistryBrowserModal onClose={() => setRegistryBrowserOpen(false)} />
       )}
 
       {/* Import conflict confirm — pops when `.askill` import finds an

@@ -18,10 +18,6 @@ describe('sourceToUXCategory', () => {
     expect(sourceToUXCategory('draft')).toBe('agent-evolved');
   });
 
-  it('maps third-party to its own bucket', () => {
-    expect(sourceToUXCategory('third-party')).toBe('third-party');
-  });
-
   it('maps builtin separately from mine', () => {
     expect(sourceToUXCategory('builtin')).toBe('builtin');
   });
