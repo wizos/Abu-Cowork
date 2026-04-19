@@ -778,6 +778,10 @@ export interface TranslationDict {
     skillProposalCardOnboardGateAction: string;  // button label
     // Interactive notice card · skill patched (Task #41)
     skillPatchedCardLabel: string;      // "Abu 修正了技能" / "Abu patched skill"
+    // Interactive notice card · skill deleted (Task #17 v2)
+    skillDeletedCardLabel: string;      // "Abu 删除了技能"
+    skillDeletedCardRescuable: string;  // "可在 7 天内恢复"
+    skillDeletedCardPermanent: string;  // "已永久删除"
     // Category blocks (Task #45 — reject-category undo)
     categoryBlocksTitle: string;        // "已屏蔽的同类提议"
     categoryBlocksCount: string;        // "{count} 条" interpolation

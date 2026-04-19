@@ -17,7 +17,7 @@
  */
 
 import { useState } from 'react';
-import { Sparkles, Check, X, Ban, Clock, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { Sparkles, Check, X, Ban, Clock, Trash2, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { useChatStore } from '@/stores/chatStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -90,6 +90,28 @@ export default function SkillProposalCard({
           {p.summary && (
             <span className="text-[var(--abu-text-muted)]"> — {p.summary}</span>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Skill-deleted notice (Task #17 v2) ────────────────────────────
+  // Read-only pill for "agent deleted a skill". Destructive action
+  // already happened on the filesystem, so this is pure signalling.
+  // For draft-source deletes we surface the 7-day recovery hint;
+  // workspace-auto deletes show the "permanent" tag so users know
+  // they'd need to recreate if they want it back.
+  if (card.type === 'skill-deleted' && card.skillDeleted) {
+    const d = card.skillDeleted;
+    return (
+      <div className="my-2 px-3 py-2 rounded-lg border border-[var(--abu-border-subtle)] bg-[var(--abu-bg-muted)] text-xs text-[var(--abu-text-tertiary)] flex items-start gap-2">
+        <Trash2 className="h-3.5 w-3.5 text-[var(--abu-text-muted)] flex-shrink-0 mt-0.5" />
+        <div className="min-w-0">
+          <span>{t.toolbox.skillDeletedCardLabel} </span>
+          <span className="font-medium text-[var(--abu-text-primary)]">{d.skillName}</span>
+          <span className="text-[var(--abu-text-muted)]">
+            {' '}— {d.rescuable ? t.toolbox.skillDeletedCardRescuable : t.toolbox.skillDeletedCardPermanent}
+          </span>
         </div>
       </div>
     );

@@ -479,3 +479,57 @@ describe('SkillProposalCard · skill-patched notice (Task #41)', () => {
     expect(screen.queryByText(/—/)).not.toBeInTheDocument();
   });
 });
+
+// Task #17 v2 · skill_manage(delete) emits a 'skill-deleted' notice
+// card. Destructive action already happened on disk — card is a
+// visibility pill, not interactive. For workspace-auto deletes the
+// pill flags "permanent"; for drafts it flags "recoverable".
+describe('SkillProposalCard · skill-deleted notice (Task #17 v2)', () => {
+  function renderDeleted(
+    overrides: Partial<Parameters<typeof makeDeletedCard>[0]> = {},
+  ) {
+    return render(
+      <SkillProposalCard
+        conversationId="conv-1"
+        messageId="msg-1"
+        toolCallId="tc-1"
+        card={makeDeletedCard(overrides)}
+      />,
+    );
+  }
+
+  it('renders "permanently removed" for workspace-auto deletes, no buttons', () => {
+    renderDeleted({ source: 'workspace-auto', rescuable: false });
+
+    expect(screen.getByText('Abu deleted skill')).toBeInTheDocument();
+    expect(screen.getByText('weekly-digest')).toBeInTheDocument();
+    expect(screen.getByText(/Permanently removed/)).toBeInTheDocument();
+    expect(screen.queryByText(/Recoverable for 7 days/)).not.toBeInTheDocument();
+    // Read-only — no accept/reject/etc.
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('renders "recoverable for 7 days" for draft deletes', () => {
+    renderDeleted({ source: 'draft', rescuable: true });
+
+    expect(screen.getByText(/Recoverable for 7 days/)).toBeInTheDocument();
+    expect(screen.queryByText(/Permanently removed/)).not.toBeInTheDocument();
+  });
+});
+
+function makeDeletedCard(overrides: {
+  source?: 'workspace-auto' | 'draft';
+  rescuable?: boolean;
+}): InteractiveNoticeCard {
+  return {
+    type: 'skill-deleted',
+    id: 'weekly-digest@1700000000000',
+    skillDeleted: {
+      skillName: 'weekly-digest',
+      skillDir: '/ws/skills/weekly-digest',
+      source: overrides.source ?? 'workspace-auto',
+      rescuable: overrides.rescuable ?? false,
+      workspacePath: '/Users/test/myproj',
+    },
+  };
+}

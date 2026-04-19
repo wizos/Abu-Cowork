@@ -591,11 +591,247 @@ describe('skill_manage · write_file', () => {
 // ── unknown action ─────────────────────────────────────────────────────
 
 describe('skill_manage · unknown action', () => {
-  it('returns helpful error naming v2+ actions', async () => {
+  it('returns helpful error listing all supported actions', async () => {
     const result = JSON.parse(
-      (await skillManageTool.execute({ action: 'edit', name: 'x' }, {})) as string,
+      (await skillManageTool.execute({ action: 'bogus', name: 'x' }, {})) as string,
     );
     expect(result.success).toBe(false);
-    expect(result.error).toMatch(/unknown action|edit.*v2|delete.*v2|remove_file.*v2/i);
+    expect(result.error).toMatch(/unknown action/i);
+    // All 6 v2 actions should be named in the error hint.
+    expect(result.error).toMatch(/create.*patch.*write_file.*edit.*delete.*remove_file/);
+  });
+});
+
+// ── edit (Task #17 v2) ─────────────────────────────────────────────────
+
+describe('skill_manage · edit', () => {
+  it('replaces SKILL.md content in a workspace-auto skill in place', async () => {
+    const skill = makeSkill('wa-skill', { source: 'workspace-auto', skillDir: '/ws/skills/wa-skill' });
+    vi.spyOn(skillLoader, 'getSkill').mockReturnValue(skill);
+
+    const newContent = '---\nname: wa-skill\ndescription: new desc\n---\n\n# Body\nNew content line one.\n';
+    const result = JSON.parse(
+      (await skillManageTool.execute(
+        { action: 'edit', name: 'wa-skill', content: newContent },
+        {},
+      )) as string,
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.status).toBe('applied');
+    expect(result.path).toBe('/ws/skills/wa-skill/SKILL.md');
+    // Notice card reuses skill-patched type so users get the same "Abu
+    // changed this skill" visibility as patch does.
+    expect(result.notice_card?.type).toBe('skill-patched');
+    expect(result.notice_card?.skillPatched?.skillName).toBe('wa-skill');
+    // The exact content we passed was atomically written.
+    const [, written] = mockAtomicWriteWithBackup.mock.calls[0];
+    expect(written).toBe(newContent);
+  });
+
+  it('forks via CoM when editing a read-only source (user scope)', async () => {
+    // user-scope skill → edit must copy to workspace-auto first, then
+    // write against the forked copy. This mirrors patch's CoM path.
+    const skill = makeSkill('user-skill', {
+      source: 'user',
+      skillDir: '/mock/user/user-skill',
+      filePath: '/mock/user/user-skill/SKILL.md',
+    });
+    vi.spyOn(skillLoader, 'getSkill').mockReturnValue(skill);
+    // CoM copyDirectoryContents walks the source dir — stub readDir so
+    // the walk completes without real filesystem.
+    const { readDir } = await import('@tauri-apps/plugin-fs');
+    vi.mocked(readDir).mockResolvedValue([]);
+
+    const newContent = '---\nname: user-skill\ndescription: forked desc\n---\n\n# Forked body\n';
+    const result = JSON.parse(
+      (await skillManageTool.execute(
+        { action: 'edit', name: 'user-skill', content: newContent },
+        {},
+      )) as string,
+    );
+
+    expect(result.success).toBe(true);
+    // Target path is under workspace-auto, not the original user dir.
+    expect(result.path).toContain('.abu/projects');
+    expect(result.path).toContain('user-skill');
+  });
+
+  it('rejects scope=user (MVP limitation)', async () => {
+    const result = JSON.parse(
+      (await skillManageTool.execute(
+        { action: 'edit', name: 'x', scope: 'user', content: '---\nname: x\ndescription: d\n---\n' },
+        {},
+      )) as string,
+    );
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/scope='user'|Module I/);
+  });
+
+  it('rejects edits that break SKILL.md frontmatter', async () => {
+    vi.spyOn(skillLoader, 'getSkill').mockReturnValue(
+      makeSkill('fm-skill', { source: 'workspace-auto' }),
+    );
+    // No --- delimiters at all — agent tried to rewrite skill but
+    // forgot frontmatter. Must be refused before atomic write runs.
+    const result = JSON.parse(
+      (await skillManageTool.execute(
+        { action: 'edit', name: 'fm-skill', content: '# Just a markdown title\n\nbody' },
+        {},
+      )) as string,
+    );
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/frontmatter/i);
+  });
+
+  it('rejects content that exceeds the size limit', async () => {
+    vi.spyOn(skillLoader, 'getSkill').mockReturnValue(
+      makeSkill('big', { source: 'workspace-auto' }),
+    );
+    const huge = 'x'.repeat(100_001);
+    const result = JSON.parse(
+      (await skillManageTool.execute(
+        { action: 'edit', name: 'big', content: huge },
+        {},
+      )) as string,
+    );
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/exceeds 100,?000|exceeds 100000/);
+  });
+});
+
+// ── delete (Task #17 v2) ──────────────────────────────────────────────
+
+describe('skill_manage · delete', () => {
+  it('permanently removes a workspace-auto skill directory', async () => {
+    const { remove } = await import('@tauri-apps/plugin-fs');
+    const mockRemove = vi.mocked(remove);
+    mockRemove.mockResolvedValueOnce(undefined);
+
+    const skill = makeSkill('wa-skill', {
+      source: 'workspace-auto',
+      skillDir: '/ws/.abu/projects/key/skills/wa-skill',
+    });
+    vi.spyOn(skillLoader, 'getSkill').mockReturnValue(skill);
+
+    const result = JSON.parse(
+      (await skillManageTool.execute({ action: 'delete', name: 'wa-skill' }, {})) as string,
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.message).toMatch(/permanently/i);
+    expect(mockRemove).toHaveBeenCalledWith(
+      '/ws/.abu/projects/key/skills/wa-skill',
+      { recursive: true },
+    );
+    // Notice card reflects destructive action so chat shows "Abu
+    // deleted skill X — permanently removed".
+    expect(result.notice_card?.type).toBe('skill-deleted');
+    expect(result.notice_card?.skillDeleted?.rescuable).toBe(false);
+    expect(result.notice_card?.skillDeleted?.source).toBe('workspace-auto');
+  });
+
+  it('routes draft deletes through rejectDraft for 7-day trash recovery', async () => {
+    // Draft deletes MUST go through the drafts trash flow — never
+    // permanent-delete a draft (would destroy 7-day recovery window).
+    const draftsModule = await import('../../skill/drafts');
+    const spy = vi
+      .spyOn(draftsModule, 'rejectDraft')
+      .mockResolvedValueOnce({ trashDir: '/ws/.abu/projects/key/skills/drafts/.trash/old-123' });
+
+    vi.spyOn(skillLoader, 'getSkill').mockReturnValue(
+      makeSkill('old', { source: 'draft', skillDir: '/ws/.../drafts/old' }),
+    );
+
+    const result = JSON.parse(
+      (await skillManageTool.execute({ action: 'delete', name: 'old' }, {})) as string,
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.message).toMatch(/trash/i);
+    expect(spy).toHaveBeenCalledWith('old', '/workspace/myapp');
+    expect(result.notice_card?.skillDeleted?.rescuable).toBe(true);
+    expect(result.notice_card?.skillDeleted?.source).toBe('draft');
+  });
+
+  it('refuses to delete user / project / builtin / standard sources', async () => {
+    // User curates those scopes — agent should not have the power to
+    // nuke them. Delete stays scoped to agent-created artifacts.
+    const forbiddenSources = ['user', 'project', 'builtin', 'standard', 'project-standard'] as const;
+
+    for (const source of forbiddenSources) {
+      vi.spyOn(skillLoader, 'getSkill').mockReturnValue(makeSkill('s', { source }));
+      const result = JSON.parse(
+        (await skillManageTool.execute({ action: 'delete', name: 's' }, {})) as string,
+      );
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(new RegExp(source, 'i'));
+    }
+  });
+
+  it('errors when the skill does not exist', async () => {
+    vi.spyOn(skillLoader, 'getSkill').mockReturnValue(undefined);
+    const result = JSON.parse(
+      (await skillManageTool.execute({ action: 'delete', name: 'ghost' }, {})) as string,
+    );
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/not found/i);
+  });
+});
+
+// ── remove_file (Task #17 v2) ─────────────────────────────────────────
+
+describe('skill_manage · remove_file', () => {
+  it('removes a supporting file from a workspace-auto skill', async () => {
+    const { remove } = await import('@tauri-apps/plugin-fs');
+    const mockRemove = vi.mocked(remove);
+    mockRemove.mockResolvedValueOnce(undefined);
+
+    vi.spyOn(skillLoader, 'getSkill').mockReturnValue(
+      makeSkill('wa', { source: 'workspace-auto', skillDir: '/ws/skills/wa' }),
+    );
+    mockExists.mockResolvedValueOnce(true);
+
+    const result = JSON.parse(
+      (await skillManageTool.execute(
+        { action: 'remove_file', name: 'wa', file_path: 'scripts/build.sh' },
+        {},
+      )) as string,
+    );
+
+    expect(result.success).toBe(true);
+    expect(mockRemove).toHaveBeenCalledWith('/ws/skills/wa/scripts/build.sh');
+  });
+
+  it('rejects SKILL.md root file (must use delete for whole-skill removal)', async () => {
+    // validateFilePath requires a subdir prefix, so SKILL.md at the
+    // root naturally fails the check. This is a regression guard:
+    // removing SKILL.md would leave a half-broken skill dir; `delete`
+    // is the right tool for wiping the whole thing.
+    const result = JSON.parse(
+      (await skillManageTool.execute(
+        { action: 'remove_file', name: 'x', file_path: 'SKILL.md' },
+        {},
+      )) as string,
+    );
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/subdir|references.*templates.*scripts.*assets/i);
+  });
+
+  it('errors when the supporting file does not exist', async () => {
+    vi.spyOn(skillLoader, 'getSkill').mockReturnValue(
+      makeSkill('wa', { source: 'workspace-auto', skillDir: '/ws/skills/wa' }),
+    );
+    // override beforeEach's mockExists.mockResolvedValue(true)
+    mockExists.mockReset().mockResolvedValue(false);
+
+    const result = JSON.parse(
+      (await skillManageTool.execute(
+        { action: 'remove_file', name: 'wa', file_path: 'scripts/missing.sh' },
+        {},
+      )) as string,
+    );
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/not found/i);
   });
 });

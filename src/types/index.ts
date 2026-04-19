@@ -60,24 +60,43 @@ export interface SkillPatchedPayload {
 }
 
 /**
+ * Payload for a "Abu deleted this skill" notice (Task #17 · v2 delete).
+ * Read-only surface — destructive action already happened, we just let
+ * the user see it. workspace-auto deletes are permanent; draft deletes
+ * go to trash (7-day recovery), indicated by `rescuable`.
+ */
+export interface SkillDeletedPayload {
+  skillName: string;
+  /** Absolute directory that was removed (or moved to trash). */
+  skillDir: string;
+  /** The skill's source before delete (workspace-auto | draft). */
+  source: 'workspace-auto' | 'draft';
+  /** True when the delete went to trash and can still be recovered. */
+  rescuable: boolean;
+  /** Workspace captured at delete time. */
+  workspacePath: string;
+}
+
+/**
  * Discriminated union of card types. Extend by adding a new `type`
  * literal + matching payload field (optional so narrowing by `type`
  * tells TS which payload to read).
  */
-export type NoticeCardType = 'skill-proposal' | 'skill-patched';
+export type NoticeCardType = 'skill-proposal' | 'skill-patched' | 'skill-deleted';
 
 export interface InteractiveNoticeCard {
   type: NoticeCardType;
   /**
    * Stable ID per card. For skill-proposal this equals the skill name
    * (used by settleCardsForSkill to find peer cards). For skill-patched
-   * it's `${skillName}@${timestamp}` — patch cards don't need peer
-   * settling, but do need unique IDs so rapid successive patches don't
-   * collapse visually.
+   * and skill-deleted it's `${skillName}@${timestamp}` — those cards
+   * don't need peer settling, but do need unique IDs so rapid
+   * successive actions don't collapse visually.
    */
   id: string;
   skillProposal?: SkillProposalPayload;
   skillPatched?: SkillPatchedPayload;
+  skillDeleted?: SkillDeletedPayload;
 }
 
 export interface ToolCall {

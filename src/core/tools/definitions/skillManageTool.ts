@@ -77,7 +77,7 @@ const ALLOWED_SUBDIRS: ReadonlySet<string> = new Set([
   'assets',
 ]);
 
-type SkillAction = 'create' | 'patch' | 'write_file';
+type SkillAction = 'create' | 'patch' | 'write_file' | 'edit' | 'delete' | 'remove_file';
 type SkillScope = 'workspace-auto' | 'user';
 
 // ── Path helpers ────────────────────────────────────────────────────────
@@ -817,12 +817,267 @@ async function writeFileAction(input: Record<string, unknown>, context?: ToolExe
   };
 }
 
+// ── Action: edit ─ full-file replace (Task #17 v2) ──────────────────────
+//
+// Contrast with patch: patch uses fuzzy find/replace, which is brittle
+// for big structural edits. edit takes the entire new content, so the
+// agent can rewrite a whole file in one shot. Targets SKILL.md by
+// default, can target supporting files via `file_path`.
+//
+// Scope rules identical to patch — CoM fork if existing source isn't
+// workspace-auto or draft; user scope rejected pending Module I UX.
+async function editAction(input: Record<string, unknown>, context?: ToolExecutionContext): Promise<ActionResult> {
+  const name = input.name as string;
+  const content = input.content as string;
+  const filePath = input.file_path as string | undefined;
+
+  const nameErr = validateName(name);
+  if (nameErr) return { success: false, error: nameErr };
+  if (content === undefined) return { success: false, error: 'content is required' };
+  if (content.length > MAX_CONTENT_CHARS) {
+    return { success: false, error: `content exceeds ${MAX_CONTENT_CHARS} chars` };
+  }
+
+  const requestedScope = (input.scope as SkillScope | undefined) ?? 'workspace-auto';
+  if (requestedScope === 'user') {
+    return {
+      success: false,
+      error:
+        "scope='user' writes are not yet supported in this MVP — they require the user-confirmation UX (Module I). Use scope='workspace-auto' (default).",
+    };
+  }
+
+  const workspacePath = requireWorkspace(context);
+
+  const existing = skillLoader.getSkill(name);
+  if (!existing) {
+    return {
+      success: false,
+      error: `skill "${name}" not found — edit requires the skill to exist first. Use create for a new skill.`,
+    };
+  }
+
+  // Pick target directory: existing location if writable, else CoM fork.
+  const targetDir =
+    existing.source === 'workspace-auto' || existing.source === 'draft'
+      ? existing.skillDir
+      : await ensureWorkspaceAutoCopy(existing, workspacePath);
+
+  // Pick target file: SKILL.md by default, or a supporting file.
+  let targetPath: string;
+  if (filePath) {
+    const pathErr = validateFilePath(filePath);
+    if (pathErr) return { success: false, error: pathErr };
+    targetPath = joinPath(targetDir, filePath);
+  } else {
+    targetPath = joinPath(targetDir, 'SKILL.md');
+  }
+
+  // When editing SKILL.md, verify the new content still has parseable
+  // frontmatter. Without this guard, an agent can accidentally wipe
+  // the `---\n...\n---` delimiters and brick the skill until someone
+  // edits the file by hand.
+  if (!filePath) {
+    const frontmatterOk = /^---\s*\n[\s\S]*?\n---\s*\n/.test(content);
+    if (!frontmatterOk) {
+      return {
+        success: false,
+        error: 'Edit would break SKILL.md frontmatter. Preserve the `---` delimiters and required fields (name, description).',
+      };
+    }
+  }
+
+  // Atomic write + scan + rollback. backupPath is null if the target
+  // didn't exist yet (e.g. editing a supporting file not present in
+  // the original skill) — rollback for that case just deletes the
+  // newly-created file.
+  let backupPath: string | null = null;
+  try {
+    const result = await atomicWriteWithBackup(targetPath, content);
+    backupPath = result.backupPath;
+  } catch (e) {
+    return { success: false, error: `write failed: ${e instanceof Error ? e.message : String(e)}` };
+  }
+
+  const blocked = await scanOrRollback(content, 'skill-patch', targetPath, backupPath);
+  if (blocked) return blocked;
+
+  await skillLoader.discoverSkills(workspacePath).catch(() => {});
+
+  // Same summary strategy as patch: first non-empty line, capped at 80
+  // chars. Reuses the skill-patched notice card type — from the user's
+  // POV edit and patch are both "Abu changed this skill", and we don't
+  // want to multiply card types that render identically.
+  const firstLine = content.split('\n').map((s) => s.trim()).find((s) => s.length > 0) ?? '';
+  const summary = firstLine.length > 80 ? `${firstLine.slice(0, 77)}...` : firstLine;
+
+  const noticeCard: InteractiveNoticeCard = {
+    type: 'skill-patched',
+    id: `${name}@${Date.now()}`,
+    skillPatched: {
+      skillName: name,
+      filePath: targetPath,
+      summary: summary || undefined,
+      workspacePath,
+    },
+  };
+
+  return {
+    success: true,
+    status: 'applied',
+    message: `Edited ${filePath ?? 'SKILL.md'} in "${name}".`,
+    path: targetPath,
+    notice_card: noticeCard,
+  };
+}
+
+// ── Action: delete ─ remove a skill (Task #17 v2) ───────────────────────
+//
+// MVP restriction: only workspace-auto and draft sources are deletable.
+// User/project/builtin/standard etc. are user-managed outside the
+// agent — if we let delete hit them, a misbehaving agent could nuke
+// hand-curated skills. Deletion of a draft reroutes to the existing
+// rejectDraft flow (→ trash, 7-day recovery). Deletion of a
+// workspace-auto skill is permanent (no git, no trash).
+async function deleteAction(input: Record<string, unknown>, context?: ToolExecutionContext): Promise<ActionResult> {
+  const name = input.name as string;
+
+  const nameErr = validateName(name);
+  if (nameErr) return { success: false, error: nameErr };
+
+  const workspacePath = requireWorkspace(context);
+
+  const existing = skillLoader.getSkill(name);
+  if (!existing) {
+    return { success: false, error: `skill "${name}" not found` };
+  }
+
+  if (existing.source !== 'workspace-auto' && existing.source !== 'draft') {
+    return {
+      success: false,
+      error: `delete only supports workspace-auto and draft sources; "${name}" is source=${existing.source}. Users manage those scopes directly (via filesystem or git).`,
+    };
+  }
+
+  let rescuable: boolean;
+  let finalPath: string;
+  try {
+    if (existing.source === 'draft') {
+      // Reuse the drafts trash flow — 7-day recovery window.
+      const { trashDir } = await rejectDraft(name, workspacePath);
+      finalPath = trashDir;
+      rescuable = true;
+    } else {
+      // Permanent delete for workspace-auto. We intentionally skip any
+      // trash/backup because workspace-auto is agent-created scratch —
+      // a restore path would just let mistakes accumulate as clutter.
+      const { remove } = await import('@tauri-apps/plugin-fs');
+      await remove(existing.skillDir, { recursive: true });
+      finalPath = existing.skillDir;
+      rescuable = false;
+    }
+  } catch (e) {
+    return { success: false, error: `delete failed: ${e instanceof Error ? e.message : String(e)}` };
+  }
+
+  await skillLoader.discoverSkills(workspacePath).catch(() => {});
+
+  const noticeCard: InteractiveNoticeCard = {
+    type: 'skill-deleted',
+    id: `${name}@${Date.now()}`,
+    skillDeleted: {
+      skillName: name,
+      skillDir: finalPath,
+      source: existing.source,
+      rescuable,
+      workspacePath,
+    },
+  };
+
+  return {
+    success: true,
+    status: 'applied',
+    message: rescuable
+      ? `Moved skill "${name}" to trash (7-day recovery).`
+      : `Deleted skill "${name}" permanently.`,
+    path: finalPath,
+    notice_card: noticeCard,
+  };
+}
+
+// ── Action: remove_file (Task #17 v2) ───────────────────────────────────
+//
+// Remove a single supporting file (references/templates/scripts/assets)
+// from a skill. Cannot target SKILL.md — validateFilePath requires a
+// subdir prefix, so SKILL.md at the root is naturally rejected. No
+// notice card — it's a minor maintenance op, not worth chat-level UI.
+async function removeFileAction(input: Record<string, unknown>, context?: ToolExecutionContext): Promise<ActionResult> {
+  const name = input.name as string;
+  const filePath = input.file_path as string;
+
+  const nameErr = validateName(name);
+  if (nameErr) return { success: false, error: nameErr };
+  const pathErr = validateFilePath(filePath);
+  if (pathErr) return { success: false, error: pathErr };
+
+  const requestedScope = (input.scope as SkillScope | undefined) ?? 'workspace-auto';
+  if (requestedScope === 'user') {
+    return {
+      success: false,
+      error: "scope='user' writes are not yet supported in this MVP (Module I pending).",
+    };
+  }
+
+  const workspacePath = requireWorkspace(context);
+
+  const existing = skillLoader.getSkill(name);
+  if (!existing) {
+    return { success: false, error: `skill "${name}" not found` };
+  }
+
+  // CoM rule mirrors patch/write_file — force the file to live under a
+  // writable source before we touch it. If the supporting file is
+  // missing from the read-only original, CoM copies it too (or not,
+  // if it never existed) and the existence check below catches it.
+  const targetDir =
+    existing.source === 'workspace-auto' || existing.source === 'draft'
+      ? existing.skillDir
+      : await ensureWorkspaceAutoCopy(existing, workspacePath);
+  const targetPath = joinPath(targetDir, filePath);
+
+  if (!(await exists(targetPath))) {
+    return { success: false, error: `file not found: ${filePath}` };
+  }
+
+  try {
+    const { remove } = await import('@tauri-apps/plugin-fs');
+    await remove(targetPath);
+  } catch (e) {
+    return { success: false, error: `remove failed: ${e instanceof Error ? e.message : String(e)}` };
+  }
+
+  await skillLoader.discoverSkills(workspacePath).catch(() => {});
+
+  return {
+    success: true,
+    status: 'applied',
+    message: `Removed ${filePath} from "${name}".`,
+    path: targetPath,
+  };
+}
+
 // ── Tool definition ─────────────────────────────────────────────────────
 
 export const skillManageTool: ToolDefinition = {
   name: TOOL_NAMES.SKILL_MANAGE,
   description:
-    '管理 skills（agent 的程序性记忆）。MVP 支持 3 个 action：create / patch（改已有 skill，自动 Copy-on-Modify）/ write_file（加/改支撑文件 references / templates / scripts / assets）。' +
+    '管理 skills（agent 的程序性记忆）。6 个 action：' +
+    '\n- **create**：新建 skill（必填 name + content + frontmatter.description）' +
+    '\n- **patch**：原地改已有 skill，基于 fuzzy 查找替换（old_string → new_string）' +
+    '\n- **edit**：整文件替换（比 patch 更可靠——大段改动时用 edit，不要硬塞给 patch）' +
+    '\n- **write_file**：给 skill 加/覆盖 支撑文件（references / templates / scripts / assets）' +
+    '\n- **remove_file**：删除 skill 的一个支撑文件（SKILL.md 不可删，需整体 delete）' +
+    '\n- **delete**：删除整个 skill（仅限 workspace-auto 和 draft；draft 走 trash 7 天可恢复，workspace-auto 永久删）' +
     '\n\n⚠️ create 必填参数：action="create" + name + content + frontmatter.description。' +
     '漏任何一个会立即失败。最小示例：' +
     '\n`skill_manage({ action:"create", name:"my-skill", frontmatter:{ description:"一句话说明这个 skill 干啥" }, content:"# My Skill\\n正文…" })`' +
@@ -831,6 +1086,8 @@ export const skillManageTool: ToolDefinition = {
     '\n- **agent_proposed=true** = 你自发提议（用户没明说要建） → 进草稿区等用户审核采纳' +
     '\n\n使用时机：完成 5+ 次工具调用的复杂任务、从错误恢复、用户纠正了做法、发现非直觉工作流，' +
     '考虑 create 沉淀。使用 skill 时发现过时或错误，立即 patch 修正。' +
+    '\n\n**改动自动 Copy-on-Modify**：对非 workspace-auto / draft 的 skill（user / project / builtin 等），' +
+    'patch / edit / write_file / remove_file 会先把整个 skill 拷贝到 workspace-auto 再改，不动原 skill。' +
     '\n\nscope 默认 workspace-auto（本项目 agent 自治区），建议 99% 情况都保持默认。' +
     'scope=user（全局写入）在 MVP 暂不支持，需要等 Module I 的确认 UX。',
   inputSchema: {
@@ -838,8 +1095,8 @@ export const skillManageTool: ToolDefinition = {
     properties: {
       action: {
         type: 'string',
-        enum: ['create', 'patch', 'write_file'],
-        description: 'create / patch / write_file',
+        enum: ['create', 'patch', 'write_file', 'edit', 'delete', 'remove_file'],
+        description: 'create / patch / write_file / edit / delete / remove_file',
       },
       name: {
         type: 'string',
@@ -875,7 +1132,7 @@ export const skillManageTool: ToolDefinition = {
       },
       content: {
         type: 'string',
-        description: '[create] SKILL.md 正文（最多 100,000 字符）',
+        description: '[create|edit] SKILL.md 正文（create 必填；edit 整文件替换，最多 100,000 字符）',
       },
       old_string: {
         type: 'string',
@@ -891,7 +1148,7 @@ export const skillManageTool: ToolDefinition = {
       },
       file_path: {
         type: 'string',
-        description: '[patch|write_file] 支撑文件相对路径，必须在 references/ | templates/ | scripts/ | assets/ 下',
+        description: '[patch|write_file|edit|remove_file] 支撑文件相对路径，必须在 references/ | templates/ | scripts/ | assets/ 下。edit 省略则指向 SKILL.md；remove_file 必填（SKILL.md 根文件不可删，需改用 delete 整个 skill）。',
       },
       file_content: {
         type: 'string',
@@ -926,10 +1183,19 @@ export const skillManageTool: ToolDefinition = {
         case 'write_file':
           result = await writeFileAction(input, context);
           break;
+        case 'edit':
+          result = await editAction(input, context);
+          break;
+        case 'delete':
+          result = await deleteAction(input, context);
+          break;
+        case 'remove_file':
+          result = await removeFileAction(input, context);
+          break;
         default:
           result = {
             success: false,
-            error: `unknown action "${action}". Supported: create, patch, write_file. (edit/delete/remove_file are v2+.)`,
+            error: `unknown action "${action}". Supported: create, patch, write_file, edit, delete, remove_file.`,
           };
       }
     } catch (e) {
