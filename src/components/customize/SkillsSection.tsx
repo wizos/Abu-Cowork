@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useDiscoveryStore } from '@/stores/discoveryStore';
+import { useSkillDraftsStore } from '@/stores/skillDraftsStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useChatStore } from '@/stores/chatStore';
 import { useI18n } from '@/i18n';
@@ -22,7 +23,8 @@ import { useToastStore } from '@/stores/toastStore';
 import { getParentDir } from '@/utils/pathUtils';
 import { Input } from '@/components/ui/input';
 import { format } from '@/i18n';
-import type { Skill } from '@/types';
+import type { Skill, SkillUXCategory } from '@/types';
+import { sourceToUXCategory } from '@/core/skill/uxCategory';
 import MarkdownRenderer from '@/components/chat/MarkdownRenderer';
 
 // Build a set of system skill names from marketplace templates
@@ -155,6 +157,10 @@ interface SkillsSectionProps {
 
 export default function SkillsSection({ manualCreateTrigger, onAICreate, onManualCreate, onUploadFile }: SkillsSectionProps) {
   const { skills, refresh } = useDiscoveryStore();
+  // We subscribe to drafts count here (not SkillDraftsPanel itself) so
+  // the 阿布沉淀 category's visibility condition accounts for pending
+  // drafts even when there are no workspace-auto skills yet.
+  const draftsCount = useSkillDraftsStore((s) => s.drafts.length);
   const { toolboxSearchQuery, setToolboxSearchQuery, disabledSkills, toggleSkillEnabled, closeToolbox } = useSettingsStore();
   const startNewConversation = useChatStore((s) => s.startNewConversation);
   const setPendingInput = useChatStore((s) => s.setPendingInput);
@@ -234,23 +240,22 @@ export default function SkillsSection({ manualCreateTrigger, onAICreate, onManua
   }, [installedSkills, searchLower]);
 
   // Group skills by source for display
+  // Group skills by UX category — 4 top-level buckets that match the
+  // user's mental model (mine / agent-evolved / third-party / builtin)
+  // rather than the raw on-disk source enum. See uxCategory.ts for
+  // the mapping; unknown sources are dropped with a console.warn so
+  // they don't silently land in "mine" (pre-refactor bug where
+  // workspace-auto skills looked like user-created ones).
   const skillGroups = useMemo(() => {
-    const groups: {
-      user: Skill[];       // ~/.abu/skills/ (user-created)
-      standard: Skill[];   // ~/.agents/skills/ (npx skills add -g)
-      project: Skill[];    // .abu/skills/ or .agents/skills/ (from repo)
-      builtin: Skill[];    // builtin-skills/
-    } = { user: [], standard: [], project: [], builtin: [] };
-
+    const groups: Record<SkillUXCategory, Skill[]> = {
+      mine: [],
+      'agent-evolved': [],
+      'third-party': [],
+      builtin: [],
+    };
     for (const s of filteredSkills) {
-      switch (s.source) {
-        case 'user': groups.user.push(s); break;
-        case 'standard': groups.standard.push(s); break;
-        case 'project':
-        case 'project-standard': groups.project.push(s); break;
-        case 'builtin': groups.builtin.push(s); break;
-        default: groups.user.push(s); break;
-      }
+      const cat = sourceToUXCategory(s.source);
+      if (cat) groups[cat].push(s);
     }
     return groups;
   }, [filteredSkills]);
@@ -608,80 +613,119 @@ export default function SkillsSection({ manualCreateTrigger, onAICreate, onManua
             </div>
           )}
         </div>
-        {/* Drafts review panel — hidden entirely when there are no drafts. */}
-        <SkillDraftsPanel />
         {/* Category blocks manager (Task #45 · reject-category undo) —
-            hidden when the workspace has no blocks. */}
+            hidden when the workspace has no blocks. Kept at the top
+            because it's a global "management" surface (not tied to any
+            one skill), and doesn't belong inside the 阿布沉淀 category. */}
         <SkillCategoryBlocksPanel />
         <div className="flex-1 overflow-y-auto overlay-scroll py-2">
           {filteredSkills.length === 0 ? (
             <div className="text-xs text-[var(--abu-text-muted)] py-8 text-center">{t.toolbox.noSkillsFound}</div>
           ) : (
             <>
-              {/* My skills (user-created in ~/.abu/skills/) */}
-              {skillGroups.user.length > 0 && (
+              {/* Category · Mine — user's own or team-shipped skills.
+                  Groups user/standard/project/project-standard into one
+                  bucket matching the user's mental model ("I or my
+                  team put this on disk"), instead of splitting by the
+                  implementation-level SkillSource enum. */}
+              {skillGroups.mine.length > 0 && (
                 <div>
                   <div
                     className="flex items-center gap-1.5 px-5 py-2.5 cursor-pointer text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)]"
-                    onClick={() => toggleCategory('my')}
+                    onClick={() => toggleCategory('mine')}
                   >
-                    {collapsedCategories.has('my')
+                    {collapsedCategories.has('mine')
                       ? <ChevronRight className="h-3 w-3" />
                       : <ChevronDown className="h-3 w-3" />
                     }
-                    <span className="text-[13px] font-medium">{t.toolbox.mySkills}</span>
+                    <span className="text-[13px] font-medium">{t.toolbox.categoryMine}</span>
+                    <span className="text-[11px] text-[var(--abu-text-placeholder)] ml-1">{skillGroups.mine.length}</span>
                   </div>
-                  {!collapsedCategories.has('my') && skillGroups.user.map((skill) => renderSkillRow(skill))}
+                  {!collapsedCategories.has('mine') && skillGroups.mine.map((skill) => renderSkillRow(skill))}
                 </div>
               )}
-              {/* Global installed (npx skills add -g → ~/.agents/skills/) */}
-              {skillGroups.standard.length > 0 && (
+
+              {/* Category · Agent-evolved — everything Abu's self-
+                  evolution produced: pending drafts (via embedded
+                  SkillDraftsPanel with its accept/reject UX) + accepted
+                  workspace-auto skills. Merging them under one header
+                  matches the user's mental model — both are "Abu made
+                  this" — and replaces the old standalone top-of-page
+                  drafts panel. The category shows whenever there's
+                  anything to display in either slot. */}
+              {(draftsCount > 0 ||
+                skillGroups['agent-evolved'].filter((s) => s.source === 'workspace-auto').length > 0) && (
                 <div>
                   <div
                     className="flex items-center gap-1.5 px-5 py-2.5 cursor-pointer text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)]"
-                    onClick={() => toggleCategory('standard')}
+                    onClick={() => toggleCategory('agent-evolved')}
                   >
-                    {collapsedCategories.has('standard')
+                    {collapsedCategories.has('agent-evolved')
                       ? <ChevronRight className="h-3 w-3" />
                       : <ChevronDown className="h-3 w-3" />
                     }
-                    <span className="text-[13px] font-medium">{t.toolbox.globalSkills}</span>
-                    <span className="text-[11px] text-[var(--abu-text-placeholder)] ml-1">{skillGroups.standard.length}</span>
+                    <span className="text-[13px] font-medium">{t.toolbox.categoryAgentEvolved}</span>
+                    <span className="ml-1.5 px-1.5 py-0.5 text-[10px] rounded bg-purple-100 text-purple-700">{t.toolbox.categoryAgentEvolvedBadge}</span>
                   </div>
-                  {!collapsedCategories.has('standard') && skillGroups.standard.map((skill) => renderSkillRow(skill))}
+                  {!collapsedCategories.has('agent-evolved') && (
+                    <>
+                      {/* Drafts — SkillDraftsPanel already self-hides
+                          when draftsCount is 0, but the outer category
+                          only mounts when something is visible anyway. */}
+                      <SkillDraftsPanel />
+                      {/* Accepted workspace-auto skills. */}
+                      {skillGroups['agent-evolved']
+                        .filter((s) => s.source === 'workspace-auto')
+                        .map((skill) => renderSkillRow(skill))}
+                    </>
+                  )}
                 </div>
               )}
-              {/* Project-level skills (.agents/skills/ or .abu/skills/ from repo) */}
-              {skillGroups.project.length > 0 && (
-                <div>
-                  <div
-                    className="flex items-center gap-1.5 px-5 py-2.5 cursor-pointer text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)]"
-                    onClick={() => toggleCategory('project')}
-                  >
-                    {collapsedCategories.has('project')
-                      ? <ChevronRight className="h-3 w-3" />
-                      : <ChevronDown className="h-3 w-3" />
-                    }
-                    <span className="text-[13px] font-medium">{t.toolbox.projectSkills}</span>
-                    <span className="ml-1.5 px-1.5 py-0.5 text-[10px] rounded bg-amber-100 text-amber-700">{t.toolbox.projectSkillsBadge}</span>
-                  </div>
-                  {!collapsedCategories.has('project') && skillGroups.project.map((skill) => renderSkillRow(skill))}
+
+              {/* Category · Third-party — empty for now, but shown as a
+                  placeholder so users learn the feature exists. When
+                  CLAWhub / SkillsHub adapters ship, skills populate here
+                  with 0 UI changes. Hidden when collapsed; otherwise
+                  renders the "how to add" hint. */}
+              <div>
+                <div
+                  className="flex items-center gap-1.5 px-5 py-2.5 cursor-pointer text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)]"
+                  onClick={() => toggleCategory('third-party')}
+                >
+                  {collapsedCategories.has('third-party')
+                    ? <ChevronRight className="h-3 w-3" />
+                    : <ChevronDown className="h-3 w-3" />
+                  }
+                  <span className="text-[13px] font-medium">{t.toolbox.categoryThirdParty}</span>
+                  {skillGroups['third-party'].length > 0 && (
+                    <span className="text-[11px] text-[var(--abu-text-placeholder)] ml-1">{skillGroups['third-party'].length}</span>
+                  )}
                 </div>
-              )}
-              {/* Built-in skills (bundled with Abu) */}
+                {!collapsedCategories.has('third-party') && (
+                  skillGroups['third-party'].length > 0
+                    ? skillGroups['third-party'].map((skill) => renderSkillRow(skill))
+                    : (
+                      <div className="mx-5 mb-2 px-3 py-2 rounded-lg border border-dashed border-[var(--abu-border-subtle)] text-[11px] text-[var(--abu-text-muted)] leading-relaxed">
+                        {t.toolbox.categoryThirdPartyEmpty}
+                      </div>
+                    )
+                )}
+              </div>
+
+              {/* Category · Built-in — bundled with Abu. Read-only. */}
               {skillGroups.builtin.length > 0 && (
                 <div>
                   <div
                     className="flex items-center gap-1.5 px-5 py-2.5 cursor-pointer text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)]"
-                    onClick={() => toggleCategory('examples')}
+                    onClick={() => toggleCategory('builtin')}
                   >
-                    {collapsedCategories.has('examples')
+                    {collapsedCategories.has('builtin')
                       ? <ChevronRight className="h-3 w-3" />
                       : <ChevronDown className="h-3 w-3" />
                     }
-                    <span className="text-[13px] font-medium">{t.toolbox.exampleSkills}</span>
+                    <span className="text-[13px] font-medium">{t.toolbox.categoryBuiltin}</span>
                   </div>
-                  {!collapsedCategories.has('examples') && skillGroups.builtin.map((skill) => renderSkillRow(skill))}
+                  {!collapsedCategories.has('builtin') && skillGroups.builtin.map((skill) => renderSkillRow(skill))}
                 </div>
               )}
             </>

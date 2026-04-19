@@ -653,11 +653,21 @@ export interface TranslationDict {
     skillAdvancedSettings: string;
     skillFiles: string;
     skillAddedBy: string;
+    // Legacy category keys — retained for any straggler consumers, but
+    // SkillsSection now drives its UX categorization through the
+    // category* keys below (Task #25 taxonomy rework).
     mySkills: string;
     exampleSkills: string;
     globalSkills: string;
     projectSkills: string;
     projectSkillsBadge: string;
+    // UX categories (Task #25 rework) — what users see in Toolbox.
+    categoryMine: string;              // "我的"
+    categoryAgentEvolved: string;      // "阿布沉淀"
+    categoryAgentEvolvedBadge: string; // small badge e.g. "自进化"
+    categoryThirdParty: string;        // "第三方市场"
+    categoryThirdPartyEmpty: string;   // placeholder when no third-party skills yet
+    categoryBuiltin: string;           // "内置"
     skillSourceBuiltin: string;
     skillSourceUser: string;
     skillSourceStandard: string;

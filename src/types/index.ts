@@ -394,7 +394,21 @@ export type SkillSource =
   | 'project'
   | 'project-standard'
   | 'workspace-auto'
-  | 'draft';
+  | 'draft'
+  | 'third-party';     // Installed from a registry (CLAWhub / SkillsHub / …)
+
+/**
+ * User-facing skill categories surfaced in the Toolbox. This is a
+ * coarser taxonomy than SkillSource: it groups several on-disk
+ * sources into one mental-model bucket. The Toolbox never shows
+ * SkillSource directly to users — it always goes through
+ * `sourceToUXCategory()` first.
+ */
+export type SkillUXCategory =
+  | 'mine'           // user / standard / project / project-standard
+  | 'agent-evolved'  // workspace-auto / draft
+  | 'third-party'    // future registries
+  | 'builtin';       // bundled with Abu
 
 export interface SkillMetadata {
   name: string;
