@@ -55,12 +55,14 @@ describe('chatStore', () => {
       expect(useChatStore.getState().activeConversationId).toBeNull();
     });
 
-    it('does NOT clear the global workspace (Task #34 regression)', () => {
-      // User has been working in some workspace; clicking "新建任务" should
-      // keep that context so the next message auto-binds to it.
+    it('clears the global workspace (top-level "新建任务" = fresh start)', () => {
+      // Mental model: top-level "新建任务" is "step out of current project
+      // context". No ambient workspace leak into the new task. If agent
+      // needs workspace later it'll call request_workspace (orchestrator
+      // workspace-hint + Task #37 hint chain).
       useChatStore.getState().createConversation();
       useChatStore.getState().startNewConversation();
-      expect(mockClearWorkspace).not.toHaveBeenCalled();
+      expect(mockClearWorkspace).toHaveBeenCalled();
     });
   });
 
@@ -79,13 +81,16 @@ describe('chatStore', () => {
       expect(mockSetWorkspace).toHaveBeenCalledWith('/Users/test/bound');
     });
 
-    it('does NOT clear workspace when target conv has no binding (Task #34)', async () => {
-      // Scenario that used to break self-evolution E2E:
-      // user has workspace set, switches to an unbound conv,
-      // old code cleared workspace → skill_manage fails with "no workspace".
+    it('clears workspace when target conv has no binding', async () => {
+      // Users expect each conversation to track with its own workspace.
+      // Switching to an unbound conv with stale ambient workspace would
+      // confuse the user ("why is my project still showing?"). Clearing
+      // here makes conv ↔ workspace relationship predictable; the earlier
+      // "tool lost workspace mid-session" cascade is defended by the
+      // b2b69c6 / ffeb7cb / 4ba56d3 patches downstream.
       const id = useChatStore.getState().createConversation(); // no workspace arg
       await useChatStore.getState().switchConversation(id);
-      expect(mockClearWorkspace).not.toHaveBeenCalled();
+      expect(mockClearWorkspace).toHaveBeenCalled();
     });
   });
 

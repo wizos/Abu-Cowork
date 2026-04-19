@@ -261,12 +261,12 @@ export const useChatStore = create<ChatStore>()(
         set((state) => {
           state.activeConversationId = null;
         });
-        // Do NOT clear global workspace — it's a UI-level "current working
-        // project" context, not a per-conversation property. Clearing on
-        // "new task" made users lose workspace binding and caused cascading
-        // tool failures (skill_manage no-workspace errors); when they hit
-        // Send on the welcome page, createConversation reads the still-set
-        // workspacePath and the new conv auto-inherits it. See Task #34.
+        // Top-level "新建任务" is semantically "step out of the current
+        // project context" — clear the global workspace so the welcome
+        // page starts fresh, no ambient project leak. If the user's new
+        // task needs a workspace, agent will call request_workspace (see
+        // orchestrator workspace-hint + skill_manage error hint).
+        useWorkspaceStore.getState().clearWorkspace();
       },
 
       switchConversation: async (id) => {
@@ -290,10 +290,13 @@ export const useChatStore = create<ChatStore>()(
         // so the target conversation is protected from eviction
         get().unloadOldConversations();
 
-        // Sync workspace ONLY if the target conversation has an explicit
-        // binding. If not, keep whatever the user was just working in —
-        // clearing here caused a chain of bugs (see 4ba56d3 / b2b69c6 /
-        // ffeb7cb) where tools lost workspace mid-session. See Task #34.
+        // Sync workspace to the target conversation. If the target has no
+        // binding, clear so UI doesn't show a stale workspace from the
+        // previous conv — users expect conversation and workspace to
+        // track together. Downstream "tool lost workspace mid-session"
+        // bugs from the earlier cascade (4ba56d3 / b2b69c6 / ffeb7cb)
+        // are handled by those existing defensive patches + request_
+        // workspace agent fallback (Task #37), not by this switch path.
         const ws = useWorkspaceStore.getState();
         const conv = get().conversations[id];
         if (conv?.workspacePath) {
@@ -301,7 +304,7 @@ export const useChatStore = create<ChatStore>()(
         } else {
           const meta = get().conversationIndex[id];
           if (meta?.workspacePath) ws.setWorkspace(meta.workspacePath);
-          // else: leave global workspace as-is
+          else ws.clearWorkspace();
         }
       },
 
