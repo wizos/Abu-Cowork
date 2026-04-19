@@ -179,7 +179,7 @@ function ToolCallItem({ toolCall, isLast }: { toolCall: ToolCall; isLast: boolea
           {/* Input */}
           <div>
             <div className="text-[9px] font-semibold text-white/30 uppercase tracking-wider mb-1">Input</div>
-            <pre className="text-[11px] font-mono text-[#a8c5da] whitespace-pre-wrap break-words leading-relaxed">
+            <pre className="text-[11px] font-mono text-[#a8c5da] whitespace-pre-wrap break-words leading-relaxed max-h-[240px] overflow-y-auto">
               {JSON.stringify(toolCall.input, null, 2)}
             </pre>
           </div>
