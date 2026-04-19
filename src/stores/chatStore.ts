@@ -561,6 +561,30 @@ export const useChatStore = create<ChatStore>()(
       },
 
       setPendingProposalSignal: (convId, signal) => {
+        // By design: NOT PERSISTED.
+        //
+        // The signal lives only on the in-memory Conversation object
+        // (conversations are backed by JSONL on disk, but that file
+        // persists messages only — conv-level fields stay ephemeral).
+        //
+        // We *want* this to be ephemeral. Reasons (see proposalSignal.ts
+        // module docstring):
+        //   1. Avoid stale signals firing days later after the user
+        //      already moved on ("why is Abu suddenly asking about a
+        //      task I did last Tuesday?").
+        //   2. Avoid signals computed under one proactivity preset
+        //      firing under a different preset (user dialed from
+        //      butler to shy, signal from butler-era would surprise).
+        //   3. Keeps the mental model simple — signal is a nudge for
+        //      the *next turn in the current session*, nothing more.
+        //
+        // Losing the signal on app restart is fine: the next
+        // sink-worthy loop will compute a fresh one. The only impact
+        // is that the specific loop that fired signal pre-restart
+        // doesn't get a follow-up nudge — and that's a feature, see (1).
+        //
+        // If you think this needs to persist, re-read proposalSignal.ts
+        // first and convince yourself (1)-(3) don't apply.
         set((state) => {
           const conv = state.conversations[convId];
           if (conv) conv.pendingProposalSignal = signal;
