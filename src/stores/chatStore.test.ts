@@ -383,4 +383,107 @@ describe('chatStore', () => {
       expect(useChatStore.getState().pendingInput).toBeNull();
     });
   });
+
+  // ── updateToolCall · notice_card extraction ──
+  // Integration seam: skillManageTool emits notice_card inside its JSON
+  // result string; chatStore must lift it onto tc.noticeCard so
+  // SkillProposalCard can pick it up. Between these two layers sits a
+  // JSON.parse + key lookup that nothing else in the suite covers.
+  describe('updateToolCall · notice_card extraction (Task #39 / #41 seam)', () => {
+    function seedToolCall() {
+      const convId = useChatStore.getState().createConversation();
+      useChatStore.getState().addMessage(convId, {
+        id: 'msg-1',
+        role: 'assistant',
+        content: '',
+        timestamp: Date.now(),
+        toolCalls: [
+          {
+            id: 'tc-1',
+            name: 'skill_manage',
+            input: {},
+            isExecuting: true,
+          },
+        ],
+      });
+      return convId;
+    }
+
+    function getToolCall(convId: string) {
+      return useChatStore.getState().conversations[convId]?.messages[0]?.toolCalls?.[0];
+    }
+
+    it('lifts a skill-proposal notice_card from JSON result onto the tool call', () => {
+      const convId = seedToolCall();
+      const result = JSON.stringify({
+        success: true,
+        notice_card: {
+          type: 'skill-proposal',
+          id: 'weekly-digest',
+          skillProposal: {
+            skillName: 'weekly-digest',
+            description: 'x',
+            draftPath: '/drafts/weekly-digest/SKILL.md',
+            fullContent: '# body',
+            workspacePath: '/ws',
+          },
+        },
+      });
+
+      useChatStore.getState().updateToolCall(convId, 'msg-1', 'tc-1', result);
+
+      const tc = getToolCall(convId);
+      expect(tc?.noticeCard?.type).toBe('skill-proposal');
+      expect(tc?.noticeCard?.id).toBe('weekly-digest');
+      expect(tc?.noticeCard?.skillProposal?.skillName).toBe('weekly-digest');
+    });
+
+    it('lifts a skill-patched notice_card (Task #41 card type)', () => {
+      const convId = seedToolCall();
+      const result = JSON.stringify({
+        success: true,
+        status: 'applied',
+        notice_card: {
+          type: 'skill-patched',
+          id: 'weekly-digest@1700000000000',
+          skillPatched: {
+            skillName: 'weekly-digest',
+            filePath: '/ws/skills/weekly-digest/SKILL.md',
+            summary: 'replace step 3 with fuzzy-match',
+            workspacePath: '/ws',
+          },
+        },
+      });
+
+      useChatStore.getState().updateToolCall(convId, 'msg-1', 'tc-1', result);
+
+      const tc = getToolCall(convId);
+      expect(tc?.noticeCard?.type).toBe('skill-patched');
+      expect(tc?.noticeCard?.skillPatched?.summary).toBe('replace step 3 with fuzzy-match');
+    });
+
+    it('leaves noticeCard unset when the result has no notice_card field', () => {
+      const convId = seedToolCall();
+      useChatStore.getState().updateToolCall(
+        convId,
+        'msg-1',
+        'tc-1',
+        JSON.stringify({ success: true, message: 'plain result' }),
+      );
+      expect(getToolCall(convId)?.noticeCard).toBeUndefined();
+    });
+
+    it('swallows non-JSON results without crashing (best-effort guarantee)', () => {
+      const convId = seedToolCall();
+      // Regression: some tools return plain strings (bash stdout etc.).
+      // The silent catch in updateToolCall must not throw — the result
+      // still needs to land, just without a card.
+      expect(() =>
+        useChatStore.getState().updateToolCall(convId, 'msg-1', 'tc-1', 'not json at all'),
+      ).not.toThrow();
+      const tc = getToolCall(convId);
+      expect(tc?.result).toBe('not json at all');
+      expect(tc?.noticeCard).toBeUndefined();
+    });
+  });
 });
