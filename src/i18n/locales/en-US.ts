@@ -692,7 +692,7 @@ const enUS: TranslationDict = {
     categoryAgentEvolved: 'Abu evolved',
     categoryAgentEvolvedEmpty: "Abu will propose reusable skills from your recurring tasks, and they'll land here for you to accept, reject, or decide later.",
     categoryThirdParty: 'Third-party',
-    categoryThirdPartyEmpty: 'No third-party skills yet. CLAWhub and similar registries will plug in here.',
+    categoryThirdPartyEmpty: 'Download a .askill file from Clawhub (or another registry), then import it here.',
     registryBrowse: 'Browse third-party sources',
     registryModalTitle: 'Third-party skill sources',
     registryEmptyTitle: 'No registries connected yet',

@@ -692,7 +692,7 @@ const zhCN: TranslationDict = {
     categoryAgentEvolvedBadge: '自进化',
     categoryAgentEvolvedEmpty: '阿布在日常任务中会自动沉淀可复用技能，之后会出现在这里。你可以采纳、拒绝或"稍后处理"。',
     categoryThirdParty: '第三方市场',
-    categoryThirdPartyEmpty: '暂无第三方技能。未来可以从 CLAWhub 等市场装入。',
+    categoryThirdPartyEmpty: '从 Clawhub 等公开市场获取 .askill 文件，然后导入即可。',
     registryBrowse: '浏览第三方市场',
     registryModalTitle: '第三方技能市场',
     registryEmptyTitle: '暂未接入第三方市场',

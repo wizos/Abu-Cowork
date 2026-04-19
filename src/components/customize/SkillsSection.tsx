@@ -820,13 +820,28 @@ export default function SkillsSection({ manualCreateTrigger, onAICreate, onManua
                     {skillGroups['third-party'].map((skill) => renderSkillRow(skill))}
                     <div className="mx-5 mb-2 px-3 py-2 rounded-lg border border-dashed border-[var(--abu-border-subtle)] text-[11px] text-[var(--abu-text-muted)] leading-relaxed">
                       <p className="mb-2">{t.toolbox.categoryThirdPartyEmpty}</p>
-                      <button
-                        onClick={() => setRegistryBrowserOpen(true)}
-                        className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--abu-clay)] hover:text-[var(--abu-clay-hover)] transition-colors"
-                      >
-                        <Package className="h-3 w-3" />
-                        {t.toolbox.registryBrowse}
-                      </button>
+                      {/* Close-the-loop: browse + import are shown side by
+                          side so users don't have to hunt the import
+                          command in the "+" menu after downloading an
+                          .askill from the external registry. Two buttons
+                          == two sides of the same flow. */}
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => setRegistryBrowserOpen(true)}
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--abu-clay)] hover:text-[var(--abu-clay-hover)] transition-colors"
+                        >
+                          <Package className="h-3 w-3" />
+                          {t.toolbox.registryBrowse}
+                        </button>
+                        <button
+                          onClick={handleImport}
+                          disabled={importInProgress}
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] transition-colors disabled:opacity-50"
+                        >
+                          <Upload className="h-3 w-3" />
+                          {t.toolbox.importSkill}
+                        </button>
+                      </div>
                     </div>
                   </>
                 )}
