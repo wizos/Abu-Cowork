@@ -13,6 +13,7 @@ const PERSISTED_STORES = [
   { key: 'abu-triggers', minVersion: 4 },
   { key: 'abu-im-channel', minVersion: 2 },
   { key: 'abu-projects', minVersion: 1 },
+  { key: 'abu-project-hint', minVersion: 1 },
 ] as const;
 
 // Import all stores to trigger persist initialization
@@ -27,6 +28,7 @@ beforeAll(async () => {
   await import('./triggerStore');
   await import('./imChannelStore');
   await import('./projectStore');
+  await import('./projectHintStore');
 });
 
 describe('Store version compliance', () => {
