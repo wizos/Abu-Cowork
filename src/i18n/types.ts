@@ -675,6 +675,15 @@ export interface TranslationDict {
     categoryAgentEvolvedEmpty: string; // placeholder when no drafts + no workspace-auto skills
     categoryThirdParty: string;        // "第三方市场"
     categoryThirdPartyEmpty: string;   // placeholder when no third-party skills yet
+    // Registry browser modal (Task #25 D-UI) — lists pluggable third-party sources.
+    registryBrowse: string;              // CTA on the empty placeholder
+    registryModalTitle: string;          // "第三方技能市场"
+    registryEmptyTitle: string;          // main copy when 0 adapters registered
+    registryEmptyHint: string;           // sub-copy naming expected registries
+    registryStatusAvailable: string;     // "可用"
+    registryStatusUnavailable: string;   // "未配置"
+    registryRequiresAuth: string;        // "需登录"
+    registryBrowseComingSoon: string;    // toast when clicking an adapter row (D-UI placeholder)
     categoryBuiltin: string;           // "内置"
     skillSourceBuiltin: string;
     skillSourceUser: string;
