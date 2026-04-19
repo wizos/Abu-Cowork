@@ -690,6 +690,7 @@ const zhCN: TranslationDict = {
     categoryMine: '我的',
     categoryAgentEvolved: '阿布沉淀',
     categoryAgentEvolvedBadge: '自进化',
+    categoryAgentEvolvedEmpty: '阿布在日常任务中会自动沉淀可复用技能，之后会出现在这里。你可以采纳、拒绝或"稍后处理"。',
     categoryThirdParty: '第三方市场',
     categoryThirdPartyEmpty: '暂无第三方技能。未来可以从 CLAWhub、团队 SkillsHub 等装入。',
     categoryBuiltin: '内置',

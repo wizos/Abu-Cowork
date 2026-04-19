@@ -747,39 +747,51 @@ export default function SkillsSection({ manualCreateTrigger, onAICreate, onManua
               {/* Category · Agent-evolved — everything Abu's self-
                   evolution produced: pending drafts (via embedded
                   SkillDraftsPanel with its accept/reject UX) + accepted
-                  workspace-auto skills. Merging them under one header
-                  matches the user's mental model — both are "Abu made
-                  this" — and replaces the old standalone top-of-page
-                  drafts panel. The category shows whenever there's
-                  anything to display in either slot. */}
-              {(draftsCount > 0 ||
-                skillGroups['agent-evolved'].filter((s) => s.source === 'workspace-auto').length > 0) && (
-                <div>
-                  <div
-                    className="flex items-center gap-1.5 px-5 py-2.5 cursor-pointer text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)]"
-                    onClick={() => toggleCategory('agent-evolved')}
-                  >
-                    {collapsedCategories.has('agent-evolved')
-                      ? <ChevronRight className="h-3 w-3" />
-                      : <ChevronDown className="h-3 w-3" />
-                    }
-                    <span className="text-[13px] font-medium">{t.toolbox.categoryAgentEvolved}</span>
-                    <span className="ml-1.5 px-1.5 py-0.5 text-[10px] rounded bg-purple-100 text-purple-700">{t.toolbox.categoryAgentEvolvedBadge}</span>
+                  workspace-auto skills. Always visible (even when
+                  empty) so users learn self-evolution is a feature —
+                  same discoverability reasoning as the third-party
+                  section. Empty-state placeholder explains what will
+                  appear here once Abu starts proposing skills. */}
+              {(() => {
+                const workspaceAutoSkills = skillGroups['agent-evolved'].filter(
+                  (s) => s.source === 'workspace-auto',
+                );
+                const isEmpty = draftsCount === 0 && workspaceAutoSkills.length === 0;
+                const totalCount = draftsCount + workspaceAutoSkills.length;
+                return (
+                  <div>
+                    <div
+                      className="flex items-center gap-1.5 px-5 py-2.5 cursor-pointer text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)]"
+                      onClick={() => toggleCategory('agent-evolved')}
+                    >
+                      {collapsedCategories.has('agent-evolved')
+                        ? <ChevronRight className="h-3 w-3" />
+                        : <ChevronDown className="h-3 w-3" />
+                      }
+                      <span className="text-[13px] font-medium">{t.toolbox.categoryAgentEvolved}</span>
+                      <span className="ml-1.5 px-1.5 py-0.5 text-[10px] rounded bg-purple-100 text-purple-700">{t.toolbox.categoryAgentEvolvedBadge}</span>
+                      {totalCount > 0 && (
+                        <span className="text-[11px] text-[var(--abu-text-placeholder)] ml-1">{totalCount}</span>
+                      )}
+                    </div>
+                    {!collapsedCategories.has('agent-evolved') && (
+                      isEmpty ? (
+                        <div className="mx-5 mb-2 px-3 py-2 rounded-lg border border-dashed border-[var(--abu-border-subtle)] text-[11px] text-[var(--abu-text-muted)] leading-relaxed">
+                          {t.toolbox.categoryAgentEvolvedEmpty}
+                        </div>
+                      ) : (
+                        <>
+                          {/* Drafts — SkillDraftsPanel already self-hides
+                              when draftsCount is 0. */}
+                          <SkillDraftsPanel />
+                          {/* Accepted workspace-auto skills. */}
+                          {workspaceAutoSkills.map((skill) => renderSkillRow(skill))}
+                        </>
+                      )
+                    )}
                   </div>
-                  {!collapsedCategories.has('agent-evolved') && (
-                    <>
-                      {/* Drafts — SkillDraftsPanel already self-hides
-                          when draftsCount is 0, but the outer category
-                          only mounts when something is visible anyway. */}
-                      <SkillDraftsPanel />
-                      {/* Accepted workspace-auto skills. */}
-                      {skillGroups['agent-evolved']
-                        .filter((s) => s.source === 'workspace-auto')
-                        .map((skill) => renderSkillRow(skill))}
-                    </>
-                  )}
-                </div>
-              )}
+                );
+              })()}
 
               {/* Category · Third-party — empty for now, but shown as a
                   placeholder so users learn the feature exists. When

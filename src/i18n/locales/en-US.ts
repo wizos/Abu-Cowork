@@ -690,6 +690,7 @@ const enUS: TranslationDict = {
     categoryMine: 'Mine',
     categoryAgentEvolvedBadge: 'Self-evolved',
     categoryAgentEvolved: 'Abu evolved',
+    categoryAgentEvolvedEmpty: "Abu will propose reusable skills from your recurring tasks, and they'll land here for you to accept, reject, or decide later.",
     categoryThirdParty: 'Third-party',
     categoryThirdPartyEmpty: 'No third-party skills yet. Future sources include CLAWhub, SkillsHub, and other registries.',
     categoryBuiltin: 'Built-in',

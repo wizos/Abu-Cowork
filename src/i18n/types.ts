@@ -672,6 +672,7 @@ export interface TranslationDict {
     categoryMine: string;              // "我的"
     categoryAgentEvolved: string;      // "阿布沉淀"
     categoryAgentEvolvedBadge: string; // small badge e.g. "自进化"
+    categoryAgentEvolvedEmpty: string; // placeholder when no drafts + no workspace-auto skills
     categoryThirdParty: string;        // "第三方市场"
     categoryThirdPartyEmpty: string;   // placeholder when no third-party skills yet
     categoryBuiltin: string;           // "内置"
