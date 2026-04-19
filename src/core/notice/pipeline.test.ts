@@ -113,18 +113,20 @@ describe('Notice Pipeline (Gate → Router → Channels)', () => {
   });
 
   describe('Gate blocking', () => {
-    it('fullscreen blocks L2 → queue_inbox, no channel dispatch', () => {
+    it('fullscreen blocks L2 → queue_inbox, still lights menubar (silent surface)', () => {
       setContextProvider(ctxWith({ fullscreenApp: 'Keynote' }));
 
       const delivered: string[] = [];
       registerChannel('menubar', () => delivered.push('menubar'));
+      registerChannel('system_notification', () => delivered.push('system_notification'));
 
       const result = processNotice(
         makeNotice({ tier: 'L2', type: 'skill_proposal_offer' }),
       );
       expect(result.decision.action).toBe('queue_inbox');
-      expect(result.targets).toEqual([]);
-      expect(delivered).toEqual([]);
+      // Silent-surface: menubar yes, system_notification no (that would interrupt)
+      expect(result.targets.map((t) => t.channel)).toEqual(['menubar']);
+      expect(delivered).toEqual(['menubar']);
     });
 
     it('fullscreen blocks L3 → drop, no channel dispatch', () => {
@@ -137,10 +139,13 @@ describe('Notice Pipeline (Gate → Router → Channels)', () => {
       expect(result.targets).toEqual([]);
     });
 
-    it('L2 quota exhausted → queue_inbox', () => {
+    it('L2 quota exhausted → queue_inbox, still lights menubar', () => {
       setContextProvider(ctxWith({}));
       const now = 1_000_000;
       for (let i = 0; i < L2_QUOTA; i++) consumeL2Quota(now + i);
+
+      const delivered: string[] = [];
+      registerChannel('menubar', () => delivered.push('menubar'));
 
       const result = processNotice(
         makeNotice({
@@ -150,7 +155,35 @@ describe('Notice Pipeline (Gate → Router → Channels)', () => {
         }),
       );
       expect(result.decision.action).toBe('queue_inbox');
-      expect(result.targets).toEqual([]);
+      expect(result.targets.map((t) => t.channel)).toEqual(['menubar']);
+      expect(delivered).toEqual(['menubar']);
+    });
+
+    it('queue_inbox with conversationId also lights sidebar_badge', () => {
+      setContextProvider(ctxWith({ fullscreenApp: 'Keynote' }));
+
+      const delivered: { channel: string; convoId?: string }[] = [];
+      registerChannel('menubar', (_n, t) => delivered.push({ channel: t.channel }));
+      registerChannel('sidebar_badge', (_n, t) =>
+        delivered.push({ channel: t.channel, convoId: t.conversationId }),
+      );
+
+      const result = processNotice(
+        makeNotice({
+          tier: 'L2',
+          type: 'task_complete',
+          payload: { conversationId: 'conv_xyz' },
+        }),
+      );
+      expect(result.decision.action).toBe('queue_inbox');
+      expect(result.targets).toEqual([
+        { channel: 'menubar' },
+        { channel: 'sidebar_badge', conversationId: 'conv_xyz' },
+      ]);
+      expect(delivered).toEqual([
+        { channel: 'menubar' },
+        { channel: 'sidebar_badge', convoId: 'conv_xyz' },
+      ]);
     });
   });
 
