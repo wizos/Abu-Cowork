@@ -2,6 +2,9 @@
  * Global test setup — mock all Tauri and external SDK modules
  */
 import { vi, beforeEach } from 'vitest';
+// Extend expect with jest-dom matchers for React component tests
+// (toBeInTheDocument / toBeDisabled / toHaveTextContent / etc.)
+import '@testing-library/jest-dom/vitest';
 
 // ── @tauri-apps/api ──
 vi.mock('@tauri-apps/api/path', () => ({
