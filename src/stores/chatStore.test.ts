@@ -549,6 +549,79 @@ describe('chatStore', () => {
         delete bundle.messages;
         expect(useChatStore.getState().importConversation(JSON.stringify(bundle))).toBeNull();
       });
+
+      // Regression: the user-reported bundle (3 msgs, assistant with empty
+      // content + tool_use followed by assistant text) landed in a welcome
+      // page because messages somehow didn't reach the in-memory store.
+      // This test reproduces that exact shape to pin the data contract down.
+      it('imports real-world shape: user + assistant(content="", toolCall) + assistant(text)', () => {
+        const bundle = {
+          schema: { abuShareVersion: 1, tier: 'standard', exportedAt: Date.now() },
+          conversation: {
+            id: 'mo5tgdm8mg7l1b',
+            title: '看看当前文件夹下有什么',
+            createdAt: 1_776_606_190_064,
+            updatedAt: 1_776_609_764_691,
+          },
+          messages: [
+            {
+              id: 'mo5tgdqxo6ew0f',
+              role: 'user',
+              content: '看看当前文件夹下有什么',
+              timestamp: 1_776_606_190_233,
+              loopId: 'mo5tgdmcrrijsc',
+              isStreaming: false,
+            },
+            {
+              id: 'mo5tgdrn099n93',
+              role: 'assistant',
+              content: '',
+              timestamp: 1_776_606_190_259,
+              isStreaming: false,
+              toolCalls: [
+                {
+                  id: 'toolu_bdrk_014nci2UKBs6zEoXDKP4mvGg',
+                  name: 'list_directory',
+                  input: { path: '~/Desktop/表格' },
+                  isExecuting: false,
+                  startTime: 1_776_606_195_248,
+                  result: '[FILE] a.xlsx\n[FILE] b.csv',
+                },
+              ],
+              loopId: 'mo5tgdmcrrijsc',
+              usage: { inputTokens: 1396, outputTokens: 63 },
+              toolCallsForContext: [
+                {
+                  name: 'list_directory',
+                  input: { path: '~/Desktop/表格' },
+                  result: '[FILE] a.xlsx\n[FILE] b.csv',
+                },
+              ],
+            },
+            {
+              id: 'mo5tghnrfxknty',
+              role: 'assistant',
+              content: '当前「表格」文件夹下有 4 个文件：...',
+              timestamp: 1_776_606_195_303,
+              isStreaming: false,
+              toolCalls: [],
+              loopId: 'mo5tgdmcrrijsc',
+              usage: { inputTokens: 1539, outputTokens: 195 },
+            },
+          ],
+          attachments: {},
+          stats: { redactionCount: 2, attachmentCount: 0, embeddedCount: 0, sizeBytes: 1601 },
+        };
+        const newId = useChatStore.getState().importConversation(JSON.stringify(bundle));
+        expect(newId).not.toBeNull();
+        const conv = useChatStore.getState().conversations[newId!];
+        expect(conv, 'imported conv should be in the in-memory store').toBeDefined();
+        expect(conv.messages).toHaveLength(3);
+        expect(conv.messages[0].content).toBe('看看当前文件夹下有什么');
+        expect(conv.messages[1].content).toBe('');
+        expect(conv.messages[1].toolCalls).toHaveLength(1);
+        expect(useChatStore.getState().activeConversationId).toBe(newId);
+      });
     });
   });
 
