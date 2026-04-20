@@ -241,7 +241,7 @@ const enUS: TranslationDict = {
     hiddenFromOthers: 'Others will not see',
     itemMessages: 'All message text and thinking',
     itemToolCalls: 'Tool names and arguments',
-    itemAiGenerated: 'AI-generated images and files (openable)',
+    itemAiGenerated: 'AI-generated file contents (not embedded yet · coming soon)',
     itemUserFiles: 'Files you uploaded (filename only)',
     itemCredentials: 'API keys, local absolute paths (redacted)',
     redactionTitle: 'Will be redacted',

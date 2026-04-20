@@ -241,7 +241,7 @@ const zhCN: TranslationDict = {
     hiddenFromOthers: '对方看不到',
     itemMessages: '所有消息文本、思考过程',
     itemToolCalls: '工具调用名称和参数',
-    itemAiGenerated: 'AI 生成的图片和文档（可下载打开）',
+    itemAiGenerated: 'AI 生成的文件内容（暂不嵌入 · 待开放）',
     itemUserFiles: '你上传的原始文件（仅显示文件名）',
     itemCredentials: 'API Key、本地绝对路径（已脱敏）',
     redactionTitle: '将被脱敏',

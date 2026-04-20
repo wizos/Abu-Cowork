@@ -167,7 +167,6 @@ function BundlePreview({ bundle }: { bundle: ShareBundle }) {
           <ul className="space-y-1 text-[12px] text-[var(--abu-text-secondary)]">
             <li>✅ {t.share.itemMessages}</li>
             <li>✅ {t.share.itemToolCalls}</li>
-            <li>✅ {t.share.itemAiGenerated}</li>
           </ul>
         </div>
         <div className="rounded-lg border border-[var(--abu-border)] p-3">
@@ -178,6 +177,7 @@ function BundlePreview({ bundle }: { bundle: ShareBundle }) {
           <ul className="space-y-1 text-[12px] text-[var(--abu-text-secondary)]">
             <li>❌ {t.share.itemUserFiles}</li>
             <li>❌ {t.share.itemCredentials}</li>
+            <li>❌ {t.share.itemAiGenerated}</li>
           </ul>
         </div>
       </section>
