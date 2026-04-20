@@ -12,14 +12,15 @@
  */
 
 import { useEffect, useState } from 'react';
-import { X, Eye, EyeOff, Download, ShieldAlert, Wrench, MessageSquare, FileText, Image as ImageIcon } from 'lucide-react';
+import { X, Eye, EyeOff, Download, ShieldAlert, Wrench, MessageSquare } from 'lucide-react';
 import { save as saveDialog } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
 import { useChatStore } from '@/stores/chatStore';
 import { useI18n, format } from '@/i18n';
 import { serializeShareBundle, type ShareBundle } from '@/core/session/shareBundle';
-import type { MessageContent, ToolCall } from '@/types';
+import type { Message, MessageContent, ToolCall } from '@/types';
 import MarkdownRenderer from '@/components/chat/MarkdownRenderer';
+import abuAvatar from '@/assets/abu-avatar.png';
 
 interface ShareExportDialogProps {
   convId: string;
@@ -84,7 +85,7 @@ export default function ShareExportDialog({ convId, defaultFilename, onClose }: 
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-white rounded-2xl shadow-xl w-[640px] max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-150">
+      <div className="bg-white rounded-2xl shadow-xl w-[760px] max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-[var(--abu-border)]">
           <div>
@@ -203,23 +204,20 @@ function BundlePreview({ bundle }: { bundle: ShareBundle }) {
         )}
       </section>
 
-      {/* Message preview */}
+      {/* Message preview — mirrors ChatView's bubble layout (user right, assistant
+          left with Abu avatar) so the recipient sees the same visual they would
+          in a live conversation. */}
       <section className="rounded-lg border border-[var(--abu-border)] p-3">
-        <div className="flex items-center gap-1.5 mb-2 text-[13px] font-medium text-[var(--abu-text-primary)]">
+        <div className="flex items-center gap-1.5 mb-3 text-[13px] font-medium text-[var(--abu-text-primary)]">
           <MessageSquare className="h-3.5 w-3.5 text-[var(--abu-clay)]" />
           {t.share.previewTitle}
         </div>
         {bundle.messages.length === 0 ? (
           <p className="text-[12px] text-[var(--abu-text-tertiary)]">{t.share.previewEmpty}</p>
         ) : (
-          <div className="flex flex-col gap-2 max-h-[280px] overflow-y-auto">
+          <div className="flex flex-col gap-4 max-h-[420px] overflow-y-auto px-3 py-3 bg-[var(--abu-bg-base)] rounded-md">
             {bundle.messages.slice(0, 50).map((msg) => (
-              <MessagePreviewRow
-                key={msg.id}
-                role={msg.role}
-                content={msg.content}
-                toolCalls={msg.toolCalls}
-              />
+              <SharePreviewMessage key={msg.id} message={msg} />
             ))}
             {bundle.messages.length > 50 && (
               <p className="text-[11px] text-[var(--abu-text-muted)] text-center pt-1">
@@ -233,67 +231,105 @@ function BundlePreview({ bundle }: { bundle: ShareBundle }) {
   );
 }
 
-function MessagePreviewRow({
-  role,
-  content,
-  toolCalls,
-}: {
-  role: 'user' | 'assistant' | 'system';
-  content: string | MessageContent[];
-  toolCalls?: ToolCall[];
-}) {
-  const roleLabel = role === 'user' ? 'You' : role === 'assistant' ? 'Assistant' : 'System';
-  const badge = role === 'user'
-    ? 'bg-blue-50 text-blue-700'
-    : role === 'assistant'
-      ? 'bg-[var(--abu-clay-10)] text-[var(--abu-clay)]'
-      : 'bg-gray-100 text-gray-600';
+/**
+ * Static, read-only message row that mirrors MessageBubble's visual
+ * language (right-aligned grey bubble for the user, avatar + transparent
+ * background for the assistant). Interaction-heavy affordances — edit,
+ * regenerate, copy, full ExecutionStep timelines — are intentionally
+ * dropped to keep the preview a faithful visual snapshot without turning
+ * the dialog into a second chat surface.
+ */
+function SharePreviewMessage({ message }: { message: Message }) {
+  const { text, imageCount, otherCount } = flattenContent(message.content);
+  // Preview truncation — large enough that most messages fit whole but
+  // caps runaway cell-output paste-ins from bloating the dialog.
+  const truncated = text.length > 1500 ? `${text.slice(0, 1500)}…` : text;
+  const toolCalls = message.toolCalls ?? [];
 
-  const { text, imageCount, otherCount } = flattenContent(content);
-  // Truncate on the raw text so large messages don't bloat the preview.
-  // Markdown still renders within the truncated slice (unmatched fences
-  // are harmless — react-markdown just treats them as text).
-  const truncated = text.length > 600 ? `${text.slice(0, 600)}…` : text;
-  const toolNames = (toolCalls ?? []).map((tc) => tc.name);
-
-  return (
-    <div className="flex gap-2 items-start">
-      <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium ${badge}`}>
-        {roleLabel}
-      </span>
-      <div className="flex-1 min-w-0">
-        {truncated && (
-          <div className="text-[12px] text-[var(--abu-text-primary)] leading-relaxed share-preview-md">
-            <MarkdownRenderer content={truncated} variant={role === 'user' ? 'user' : 'assistant'} />
-          </div>
-        )}
-        <div className="flex flex-wrap gap-1.5 mt-1">
-          {imageCount > 0 && (
-            <span className="inline-flex items-center gap-1 text-[10px] text-[var(--abu-text-tertiary)]">
-              <ImageIcon className="h-3 w-3" /> {imageCount}
-            </span>
+  if (message.role === 'user') {
+    return (
+      <div className="flex justify-end w-full">
+        <div className="flex flex-col items-end gap-1.5 max-w-[85%]">
+          {(imageCount > 0 || otherCount > 0) && (
+            <AttachmentSummary imageCount={imageCount} otherCount={otherCount} align="right" />
           )}
-          {otherCount > 0 && (
-            <span className="inline-flex items-center gap-1 text-[10px] text-[var(--abu-text-tertiary)]">
-              <FileText className="h-3 w-3" /> {otherCount}
-            </span>
-          )}
-          {toolNames.slice(0, 3).map((name, i) => (
-            <span
-              key={`${name}-${i}`}
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[var(--abu-bg-subtle)] text-[10px] text-[var(--abu-text-tertiary)] font-mono"
-            >
-              <Wrench className="h-3 w-3" />
-              {name}
-            </span>
-          ))}
-          {toolNames.length > 3 && (
-            <span className="inline-flex items-center text-[10px] text-[var(--abu-text-tertiary)]">
-              +{toolNames.length - 3}
-            </span>
+          {truncated && (
+            <div className="px-4 py-2.5 rounded-2xl rounded-br-sm bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]">
+              <div className="text-[14.5px] leading-relaxed break-words">
+                <MarkdownRenderer content={truncated} variant="user" />
+              </div>
+            </div>
           )}
         </div>
       </div>
+    );
+  }
+
+  // Assistant / system — left-aligned with Abu avatar.
+  return (
+    <div className="flex gap-3 w-full">
+      <img src={abuAvatar} alt="" className="h-7 w-7 rounded-full shrink-0 mt-1 object-cover" />
+      <div className="flex-1 min-w-0 flex flex-col gap-2">
+        {toolCalls.map((tc, i) => (
+          <ToolCallPreviewCard key={tc.id ?? `${tc.name}-${i}`} toolCall={tc} />
+        ))}
+        {truncated && (
+          <div className="text-[14.5px] leading-relaxed text-[var(--abu-text-primary)] break-words">
+            <MarkdownRenderer content={truncated} variant="assistant" />
+          </div>
+        )}
+        {(imageCount > 0 || otherCount > 0) && (
+          <AttachmentSummary imageCount={imageCount} otherCount={otherCount} align="left" />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AttachmentSummary({
+  imageCount,
+  otherCount,
+  align,
+}: {
+  imageCount: number;
+  otherCount: number;
+  align: 'left' | 'right';
+}) {
+  return (
+    <div
+      className={`flex gap-2 text-[11px] text-[var(--abu-text-tertiary)] ${align === 'right' ? 'justify-end' : 'justify-start'}`}
+    >
+      {imageCount > 0 && <span>🖼️ × {imageCount}</span>}
+      {otherCount > 0 && <span>📄 × {otherCount}</span>}
+    </div>
+  );
+}
+
+function ToolCallPreviewCard({ toolCall }: { toolCall: ToolCall }) {
+  const { t } = useI18n();
+  // Only string tool results are safe to eyeball — rich content (images,
+  // structured blocks) is rare enough in preview context that we skip it.
+  const resultSnippet =
+    typeof toolCall.result === 'string' && toolCall.result.length > 0
+      ? toolCall.result.length > 240
+        ? `${toolCall.result.slice(0, 240)}…`
+        : toolCall.result
+      : null;
+
+  return (
+    <div className="rounded-lg border border-[var(--abu-border)] bg-[var(--abu-bg-subtle)] px-3 py-2 text-[13px]">
+      <div className="flex items-center gap-1.5 font-medium text-[var(--abu-text-secondary)]">
+        <Wrench className="h-3.5 w-3.5 text-[var(--abu-clay)]" />
+        <span>{t.task.calledTool}</span>
+        <code className="font-mono text-[12px] px-1.5 py-0.5 rounded bg-white text-[var(--abu-text-primary)]">
+          {toolCall.name}
+        </code>
+      </div>
+      {resultSnippet && (
+        <div className="mt-1.5 pl-5 text-[12px] text-[var(--abu-text-tertiary)] font-mono whitespace-pre-wrap break-words max-h-24 overflow-hidden">
+          {resultSnippet}
+        </div>
+      )}
     </div>
   );
 }
