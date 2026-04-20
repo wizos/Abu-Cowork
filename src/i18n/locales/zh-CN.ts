@@ -468,6 +468,7 @@ const zhCN: TranslationDict = {
     apiKeyRequired: '必填',
     apiKeyOptional: '如无需认证可留空',
     apiUrlNoChange: '一般不需要修改，使用自建代理时可替换',
+    apiUrlPreview: '将请求',
     fetchModels: '获取模型列表',
     fetchingModels: '获取中...',
     fetchModelsError: '获取失败，请手动添加模型',

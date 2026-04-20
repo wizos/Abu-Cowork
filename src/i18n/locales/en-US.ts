@@ -468,6 +468,7 @@ const enUS: TranslationDict = {
     apiKeyRequired: 'Required',
     apiKeyOptional: 'Leave empty if no auth needed',
     apiUrlNoChange: 'Usually no need to change; replace when using a proxy',
+    apiUrlPreview: 'Will request',
     fetchModels: 'Fetch Models',
     fetchingModels: 'Fetching...',
     fetchModelsError: 'Fetch failed, please add models manually',

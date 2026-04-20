@@ -443,6 +443,7 @@ export interface TranslationDict {
     apiKeyRequired: string;
     apiKeyOptional: string;
     apiUrlNoChange: string;
+    apiUrlPreview: string;
     fetchModels: string;
     fetchingModels: string;
     fetchModelsError: string;
