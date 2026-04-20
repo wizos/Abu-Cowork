@@ -167,9 +167,6 @@ const enUS: TranslationDict = {
     addAttachment: 'Add images or files',
     fromScheduledTask: 'Scheduled Task',
     fromTrigger: 'Trigger',
-    readOnlyBannerTitle: 'Read-only conversation',
-    readOnlyBannerSubtitle: 'Imported from a shared bundle — cannot be continued',
-    readOnlyImportedAt: 'Imported {date}',
     // Scenario guide
     trySaying: 'Try saying',
     scenarios: {
@@ -260,6 +257,8 @@ const enUS: TranslationDict = {
     exportError: 'Export failed: {error}',
     tierStandard: 'Standard · default',
     tierNote: 'Embeds AI-generated images and files; keeps references to your uploads but not their content',
+    importedBadge: 'Imported from a share',
+    importedBadgeWithDate: 'Imported from a share · {date}',
   },
 
   status: {

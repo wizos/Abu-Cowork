@@ -186,10 +186,6 @@ export interface TranslationDict {
     // Source navigation bar (for scheduled/trigger conversations)
     fromScheduledTask: string;
     fromTrigger: string;
-    // Shared (imported) read-only conversation banner
-    readOnlyBannerTitle: string;
-    readOnlyBannerSubtitle: string;
-    readOnlyImportedAt: string;
     // Scenario guide
     trySaying: string;
     scenarios: Record<string, string>;
@@ -230,6 +226,9 @@ export interface TranslationDict {
     exportError: string;
     tierStandard: string;
     tierNote: string;
+    // Sidebar badge shown on imported conversations
+    importedBadge: string;
+    importedBadgeWithDate: string;
   };
 
   // Status Bar

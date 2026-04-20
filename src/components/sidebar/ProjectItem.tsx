@@ -5,6 +5,7 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { useI18n } from '@/i18n';
 import { FolderClosed, FolderOpen, Plus, Pin, PinOff, Settings, Archive, Trash2, Pencil, Download, FolderMinus } from 'lucide-react';
 import ShareExportDialog from '@/components/share/ShareExportDialog';
+import ImportedBadge from './ImportedBadge';
 import { cn } from '@/lib/utils';
 import { format } from '@/i18n';
 import type { Project } from '@/types/project';
@@ -141,6 +142,9 @@ export default function ProjectItem({ project, conversations, expanded, onNewTas
                 )}
               >
                 <ConvStatusDot status={loadedConversations[conv.id]?.status ?? 'idle'} />
+                {conv.importedFrom && (
+                  <ImportedBadge importedAt={conv.importedFrom.importedAt} />
+                )}
                 {editingConvId === conv.id ? (
                   <input
                     autoFocus

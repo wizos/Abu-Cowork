@@ -17,6 +17,7 @@ import abuAvatar from '@/assets/abu-avatar.png';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { readTextFile } from '@tauri-apps/plugin-fs';
 import ShareExportDialog from '@/components/share/ShareExportDialog';
+import ImportedBadge from './ImportedBadge';
 import { isMacOS } from '@/utils/platform';
 
 interface StatusIndicatorProps {
@@ -382,6 +383,9 @@ export default function Sidebar() {
               >
                 {conv.imPlatform && (
                   <IMPlatformDot platform={conv.imPlatform} />
+                )}
+                {conv.importedFrom && (
+                  <ImportedBadge importedAt={conv.importedFrom.importedAt} />
                 )}
                 {editingId === conv.id ? (
                   <input

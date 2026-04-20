@@ -32,7 +32,11 @@ function sanitizeImportedMessage(msg: Message): Message {
 /** Build an in-memory Conversation + Meta from a validated ShareBundle.
  * Intentionally drops external references (workspacePath, scheduledTaskId,
  * triggerId, projectId, imChannelId/imPlatform, activeSkills,
- * enabledMCPServers) so the imported copy is self-contained and read-only. */
+ * enabledMCPServers) so the imported copy is self-contained. The recipient
+ * can keep chatting on top of it — only the origin is tagged via
+ * `importedFrom`, surfaced as a small sidebar badge. The `readOnly` field
+ * on Conversation/Meta is kept in the type for a future team-sync use case
+ * but deliberately not set here. */
 function buildImportedFromShareBundle(bundle: ShareBundle): { conv: Conversation; meta: ConversationMeta } {
   const newId = generateId();
   const importedFrom = {
@@ -46,7 +50,6 @@ function buildImportedFromShareBundle(bundle: ShareBundle): { conv: Conversation
     updatedAt: bundle.conversation.updatedAt,
     messages: bundle.messages.map(sanitizeImportedMessage),
     status: 'idle',
-    readOnly: true,
     importedFrom,
   };
   const meta: ConversationMeta = {
@@ -55,7 +58,6 @@ function buildImportedFromShareBundle(bundle: ShareBundle): { conv: Conversation
     createdAt: conv.createdAt,
     updatedAt: conv.updatedAt,
     messageCount: conv.messages.length,
-    readOnly: true,
     importedFrom,
   };
   return { conv, meta };

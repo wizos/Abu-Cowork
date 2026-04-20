@@ -439,7 +439,7 @@ describe('chatStore', () => {
       expect(newId).not.toBe(id);
 
       const imported = useChatStore.getState().conversations[newId!];
-      expect(imported.readOnly).toBe(true);
+      expect(imported.importedFrom?.schemaVersion).toBe(1);
       expect(imported.messages).toHaveLength(2);
       expect(imported.messages[0].content).toBe('Hello alice');
       expect(imported.messages[1].content).toBe('Hi bob!');
@@ -447,7 +447,7 @@ describe('chatStore', () => {
 
     it('legacy raw-conversation JSON (undo-delete) is NOT treated as a share bundle', () => {
       // Regression guard: the importConversation dispatcher must route
-      // raw conversation JSON to the legacy path (no readOnly flag).
+      // raw conversation JSON to the legacy path (no importedFrom stamp).
       const id = useChatStore.getState().createConversation();
       useChatStore.getState().addMessage(id, {
         id: 'msg1', role: 'user', content: 'undo me', timestamp: Date.now(),
@@ -455,7 +455,6 @@ describe('chatStore', () => {
       const json = useChatStore.getState().exportConversation(id)!;
       const newId = useChatStore.getState().importConversation(json)!;
       const restored = useChatStore.getState().conversations[newId];
-      expect(restored.readOnly).toBeUndefined();
       expect(restored.importedFrom).toBeUndefined();
     });
 
@@ -480,18 +479,17 @@ describe('chatStore', () => {
         stats: { redactionCount: 0, attachmentCount: 0, embeddedCount: 0, sizeBytes: 0 },
       });
 
-      it('creates a read-only conversation with a fresh ID', () => {
+      it('creates a conversation with a fresh ID and the bundle messages', () => {
         const json = JSON.stringify(makeBundle());
         const newId = useChatStore.getState().importConversation(json);
         expect(newId).not.toBeNull();
         expect(newId).not.toBe('original-conv-id');
         const conv = useChatStore.getState().conversations[newId!];
-        expect(conv.readOnly).toBe(true);
         expect(conv.messages).toHaveLength(2);
         expect(conv.messages[0].content).toBe('Hi');
       });
 
-      it('stamps importedFrom with the source schema version', () => {
+      it('stamps importedFrom with the source schema version so the UI can show a badge', () => {
         const json = JSON.stringify(makeBundle());
         const newId = useChatStore.getState().importConversation(json)!;
         const conv = useChatStore.getState().conversations[newId];
@@ -499,12 +497,21 @@ describe('chatStore', () => {
         expect(conv.importedFrom?.importedAt).toBeGreaterThan(0);
       });
 
-      it('mirrors readOnly + importedFrom into the index meta so they survive restart', () => {
+      it('mirrors importedFrom into the index meta so the badge survives restart', () => {
         const json = JSON.stringify(makeBundle());
         const newId = useChatStore.getState().importConversation(json)!;
         const meta = useChatStore.getState().conversationIndex[newId];
-        expect(meta.readOnly).toBe(true);
         expect(meta.importedFrom?.schemaVersion).toBe(1);
+        expect(meta.importedFrom?.importedAt).toBeGreaterThan(0);
+      });
+
+      it('does not set readOnly — imported conversations remain continuable', () => {
+        const json = JSON.stringify(makeBundle());
+        const newId = useChatStore.getState().importConversation(json)!;
+        const conv = useChatStore.getState().conversations[newId];
+        const meta = useChatStore.getState().conversationIndex[newId];
+        expect(conv.readOnly).toBeUndefined();
+        expect(meta.readOnly).toBeUndefined();
       });
 
       it('strips external references even if a misbehaving exporter inlines them', () => {

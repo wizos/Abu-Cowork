@@ -20,7 +20,6 @@ import { ChevronDown, Settings } from 'lucide-react';
 import abuAvatar from '@/assets/abu-avatar.png';
 import IMInfoBar from './IMInfoBar';
 import SourceInfoBar from './SourceInfoBar';
-import ShareImportBanner from './ShareImportBanner';
 import ComputerUseStatusBar from './ComputerUseStatusBar';
 
 /**
@@ -357,9 +356,6 @@ export default function ChatView() {
       {/* Source Info Bar — show for scheduled task / trigger conversations */}
       {!activeConv.imPlatform && <SourceInfoBar conversation={activeConv} />}
 
-      {/* Read-only banner for imported share bundles */}
-      <ShareImportBanner conversation={activeConv} />
-
       {/* Computer Use Status Bar — visible during screen control */}
       <ComputerUseStatusBar onStop={() => useChatStore.getState().cancelStreaming(activeConv.id)} />
 
@@ -408,7 +404,7 @@ export default function ChatView() {
             onNewChat={() => createConversation(useWorkspaceStore.getState().currentPath)}
           />
           <BackgroundAgents />
-          <ChatInput variant="chat" onSend={handleSend} disabled={activeConv.readOnly} />
+          <ChatInput variant="chat" onSend={handleSend} />
           <p className="text-center text-[11px] text-[var(--abu-text-muted)] mt-1.5">
             {t.chat.disclaimer}
           </p>

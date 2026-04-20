@@ -167,9 +167,6 @@ const zhCN: TranslationDict = {
     addAttachment: '添加图片或文件',
     fromScheduledTask: '定时任务',
     fromTrigger: '监听事件',
-    readOnlyBannerTitle: '只读对话',
-    readOnlyBannerSubtitle: '此对话由他人分享导入，无法继续',
-    readOnlyImportedAt: '导入于 {date}',
     // Scenario guide
     trySaying: '试试这样说',
     scenarios: {
@@ -260,6 +257,8 @@ const zhCN: TranslationDict = {
     exportError: '导出失败：{error}',
     tierStandard: 'Standard · 默认',
     tierNote: '嵌入 AI 生成的图片和文档，保留你上传文件的引用但不嵌入内容',
+    importedBadge: '导入自分享',
+    importedBadgeWithDate: '导入自分享 · {date}',
   },
 
   status: {
