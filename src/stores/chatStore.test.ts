@@ -420,6 +420,45 @@ describe('chatStore', () => {
       expect(useChatStore.getState().importConversation('not json')).toBeNull();
     });
 
+    it('round-trips a conversation through exportConversationForShare + importConversation', async () => {
+      const id = useChatStore.getState().createConversation();
+      useChatStore.getState().addMessage(id, {
+        id: 'msg1', role: 'user', content: 'Hello alice', timestamp: Date.now(),
+      });
+      useChatStore.getState().addMessage(id, {
+        id: 'msg2', role: 'assistant', content: 'Hi bob!', timestamp: Date.now(),
+      });
+      const bundle = await useChatStore.getState().exportConversationForShare(id);
+      expect(bundle).not.toBeNull();
+      expect(bundle!.messages).toHaveLength(2);
+
+      const { serializeShareBundle } = await import('@/core/session/shareBundle');
+      const json = serializeShareBundle(bundle!);
+      const newId = useChatStore.getState().importConversation(json);
+      expect(newId).not.toBeNull();
+      expect(newId).not.toBe(id);
+
+      const imported = useChatStore.getState().conversations[newId!];
+      expect(imported.readOnly).toBe(true);
+      expect(imported.messages).toHaveLength(2);
+      expect(imported.messages[0].content).toBe('Hello alice');
+      expect(imported.messages[1].content).toBe('Hi bob!');
+    });
+
+    it('legacy raw-conversation JSON (undo-delete) is NOT treated as a share bundle', () => {
+      // Regression guard: the importConversation dispatcher must route
+      // raw conversation JSON to the legacy path (no readOnly flag).
+      const id = useChatStore.getState().createConversation();
+      useChatStore.getState().addMessage(id, {
+        id: 'msg1', role: 'user', content: 'undo me', timestamp: Date.now(),
+      });
+      const json = useChatStore.getState().exportConversation(id)!;
+      const newId = useChatStore.getState().importConversation(json)!;
+      const restored = useChatStore.getState().conversations[newId];
+      expect(restored.readOnly).toBeUndefined();
+      expect(restored.importedFrom).toBeUndefined();
+    });
+
     describe('importConversation · share bundle path', () => {
       // Minimal share bundle fixture that satisfies the v1 schema check.
       // Anything inside bundle.conversation that isn't id/title/createdAt/
