@@ -133,6 +133,33 @@ describe('buildShareBundle', () => {
     expect(bundle.messages[0].toolCalls?.[0].isExecuting).toBe(false);
   });
 
+  it('drops system-injected messages (isSystem=true) to match in-app visibility', async () => {
+    const conv = makeConv([
+      { id: 'real-1', role: 'user', content: 'real question', timestamp: 1 },
+      // Mimics App.tsx's orphan-checkpoint recovery notice that piles up
+      // across crash/restart cycles and must not leak to recipients.
+      {
+        id: 'sys-1',
+        role: 'assistant',
+        content: '⚠️ 上次对话在第 2 轮等待模型响应时中断。你可以继续发送消息恢复工作。',
+        timestamp: 2,
+        isSystem: true,
+      },
+      {
+        id: 'sys-2',
+        role: 'assistant',
+        content: '⚠️ 上次对话在第 2 轮等待模型响应时中断。你可以继续发送消息恢复工作。',
+        timestamp: 3,
+        isSystem: true,
+      },
+      { id: 'real-2', role: 'assistant', content: 'real answer', timestamp: 4 },
+    ]);
+    const bundle = await buildShareBundle(conv);
+    expect(bundle.messages).toHaveLength(2);
+    expect(bundle.messages.map((m) => m.id)).toEqual(['real-1', 'real-2']);
+    expect(JSON.stringify(bundle)).not.toContain('上次对话在第');
+  });
+
   it('does not mutate the source conversation object', async () => {
     const conv = makeConv([
       {

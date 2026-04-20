@@ -90,6 +90,10 @@ export async function buildShareBundle(
 
   const cleanedMessages: Message[] = [];
   for (const src of conv.messages) {
+    // Match ChatView's visibility rule (ChatView.tsx filters `!m.isSystem`).
+    // Without this, system-injected recovery / max-tokens notices pile up in
+    // the bundle — invisible in-app but dumped to the recipient.
+    if (src.isSystem) continue;
     const cleaned = await prepareMessage(src, conv.id, snapshotByPath, tier, (r) => {
       redactionCount += r.count;
       redactionSamples.push(...r.samples);
