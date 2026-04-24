@@ -1015,6 +1015,9 @@ const enUS: TranslationDict = {
     csvNoData: 'No data',
     // Preview: common
     loadingDocument: 'Loading...',
+    // Preview: PPTX fallback
+    pptxPreviewUnavailable: 'In-app preview does not support this PPT. Open in PowerPoint to view the full slides.',
+    openWithPowerPoint: 'Open in PowerPoint',
   },
 
   folder: {

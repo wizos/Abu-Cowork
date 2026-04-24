@@ -988,6 +988,9 @@ export interface TranslationDict {
     csvNoData: string;
     // Preview: common
     loadingDocument: string;
+    // Preview: PPTX fallback (lib renderer fails on some python-pptx output)
+    pptxPreviewUnavailable: string;
+    openWithPowerPoint: string;
   };
 
   // Folder Selector

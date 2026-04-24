@@ -2,6 +2,13 @@
 
 本文档记录阿布的每次版本更新。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## v0.13.5 · 2026-04-24
+
+### 修复
+
+- 🔌 **火山引擎模型不再开箱即崩**：Volcengine 默认走 Coding Plan 聚合端点（多家厂商模型的聚合点），只认 OpenAI 标准 function 工具，不认 Ark 私有的 `web_search` 扩展。之前每条消息都会被拒 `missing tools.function parameter`。清理了错配的 webSearch 声明，顺带做了一次 persist 迁移剥掉老用户本地缓存里的陈旧能力标签。
+- 🎞️ **PPT 预览失败不再甩堆栈给你看**：`pptx-preview` 库对某些 python-pptx 输出的 slide 会吞掉解析异常，最终抛出 `undefined is not an object` 这种纯技术错误到用户面前。改成友好降级卡片：文件名 + "用 PowerPoint 打开" + "在文件管理器中显示"。能正常渲染的 PPT 不受影响。
+
 ## v0.13.4 · 2026-04-22
 
 ### 修复
