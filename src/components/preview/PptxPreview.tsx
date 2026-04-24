@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { readFile } from '@tauri-apps/plugin-fs';
-import { Loader2 } from 'lucide-react';
+import { revealItemInDir } from '@tauri-apps/plugin-opener';
+import { Loader2, Presentation, FolderOpen } from 'lucide-react';
 import { useI18n } from '@/i18n';
+import { Button } from '@/components/ui/button';
+import { getBaseName } from '@/utils/pathUtils';
 
 // Render at high resolution for crisp display, then CSS-scale to fit panel
 const RENDER_WIDTH = 960;
@@ -98,9 +101,58 @@ export default function PptxPreview({ filePath }: { filePath: string }) {
   }, [loading, updateScale]);
 
   if (error) {
+    const handleOpenWithDefaultApp = async () => {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const platform = navigator.platform.toLowerCase();
+        const command = platform.includes('win')
+          ? `start "" "${filePath}"`
+          : platform.includes('linux')
+            ? `xdg-open "${filePath}"`
+            : `open "${filePath}"`;
+        await invoke('run_shell_command', {
+          command,
+          cwd: null,
+          background: true,
+          timeout: 5,
+          sandboxEnabled: false,
+        });
+      } catch (err) {
+        console.error('[PptxPreview] Failed to open with default app:', err);
+      }
+    };
+
+    const handleShowInFinder = async () => {
+      try {
+        await revealItemInDir(filePath);
+      } catch (err) {
+        console.error('[PptxPreview] Failed to reveal in dir:', err);
+      }
+    };
+
     return (
-      <div className="flex items-center justify-center h-full p-4">
-        <p className="text-[13px] text-red-500 text-center max-w-[280px]">{error}</p>
+      <div className="flex flex-col items-center justify-center h-full p-6 text-center gap-3">
+        <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-[var(--abu-bg-hover)]">
+          <Presentation className="w-7 h-7 text-[var(--abu-text-tertiary)]" />
+        </div>
+        <div className="flex flex-col gap-1 max-w-[280px]">
+          <p className="text-[13px] font-medium text-[var(--abu-text-primary)] truncate">
+            {getBaseName(filePath)}
+          </p>
+          <p className="text-[12px] text-[var(--abu-text-tertiary)]">
+            {t.panel.pptxPreviewUnavailable}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 mt-1">
+          <Button variant="outline" size="sm" onClick={handleOpenWithDefaultApp}>
+            <Presentation className="w-3.5 h-3.5 mr-1.5" />
+            {t.panel.openWithPowerPoint}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleShowInFinder}>
+            <FolderOpen className="w-3.5 h-3.5 mr-1.5" />
+            {t.panel.showInFinder}
+          </Button>
+        </div>
       </div>
     );
   }

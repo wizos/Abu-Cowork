@@ -1016,6 +1016,9 @@ const zhCN: TranslationDict = {
     csvNoData: '无数据',
     // Preview: common
     loadingDocument: '正在加载...',
+    // Preview: PPTX fallback
+    pptxPreviewUnavailable: '内嵌预览暂不支持此 PPT，用 PowerPoint 打开查看完整效果',
+    openWithPowerPoint: '用 PowerPoint 打开',
   },
 
   folder: {
