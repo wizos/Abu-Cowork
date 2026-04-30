@@ -14,9 +14,11 @@ export default function InstructionsEditModal({ open, onClose, workspacePath }: 
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
+    setError(null);
     let cancelled = false;
     async function loadContent() {
       setLoading(true);
@@ -52,6 +54,7 @@ export default function InstructionsEditModal({ open, onClose, workspacePath }: 
 
   const handleSave = async () => {
     setSaving(true);
+    setError(null);
     try {
       const abuDir = joinPath(workspacePath, '.abu');
       if (!(await exists(abuDir))) {
@@ -62,6 +65,7 @@ export default function InstructionsEditModal({ open, onClose, workspacePath }: 
       onClose();
     } catch (err) {
       console.error('Failed to save instructions:', err);
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }
@@ -93,6 +97,16 @@ export default function InstructionsEditModal({ open, onClose, workspacePath }: 
             placeholder={t.panel.instructionsPlaceholder}
             className="flex-1 min-h-[280px] max-h-[50vh] w-full px-3 py-3 rounded-lg border border-[var(--abu-border)] text-[13px] text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:border-[var(--abu-clay)] transition-colors resize-none font-mono leading-relaxed"
           />
+        )}
+
+        {error && (
+          <div
+            role="alert"
+            className="mt-3 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-[12px] text-red-700 leading-relaxed break-words"
+          >
+            <div className="font-medium mb-0.5">{t.panel.instructionsSaveFailed}</div>
+            <div className="text-red-600/90">{error}</div>
+          </div>
         )}
 
         <div className="flex gap-3 mt-4">
