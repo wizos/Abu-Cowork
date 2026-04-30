@@ -278,16 +278,16 @@ export default function PersonalMemorySection() {
               </div>
               {bulkMode ? (
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <Button size="xs" variant="ghost" onClick={() => selectByFilter(isAutoFlushUnused)}>
+                  <Button size="xs" variant="outline" onClick={() => selectByFilter(isAutoFlushUnused)}>
                     {t.memory.bulkSelectAutoFlushUnused}
                   </Button>
-                  <Button size="xs" variant="ghost" onClick={() => selectByFilter(isUnused)}>
+                  <Button size="xs" variant="outline" onClick={() => selectByFilter(isUnused)}>
                     {t.memory.bulkSelectUnused}
                   </Button>
-                  <Button size="xs" variant="ghost" onClick={() => selectByFilter(() => true)}>
+                  <Button size="xs" variant="outline" onClick={() => selectByFilter(() => true)}>
                     {t.memory.bulkSelectAll}
                   </Button>
-                  <Button size="xs" variant="ghost" onClick={() => setSelectedKeys(new Set())}>
+                  <Button size="xs" variant="outline" onClick={() => setSelectedKeys(new Set())}>
                     {t.memory.bulkClearSelection}
                   </Button>
                   <Button
@@ -299,13 +299,13 @@ export default function PersonalMemorySection() {
                     <Trash2 className="h-3 w-3 mr-1" />
                     {t.memory.bulkDelete}
                   </Button>
-                  <Button size="xs" variant="ghost" onClick={exitBulkMode}>
+                  <Button size="xs" variant="outline" onClick={exitBulkMode}>
                     <X className="h-3 w-3 mr-1" />
                     {t.memory.bulkExit}
                   </Button>
                 </div>
               ) : (
-                <Button size="xs" variant="ghost" onClick={() => setBulkMode(true)}>
+                <Button size="xs" variant="outline" onClick={() => setBulkMode(true)}>
                   <ListChecks className="h-3 w-3 mr-1" />
                   {t.memory.bulkCleanup}
                 </Button>
