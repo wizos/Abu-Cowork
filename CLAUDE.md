@@ -41,7 +41,17 @@ Inspired by Claude Code's Cowork mode. Features multi-agent architecture with ex
 3. `git checkout main && git merge dev` — 合并到 main。
 4. `git tag vX.Y.Z` — 打 tag，格式为 `v` + 语义化版本号。
 5. `git push origin main --tags` — 推送 main 和 tag。
-6. 在 GitHub 创建 Release，附上 changelog。
+6. 在 GitHub 创建 Release，按 [`RELEASING.md`](./RELEASING.md) 的模板写 release notes（patch / minor / major 三档）。
+
+### Release Notes Convention (核心要点)
+- **分档**：patch（vX.Y.Z++）用极简模板（根因 + 修复 2-3 行）；minor（vX.Y.0）用完整模板（Features / Fixes / English Summary）；major（vX.0.0）额外加 Migration Notes。
+- **Title**：`vX.Y.Z` 或 `vX.Y.Z — 一句话主题`。patch 选最重要的特征当副标题，让 release 列表能扫读。
+- **双语策略**：中文先（主要用户群），bullet 末尾英文短语点睛即可，**不要每行翻译**。Minor+ 加独立 English Summary section；patch 不加。
+- **写"为什么"**：哪怕 patch 也至少给一句"用户会看到的变化"，禁止 "See assets below" 这种空 release。
+- **数字即证据**：能给数字给数字（"9 处子进程 spawn"、"TTL 从 5s 延到 30s"），不要"大幅优化"这种空话。
+- **emoji**：patch 标题不加；minor+ 分区图标可加（✨ Features / 🐛 Fixes / 🪟 Windows-only）。
+
+完整模板和示例见 [`RELEASING.md`](./RELEASING.md)。
 
 ### Forbidden
 - ❌ 直接在 `main` 上 commit 或 push。
