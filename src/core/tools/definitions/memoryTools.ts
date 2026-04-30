@@ -33,7 +33,7 @@ export const reportPlanTool: ToolDefinition = {
 
 export const updateMemoryTool: ToolDefinition = {
   name: TOOL_NAMES.UPDATE_MEMORY,
-  description: '保存持久记忆。记忆按当前工作区隔离存储，无工作区时存为全局记忆。注意：项目规则（.abu/ABU.md）由用户手动维护，不要用此工具修改规则。',
+  description: '保存持久记忆。调用前先核对 system prompt 中的 MEMORY.md 索引：如果已有相似主题的记忆，跳过本次写入（避免重复积累）。不要保存一次性任务结果（"X 已生成"）、临时状态（"测试通过"）、可派生信息（"项目位于 /Users/X"）。记忆按当前工作区隔离存储，无工作区时存为全局记忆。注意：项目规则（.abu/ABU.md）由用户手动维护，不要用此工具修改规则。',
   inputSchema: {
     type: 'object',
     properties: {
