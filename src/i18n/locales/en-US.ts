@@ -1071,7 +1071,7 @@ const enUS: TranslationDict = {
     memory: 'Project Memory',
     memoryEmpty: 'Project Memory · None',
     memoryTitle: 'Project Memory',
-    memoryDesc: 'Knowledge Abu has accumulated from conversations. You can also edit or clear it manually.',
+    memoryDesc: 'Knowledge Abu has automatically accumulated from conversations.',
     memoryPlaceholder: 'Abu will automatically remember project knowledge from conversations...',
     memoryClear: 'Clear',
     memoryClearTitle: 'Clear Project Memory',

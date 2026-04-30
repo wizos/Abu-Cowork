@@ -1072,7 +1072,7 @@ const zhCN: TranslationDict = {
     memory: '项目记忆',
     memoryEmpty: '项目记忆 · 暂无',
     memoryTitle: '项目记忆',
-    memoryDesc: '阿布在对话中自动积累的项目知识，你也可以手动编辑或清除。',
+    memoryDesc: '阿布在对话中自动积累的项目知识。',
     memoryPlaceholder: '阿布会在对话中自动记住项目相关的知识...',
     memoryClear: '清空',
     memoryClearTitle: '清空项目记忆',
