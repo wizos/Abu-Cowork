@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useI18n, format } from '@/i18n';
-import { HelpCircle, Trash2, ChevronDown, ChevronUp, FolderOpen, Globe, ListChecks, X, Check } from 'lucide-react';
+import { HelpCircle, Trash2, ChevronDown, ChevronUp, ChevronRight, FolderOpen, Globe, ListChecks, X, Check } from 'lucide-react';
 import { scanMemoryFiles, readMemoryFile } from '@/core/memdir/scan';
 import { deleteMemory } from '@/core/memdir/write';
 import type { MemoryHeader, MemoryType } from '@/core/memdir/types';
@@ -90,6 +90,21 @@ export default function PersonalMemorySection() {
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+
+  // Collapsed groups: workspace path key, '__global__' for the global group.
+  // Default behavior: all groups start expanded so users see what's there;
+  // toggling persists only within this session (intentional — users typically
+  // want a fresh view each time they open settings).
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  const toggleGroup = useCallback((key: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
 
   const totalCount = groups.reduce((sum, g) => sum + g.headers.length, 0);
 
@@ -328,10 +343,22 @@ export default function PersonalMemorySection() {
               )}
             </div>
 
-            {groups.map((group) => (
-              <div key={group.workspacePath ?? '__global__'} className="space-y-2">
-                {/* Group header */}
-                <div className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--abu-text-muted)] uppercase tracking-wider">
+            {groups.map((group) => {
+              const groupKey = group.workspacePath ?? '__global__';
+              const isCollapsed = collapsedGroups.has(groupKey);
+              return (
+              <div key={groupKey} className="space-y-2">
+                {/* Group header — clickable to toggle collapse */}
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(groupKey)}
+                  className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--abu-text-muted)] uppercase tracking-wider hover:text-[var(--abu-text-primary)] transition-colors w-full"
+                >
+                  {isCollapsed ? (
+                    <ChevronRight className="h-3 w-3" />
+                  ) : (
+                    <ChevronDown className="h-3 w-3" />
+                  )}
                   {group.icon === 'global' ? (
                     <Globe className="h-3 w-3" />
                   ) : (
@@ -339,10 +366,10 @@ export default function PersonalMemorySection() {
                   )}
                   <span>{group.label}</span>
                   <span className="text-[var(--abu-text-placeholder)]">({group.headers.length})</span>
-                </div>
+                </button>
 
-                {/* Group entries */}
-                {group.headers.map((header) => {
+                {/* Group entries — hidden when collapsed */}
+                {!isCollapsed && group.headers.map((header) => {
                   const key = `${group.workspacePath ?? 'g'}:${header.filename}`;
                   const isSelected = selectedKeys.has(key);
                   return (
@@ -411,7 +438,8 @@ export default function PersonalMemorySection() {
                   );
                 })}
               </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-12 text-center">
