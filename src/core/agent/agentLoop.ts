@@ -1640,7 +1640,6 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
         // Set status back to idle on cancel
         chatStore.setConversationStatus(conversationId, 'idle');
   
-        continueLoop = false;
         return { reason: 'aborted' as const };
       }
 

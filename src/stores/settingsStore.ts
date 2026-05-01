@@ -659,7 +659,6 @@ export const useSettingsStore = create<SettingsStore>()(
         // appended with path segments. See urlUtils.normalizeBaseUrl.
         const cleanBaseUrl = (config.baseUrl ?? '').trim();
         const cleanApiKey = (config.apiKey ?? '').trim();
-        let returnId = id;
         set((s) => {
           const newProvider: ProviderInstance = {
             ...config,
@@ -678,10 +677,9 @@ export const useSettingsStore = create<SettingsStore>()(
           }
           return update;
         });
-        returnId = id;
         // Mirror apiKey to encrypted secret store.
         fafSecret(writeSecretOrDelete(SECRET_KEYS.provider(id), cleanApiKey), `addProvider(${id})`);
-        return returnId;
+        return id;
       },
 
       updateProvider: (id, patch) => {
