@@ -658,6 +658,7 @@ const enUS: TranslationDict = {
     exportDesc: 'Self-check inconclusive? Export a diagnostic bundle to share with us.',
     exportButton: '📦 Export diagnostic bundle',
     exportInProgress: 'Bundling…',
+    exportFailed: 'Export failed',
     exportIncluded: 'What\'s included',
     exportPrivacy: 'Privacy notice',
     exportIncludeRaw: 'Include raw message text (off by default)',

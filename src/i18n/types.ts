@@ -668,6 +668,7 @@ export interface TranslationDict {
     exportDesc: string;
     exportButton: string;
     exportInProgress: string;
+    exportFailed: string;
     exportIncluded: string;
     exportPrivacy: string;
     exportIncludeRaw: string;
