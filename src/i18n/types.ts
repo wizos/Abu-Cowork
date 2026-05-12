@@ -251,6 +251,11 @@ export interface TranslationDict {
     contextNewChatBtn: string;
     // Agent loop max turns
     maxTurnsReached: string;
+    // Usage chip
+    usageChipInput: string;
+    usageChipOutput: string;
+    usageChipCache: string;
+    usageChipRequests: string;
   };
 
   // Share (conversation export / import)
@@ -1603,6 +1608,29 @@ export interface TranslationDict {
     projectLabel: string;
     projectNone: string;
     save: string;
+  };
+
+  // Usage Stats
+  usage: {
+    title: string;
+    periodToday: string;
+    periodWeek: string;
+    periodMonth: string;
+    periodAll: string;
+    requests: string;
+    inputTokens: string;
+    outputTokens: string;
+    cacheHitRate: string;
+    bySkill: string;
+    byModel: string;
+    noData: string;
+    heatmapTitle: string;
+    dailyTitle: string;
+    heatmapTooltipUsed: string;
+    heatmapTooltipNoData: string;
+    heatmapWeekdays: string[];
+    heatmapLegendLess: string;
+    heatmapLegendMore: string;
   };
 
   // Project Rules

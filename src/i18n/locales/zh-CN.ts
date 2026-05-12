@@ -271,6 +271,10 @@ const zhCN: TranslationDict = {
     contextCompressBtn: '压缩历史',
     contextNewChatBtn: '新对话',
     maxTurnsReached: '已完成 {n} 轮执行。如果任务尚未完成，直接发送消息即可继续。',
+    usageChipInput: '输入',
+    usageChipOutput: '输出',
+    usageChipCache: 'cache',
+    usageChipRequests: '次请求',
   },
 
   share: {
@@ -425,7 +429,7 @@ const zhCN: TranslationDict = {
     webSearchProviderTavily: 'Tavily 搜索',
     webSearchProviderSearXNG: 'SearXNG（自建）',
     // AI Services
-    aiServices: 'AI 服务',
+    aiServices: '模型',
     aiServicesDescription: '配置模型、搜索和图片生成服务',
     capabilities: '能力检测',
     capabilityChat: '对话',
@@ -1592,6 +1596,28 @@ const zhCN: TranslationDict = {
     modularRules: '模块化规则',
     rulesTruncated: '规则已截断',
     rulesNotModifiable: '项目规则由用户手动维护，不可通过 AI 修改',
+  },
+
+  usage: {
+    title: '用量',
+    periodToday: '今日',
+    periodWeek: '本周',
+    periodMonth: '本月',
+    periodAll: '全部',
+    requests: '请求次数',
+    inputTokens: '输入 token',
+    outputTokens: '输出 token',
+    cacheHitRate: '缓存命中率',
+    bySkill: '按 Skill',
+    byModel: '按 Model',
+    noData: '暂无数据，发送消息后将记录用量',
+    heatmapTitle: '活跃热图（近 12 周）',
+    dailyTitle: '每日消耗（近 30 天）',
+    heatmapTooltipUsed: '{date} 消耗了 {tokens} token',
+    heatmapTooltipNoData: '{date} 暂无记录',
+    heatmapWeekdays: ['一', '二', '三', '四', '五', '六', '日'],
+    heatmapLegendLess: '少',
+    heatmapLegendMore: '多',
   },
 };
 

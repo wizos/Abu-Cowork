@@ -1358,15 +1358,20 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
         // Calibrate token estimator with actual API usage
         const estimatedInput = estimateTokens(effectiveSystemPrompt) + estimateMessageTokens(preparedMessages) + toolTokens;
         calibrateFromUsage(estimatedInput, finalUsage.inputTokens);
-        // Record cost for fee tracking
+        // Record token usage
         const usageSnapshot = { ...finalUsage };
-        import('../llm/costTracker').then(({ recordTurnCost }) => {
-          recordTurnCost(conversationId, effectiveModelId, {
-            inputTokens: usageSnapshot.inputTokens,
-            outputTokens: usageSnapshot.outputTokens,
-            cacheReadInputTokens: usageSnapshot.cacheReadInputTokens,
-            cacheCreationInputTokens: usageSnapshot.cacheCreationInputTokens,
-          });
+        import('../llm/usageTracker').then(({ recordTurnUsage }) => {
+          recordTurnUsage(
+            conversationId,
+            effectiveModelId,
+            route.type === 'skill' ? (route.skill?.name ?? null) : null,
+            {
+              inputTokens: usageSnapshot.inputTokens,
+              outputTokens: usageSnapshot.outputTokens,
+              cacheReadInputTokens: usageSnapshot.cacheReadInputTokens,
+              cacheCreationInputTokens: usageSnapshot.cacheCreationInputTokens,
+            },
+          );
         }).catch(() => {});
       }
 
