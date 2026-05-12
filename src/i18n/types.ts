@@ -1594,9 +1594,6 @@ export interface TranslationDict {
     convertToProject: string;
     moveToProject: string;
     removeFromProject: string;
-    migrationBanner: string;
-    migrationAction: string;
-    migrationDismiss: string;
     emptyState: string;
     selectFolder: string;
     next: string;
