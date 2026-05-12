@@ -207,6 +207,11 @@ export function getCapabilityPrompt(): string {
 - ✅ 从 CDN 加载外部库（Chart.js、D3 等）：cdn.jsdelivr.net / cdnjs.cloudflare.com / unpkg.com
 - ✅ 只在用户明确要求"保存为文件"或"导出"时才调用 write_file
 
+**已导出的文件后续修改**：
+- ⚠️ 文件一旦写入磁盘，**局部修改必须用 edit_file**（提供 old_content + new_content 精确替换）
+- ❌ 严禁用 write_file 整覆盖已存在的多 section 文档（报告/长 HTML/长代码）—— 会丢失未明确要求修改的内容
+- ✅ 如确需推倒重写整个文件结构，先 run_command 删除原文件再 write_file 创建新文件
+
 **样式要求**：使用浅色/白色背景，禁止深色/黑色背景。与阿布界面风格保持一致。
 
 ## 工作方式 - 主动出击！
