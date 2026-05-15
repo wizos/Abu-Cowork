@@ -1,40 +1,60 @@
 /**
- * Network check — single HEAD request to a generic public endpoint with a
- * 5-second timeout. We only want to know "is the network stack functional?",
- * not benchmark latency or test region-specific reachability.
+ * Network check — HEAD request to the first enabled external provider's
+ * baseUrl with a 5-second timeout. Tests whether reqwest (Tauri Rust layer)
+ * can reach the endpoint the user actually cares about.
  *
- * Why api.anthropic.com: it's whitelisted on most corp networks since it's
- * the default LLM endpoint. Avoid Google/Cloudflare beacons (often blocked
- * in mainland China) and avoid anything that could be misread as covert
- * exfil.
+ * Why not a hardcoded public endpoint: api.anthropic.com is blocked in
+ * mainland China; google/cloudflare beacons are also unreliable there.
+ * Using the user's own provider is the most meaningful signal and avoids
+ * false-positives for domestic users who don't need a foreign endpoint.
  *
  * Why @tauri-apps/plugin-http instead of browser fetch: the webview's CORS
- * preflight gets blocked by api.anthropic.com (no Access-Control-Allow-Origin
+ * preflight gets blocked by most API endpoints (no Access-Control-Allow-Origin
  * for `tauri://localhost`), so browser fetch returns "Load failed" — a false
  * negative. The Tauri http plugin runs the request from the Rust process
- * (reqwest), bypassing CORS entirely. Capability `http:default` already
- * permits `https://*`.
+ * (reqwest), bypassing CORS entirely.
  */
 
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { getI18n } from '@/i18n';
 import { mapNetworkError } from '../errorMap';
 import type { CheckResult } from '../types';
 
-const PROBE_URL = 'https://api.anthropic.com';
 const TIMEOUT_MS = 5000;
 
 export async function runNetworkChecks(): Promise<CheckResult[]> {
   const t = getI18n();
+
+  const enabledExternal = useSettingsStore
+    .getState()
+    .providers.filter(
+      (p) => p.enabled && !p.baseUrl.includes('localhost') && !p.baseUrl.includes('127.0.0.1')
+    );
+
+  if (enabledExternal.length === 0) {
+    return [{
+      id: 'network:reachability',
+      category: 'network',
+      name: t.diagnostic.networkReachability,
+      status: 'skipped',
+      metric: '未启用外部 AI 服务',
+      checkedAt: Date.now(),
+      durationMs: 0,
+    }];
+  }
+
+  const probeUrl = enabledExternal[0].baseUrl;
   const start = Date.now();
+
   try {
-    const resp = await tauriFetch(PROBE_URL, {
+    const resp = await tauriFetch(probeUrl, {
       method: 'HEAD',
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     const durationMs = Date.now() - start;
-    // 4xx is fine — it means the server is reachable, just rejected our HEAD.
-    // 5xx or no response means real network/server problem.
+    // 4xx is fine — server is reachable, just rejected our HEAD.
+    // 5xx means real server problem.
     if (resp.status < 500) {
       return [{
         id: 'network:reachability',
@@ -53,16 +73,15 @@ export async function runNetworkChecks(): Promise<CheckResult[]> {
       category: 'network',
       name: t.diagnostic.networkReachability,
       status: 'failed',
-      metric: rawError,
       errorMessage: friendly.message,
-      errorDetail: rawError,
+      errorDetail: `${probeUrl} → ${rawError}`,
       suggestedAction: friendly.action,
       checkedAt: Date.now(),
       durationMs,
     }];
   } catch (e) {
     const durationMs = Date.now() - start;
-    const rawError = e instanceof Error ? e.message : String(e);
+    const rawError = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
     const friendly = mapNetworkError(rawError);
     return [{
       id: 'network:reachability',
@@ -70,7 +89,7 @@ export async function runNetworkChecks(): Promise<CheckResult[]> {
       name: t.diagnostic.networkReachability,
       status: 'failed',
       errorMessage: friendly.message,
-      errorDetail: rawError,
+      errorDetail: `${probeUrl} → ${rawError}`,
       suggestedAction: friendly.action,
       checkedAt: Date.now(),
       durationMs,
