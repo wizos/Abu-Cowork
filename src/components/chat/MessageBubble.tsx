@@ -4,6 +4,7 @@ import type { Message, MessageContent } from '@/types';
 import MarkdownRenderer from './MarkdownRenderer';
 import ToolCallsGroup from './ToolCallsGroup';
 import { useChatStore, useActiveConversation } from '@/stores/chatStore';
+import { cn } from '@/lib/utils';
 import { usePreviewStore } from '@/stores/previewStore';
 import { runAgentLoop } from '@/core/agent/agentLoop';
 import { useI18n } from '@/i18n';
@@ -148,6 +149,23 @@ function getImageBlocks(content: string | MessageContent[]): Extract<MessageCont
   return content.filter((c): c is Extract<MessageContent, { type: 'image' }> => c.type === 'image');
 }
 
+/**
+ * Re-attach the original routing prefix (`@expert` or `/skill`) to user text
+ * for edit / regenerate paths. The user message we store is post-routing
+ * cleanInput (without the prefix), so resending raw text would fall back to
+ * the default route and lose the expert / skill association.
+ */
+function reattachRoutingPrefix(body: string, original: Message): string {
+  const trimmed = body.trim();
+  if (original.delegateAgent) {
+    return trimmed ? `@${original.delegateAgent.name} ${trimmed}` : `@${original.delegateAgent.name}`;
+  }
+  if (original.skill) {
+    return trimmed ? `/${original.skill.name} ${trimmed}` : `/${original.skill.name}`;
+  }
+  return body;
+}
+
 // Thinking block component for extended thinking
 function ThinkingBlock({ thinking }: { thinking: string }) {
   const [expanded, setExpanded] = useState(false);
@@ -263,18 +281,34 @@ function MessageActions({ message, onEdit, onDelete, onRegenerate, isUser }: Mes
 // Edit input for user messages — card style
 function EditInput({
   initialContent,
+  delegateAgentName,
+  skillName,
   onSave,
   onCancel
 }: {
   initialContent: string;
+  delegateAgentName?: string;
+  skillName?: string;
   onSave: (content: string) => void;
   onCancel: () => void;
 }) {
   const [text, setText] = useState(initialContent);
   const { t } = useI18n();
+  const routingChip = delegateAgentName
+    ? { label: `@${delegateAgentName}`, color: 'text-blue-600 bg-blue-50' }
+    : skillName
+      ? { label: `/${skillName}`, color: 'text-purple-600 bg-purple-50' }
+      : null;
 
   return (
     <div className="min-w-[280px] rounded-2xl border border-[var(--abu-border-subtle)] bg-white overflow-hidden">
+      {routingChip && (
+        <div className="flex items-center px-4 pt-3 pb-1 bg-[var(--abu-bg-muted)]">
+          <span className={cn('inline-flex items-center px-2 py-0.5 rounded-md text-[12px] font-medium', routingChip.color)}>
+            {routingChip.label}
+          </span>
+        </div>
+      )}
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -330,13 +364,17 @@ export default function MessageBubble({
     setIsEditing(false);
     // Delete this message and all subsequent messages, then runAgentLoop creates a fresh one
     useChatStore.getState().deleteMessagesFrom(convId, message.id);
+    // Re-attach the original routing prefix (@expert or /skill) so the
+    // edited resend stays on the same agent / skill — otherwise the message
+    // falls back to the default `general` route and the expert is lost.
+    const routedContent = reattachRoutingPrefix(newContent, message);
     // Regenerate response, passing original images if any
     const imageAttachments = originalImages.map((img, i) => ({
       id: `edit-${Date.now()}-${i}`,
       data: img.source.data,
       mediaType: img.source.media_type,
     }));
-    await runAgentLoop(convId, newContent, imageAttachments.length > 0 ? { images: imageAttachments } : undefined);
+    await runAgentLoop(convId, routedContent, imageAttachments.length > 0 ? { images: imageAttachments } : undefined);
   };
 
   const handleDelete = () => {
@@ -389,6 +427,10 @@ export default function MessageBubble({
       // Delete from user message onwards and regenerate
       useChatStore.getState().deleteMessagesFrom(convId, userMsgToRegenerate.id);
       const userContent = getTextContent(userMsgToRegenerate.content);
+      // Re-attach the original @expert / /skill prefix so the regenerated
+      // turn stays on the same route — the user message stored content is
+      // post-routing cleanInput, so the prefix is otherwise lost.
+      const routedContent = reattachRoutingPrefix(userContent, userMsgToRegenerate);
       // Preserve image blocks from original user message
       const originalImages = getImageBlocks(userMsgToRegenerate.content);
       const imageAttachments = originalImages.map((img, i) => ({
@@ -396,7 +438,7 @@ export default function MessageBubble({
         data: img.source.data,
         mediaType: img.source.media_type,
       }));
-      await runAgentLoop(convId, userContent, imageAttachments.length > 0 ? { images: imageAttachments } : undefined);
+      await runAgentLoop(convId, routedContent, imageAttachments.length > 0 ? { images: imageAttachments } : undefined);
     }
   };
 
@@ -448,6 +490,8 @@ export default function MessageBubble({
           {isEditing ? (
             <EditInput
               initialContent={textContent}
+              delegateAgentName={message.delegateAgent?.name}
+              skillName={message.skill?.name}
               onSave={handleSaveEdit}
               onCancel={() => setIsEditing(false)}
             />

@@ -265,18 +265,6 @@ export default function Sidebar() {
           <span>{t.sidebar.newTask}</span>
         </button>
         <button
-          onClick={() => openAutomation()}
-          className={cn(
-            'btn-ghost flex items-center gap-3 w-full px-3 py-2.5 text-[14px] rounded-lg',
-            viewMode === 'automation'
-              ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]'
-              : 'text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]'
-          )}
-        >
-          <Workflow className={cn('h-[18px] w-[18px]', viewMode === 'automation' ? 'text-[var(--abu-clay)]' : 'text-[var(--abu-text-tertiary)]')} strokeWidth={1.75} />
-          <span>{t.sidebar.automation}</span>
-        </button>
-        <button
           onClick={() => openToolbox()}
           className={cn(
             'btn-ghost flex items-center gap-3 w-full px-3 py-2.5 text-[14px] rounded-lg',
@@ -287,6 +275,18 @@ export default function Sidebar() {
         >
           <Wrench className={cn('h-[18px] w-[18px]', viewMode === 'toolbox' ? 'text-[var(--abu-clay)]' : 'text-[var(--abu-text-tertiary)]')} strokeWidth={1.75} />
           <span>{t.sidebar.toolbox}</span>
+        </button>
+        <button
+          onClick={() => openAutomation()}
+          className={cn(
+            'btn-ghost flex items-center gap-3 w-full px-3 py-2.5 text-[14px] rounded-lg',
+            viewMode === 'automation'
+              ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]'
+              : 'text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]'
+          )}
+        >
+          <Workflow className={cn('h-[18px] w-[18px]', viewMode === 'automation' ? 'text-[var(--abu-clay)]' : 'text-[var(--abu-text-tertiary)]')} strokeWidth={1.75} />
+          <span>{t.sidebar.automation}</span>
         </button>
       </nav>
 

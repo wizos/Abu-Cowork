@@ -227,6 +227,10 @@ export interface TranslationDict {
     inputTokens: string;
     outputTokens: string;
     addAttachment: string;
+    // Agent selector in toolbar
+    pickAgent: string;
+    pickAgentEmpty: string;
+    pickAgentClear: string;
     // Conversation ID badge
     copyConvIdTooltip: string;
     copyConvIdCopied: string;
@@ -915,6 +919,18 @@ export interface TranslationDict {
     agentEditorPreview: string;
     myAgents: string;
     exampleAgents: string;
+    // Agent detail panel display
+    agentStartChat: string;
+    agentIntro: string;
+    agentExpertise: string;
+    agentSamplePrompts: string;
+    agentCategoryField: string;
+    agentTagsField: string;
+    // AgentEditor field placeholders
+    agentIntroPlaceholder: string;
+    agentExpertisePlaceholder: string;
+    agentSamplePromptsPlaceholder: string;
+    agentTagsPlaceholder: string;
     agentEnabled: string;
     agentDisabled: string;
     agentCategoryAll: string;

@@ -212,6 +212,12 @@ interface ChatState {
   currentUsage: TokenUsage | null;
   // Pending input for prefilling the chat input
   pendingInput: string | null;
+  // Pending agent name — set when starting a chat from an agent surface (toolbox
+  // detail panel, agent selector, etc.) so the welcome screen can render an
+  // agent-themed intro. Cleared on next startNewConversation or when a real
+  // message is added. Ephemeral, not persisted. Stores the agent's registry
+  // key (i.e. the same name used for @mention).
+  pendingAgentName: string | null;
   // Thinking timer
   thinkingStartTime: number | null;
   // Track multiple concurrent active agents
@@ -276,6 +282,7 @@ interface ChatActions {
   removeActiveAgent: (agentName: string) => void;
   setCurrentUsage: (usage: TokenUsage | null) => void;
   setPendingInput: (text: string | null) => void;
+  setPendingAgent: (agentName: string | null) => void;
   setConversationStatus: (convId: string, status: ConversationStatus) => void;
   clearCompletedStatus: (convId: string) => void;
 
@@ -322,6 +329,7 @@ export const useChatStore = create<ChatStore>()(
       currentUsage: null,
       outputsRev: {} as Record<string, number>,
       pendingInput: null,
+      pendingAgentName: null,
       thinkingStartTime: null,
       activeAgentNames: [],
 
@@ -374,6 +382,7 @@ export const useChatStore = create<ChatStore>()(
       startNewConversation: () => {
         set((state) => {
           state.activeConversationId = null;
+          state.pendingAgentName = null;
         });
         // Top-level "新建任务" is semantically "step out of the current
         // project context" — clear the global workspace so the welcome
@@ -565,6 +574,9 @@ export const useChatStore = create<ChatStore>()(
       addMessage: (convId, message) => {
         let newTitle: string | undefined;
         set((state) => {
+          // Clear expert intro banner once the conversation has any real
+          // content — welcome screen is gone, banner has nothing to render on.
+          if (state.pendingAgentName) state.pendingAgentName = null;
           const conv = state.conversations[convId];
           if (conv) {
             conv.messages.push(message);
@@ -983,6 +995,12 @@ export const useChatStore = create<ChatStore>()(
       setPendingInput: (text) => {
         set((state) => {
           state.pendingInput = text;
+        });
+      },
+
+      setPendingAgent: (agentName) => {
+        set((state) => {
+          state.pendingAgentName = agentName;
         });
       },
 

@@ -1,6 +1,6 @@
 [package]
 name = "abu"
-version = "0.16.2"
+version = "0.17.0"
 description = "ABU - AI Desktop Assistant"
 authors = ["you"]
 edition = "2021"
@@ -31,8 +31,8 @@ tokio = { version = "1", features = ["net", "io-util", "rt", "sync", "macros", "
 tokio-tungstenite = { version = "0.26", features = ["native-tls"] }
 futures-util = "0.3"
 prost = "0.13"
-reqwest = { version = "0.12", default-features = false, features = ["json", "native-tls"] }
-xcap = "0.3"
+reqwest = { version = "0.13", default-features = false, features = ["json", "native-tls"] }
+xcap = "0.9"
 enigo = { version = "0.3", features = ["serde"] }
 base64 = "0.22"
 image = { version = "0.25", default-features = false, features = ["png"] }
@@ -49,7 +49,7 @@ aes-gcm = "0.10"
 hkdf = "0.13"
 sha2 = "0.11"
 rand = "0.8"
-machine-uid = "0.5"
+machine-uid = "0.6"
 
 # Secrets: Credential Manager (DPAPI) on Windows, secret-service on Linux.
 [target.'cfg(not(target_os = "macos"))'.dependencies]
