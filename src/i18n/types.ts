@@ -124,6 +124,7 @@ export interface TranslationDict {
     scheduledTasks: string;
     triggers: string;
     toolbox: string;
+    experts: string;
     recents: string;
     searchPlaceholder: string;
     noSessionsYet: string;
@@ -1641,5 +1642,13 @@ export interface TranslationDict {
     modularRules: string;
     rulesTruncated: string;
     rulesNotModifiable: string;
+  };
+
+  // Experts Center (Phase 1)
+  experts: {
+    title: string;
+    subtitle: string;
+    searchPlaceholder: string;
+    comingSoon: string;
   };
 }

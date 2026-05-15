@@ -98,6 +98,7 @@ const zhCN: TranslationDict = {
     scheduledTasks: '定时任务',
     triggers: '监听事件',
     toolbox: '工具箱',
+    experts: '专家',
     recents: '最近',
     searchPlaceholder: '搜索对话...',
     noSessionsYet: '暂无会话',
@@ -1618,6 +1619,13 @@ const zhCN: TranslationDict = {
     heatmapWeekdays: ['一', '二', '三', '四', '五', '六', '日'],
     heatmapLegendLess: '少',
     heatmapLegendMore: '多',
+  },
+
+  experts: {
+    title: '专家中心',
+    subtitle: '按行业分类浏览专家，召唤他们为你服务',
+    searchPlaceholder: '搜索专家职称或描述',
+    comingSoon: '即将推出',
   },
 };
 

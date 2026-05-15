@@ -98,6 +98,7 @@ const enUS: TranslationDict = {
     scheduledTasks: 'Scheduled Tasks',
     triggers: 'Triggers',
     toolbox: 'Toolbox',
+    experts: 'Experts',
     recents: 'Recents',
     searchPlaceholder: 'Search chats...',
     noSessionsYet: 'No sessions yet',
@@ -1617,6 +1618,13 @@ const enUS: TranslationDict = {
     heatmapWeekdays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     heatmapLegendLess: 'Less',
     heatmapLegendMore: 'More',
+  },
+
+  experts: {
+    title: 'Experts Center',
+    subtitle: 'Browse experts by industry and summon them to work for you',
+    searchPlaceholder: 'Search expert title or description',
+    comingSoon: 'Coming soon',
   },
 };
 
