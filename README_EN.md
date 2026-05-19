@@ -378,6 +378,10 @@ If Abu has been helpful to you, feel free to buy the author a coffee:
 
 <img src="src/assets/sponsor-qr.png" width="200" />
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=PM-Shawn/Abu-Cowork&type=Date)](https://star-history.com/#PM-Shawn/Abu-Cowork&Date)
+
 ## License
 
 **[Apache License 2.0](LICENSE)** — Free to use, modify, and distribute, including commercial use. Copyright notices must be retained. **Enterprise edition requires a license**, offering team collaboration, SSO, audit logs, and private deployment support. [Contact us](mailto:pmshawn@163.com).

@@ -378,6 +378,10 @@ src-tauri/
 
 <img src="src/assets/sponsor-qr.png" width="200" />
 
+## Star 趋势
+
+[![Star History Chart](https://api.star-history.com/svg?repos=PM-Shawn/Abu-Cowork&type=Date)](https://star-history.com/#PM-Shawn/Abu-Cowork&Date)
+
 ## 许可证
 
 **[Apache License 2.0](LICENSE)** — 可自由使用、修改、分发，包括商业用途，需保留版权声明。**企业版需购买授权**，提供团队协作、SSO、审计与私有部署支持，[联系购买](mailto:pmshawn@163.com)。
