@@ -1675,8 +1675,13 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       const isLikelyVisionError = errorCode === 'invalid_request'
         && err instanceof LLMError && err.statusCode === 400
         && conversationHasImages(useChatStore.getState().conversations[conversationId]?.messages ?? []);
+      const isOllamaForbidden = errorCode === 'authentication'
+        && err instanceof LLMError && err.statusCode === 403
+        && /^forbidden\s*$/i.test(err.message.trim());
       const displayError = isLikelyVisionError
         ? '当前模型可能不支持图片/视觉输入，请尝试移除图片或切换到支持视觉的模型（如 Claude、GPT-4o）。'
+        : isOllamaForbidden
+        ? 'Ollama 返回了 403 Forbidden（CORS 来源限制）。请设置环境变量 `OLLAMA_ORIGINS=*` 后重启 Ollama，例如：`OLLAMA_ORIGINS=* ollama serve`'
         : errorMessage;
 
       chatStore.appendToLastMessage(

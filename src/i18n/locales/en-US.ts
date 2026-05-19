@@ -653,6 +653,7 @@ const enUS: TranslationDict = {
       aiModelUnsupported: 'This provider does not support the currently selected model',
       aiBudgetExceeded: 'Account budget / balance exhausted',
       aiTimeout: 'Provider responded too slowly (>8s), possibly cold-start or slow network',
+      aiOllamaForbidden: 'Ollama returned 403 Forbidden (CORS origin restriction). Set OLLAMA_ORIGINS=* and restart Ollama',
       permTauriScope: 'Abu\'s internal permission scope is missing this path (this is a bug, please report)',
       permOSDenied: 'OS denied access to this folder. Check System Settings → Privacy & Security',
       permDiskFull: 'Disk is full',

@@ -653,6 +653,7 @@ const zhCN: TranslationDict = {
       aiModelUnsupported: '此 provider 不支持当前选中的模型',
       aiBudgetExceeded: '账户预算/余额已耗尽',
       aiTimeout: 'provider 响应超时（>8 秒），可能是冷启或网络慢',
+      aiOllamaForbidden: 'Ollama 返回 403 Forbidden（CORS 来源限制）。请设置环境变量 OLLAMA_ORIGINS=* 后重启 Ollama',
       permTauriScope: '阿布的内部权限配置遗漏了此路径（这是 bug，请反馈）',
       permOSDenied: '系统拒绝访问此目录，请前往「系统设置 → 隐私与安全」检查',
       permDiskFull: '磁盘空间不足',

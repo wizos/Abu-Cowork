@@ -67,6 +67,13 @@ export function mapAIServiceError(opts: MapAIErrorOpts): FriendlyError {
       },
     };
   }
+  // Ollama CORS 403 — body is literally "forbidden\n"
+  if (opts.statusCode === 403 && /^forbidden\s*$/i.test(raw.trim())) {
+    return {
+      message: t.diagnostic.errMap.aiOllamaForbidden,
+      action: { type: 'open-settings', target: 'ai-services', label: t.diagnostic.errMap.actionOpenAIServices },
+    };
+  }
   if (/^timeout\s*\(/i.test(raw)) {
     return {
       message: t.diagnostic.errMap.aiTimeout,

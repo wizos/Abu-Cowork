@@ -661,6 +661,7 @@ export interface TranslationDict {
       aiModelUnsupported: string;
       aiBudgetExceeded: string;
       aiTimeout: string;
+      aiOllamaForbidden: string;
       // Permissions
       permTauriScope: string;
       permOSDenied: string;

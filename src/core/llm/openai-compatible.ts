@@ -237,13 +237,14 @@ export class OpenAICompatibleAdapter implements LLMAdapter {
       }
     }
 
+    const requestHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (options.apiKey) {
+      requestHeaders['Authorization'] = `Bearer ${options.apiKey}`;
+    }
     const fetchFn = await getTauriFetch();
     const response = await fetchFn(`${baseUrl}/chat/completions`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${options.apiKey}`,
-      },
+      headers: requestHeaders,
       body: JSON.stringify(body),
       signal: options.signal,
     });
