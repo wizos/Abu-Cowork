@@ -82,9 +82,27 @@ export class LLMError extends Error {
 }
 
 /**
- * Classify an HTTP status code and error message into an LLMError
+ * Extract a human-readable message from an OpenAI-compatible API error body.
+ * Handles {"error":{"message":"...","type":"...","param":"...","code":"..."}}
+ * Falls back to the raw body if not parseable.
  */
-export function classifyError(statusCode: number, message: string): LLMError {
+export function extractApiErrorMessage(rawBody: string): string {
+  try {
+    const parsed = JSON.parse(rawBody) as { error?: { message?: string } };
+    if (typeof parsed.error?.message === 'string' && parsed.error.message) {
+      return parsed.error.message;
+    }
+  } catch { /* not JSON */ }
+  return rawBody;
+}
+
+/**
+ * Classify an HTTP status code and error message into an LLMError.
+ * Accepts raw response body — will extract a clean message from JSON if possible.
+ */
+export function classifyError(statusCode: number, rawBody: string): LLMError {
+  const message = extractApiErrorMessage(rawBody);
+
   // Rate limiting
   if (statusCode === 429) {
     const retryAfter = extractRetryAfter(message);

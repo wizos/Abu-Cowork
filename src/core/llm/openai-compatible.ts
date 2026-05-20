@@ -11,6 +11,22 @@ import { resolveOpenAIBaseUrl } from './urlUtils';
 const logger = createLogger('openai-compatible');
 
 /**
+ * If the error body indicates that `max_tokens` exceeds the model's limit,
+ * return the actual supported limit. Returns null otherwise.
+ * Handles: "max_tokens is too large: 32768. This model supports at most 4096 completion tokens"
+ */
+function extractMaxTokensLimit(errorBody: string): number | null {
+  try {
+    const parsed = JSON.parse(errorBody) as { error?: { message?: string; param?: string } };
+    if (parsed.error?.param === 'max_tokens' && parsed.error.message) {
+      const m = /supports at most (\d+)/i.exec(parsed.error.message);
+      if (m) return parseInt(m[1], 10);
+    }
+  } catch { /* not JSON */ }
+  return null;
+}
+
+/**
  * Safely parse a tool-call arguments string into a Record.
  * - Empty string → {} (let validateToolInput surface missing required fields)
  * - Non-object parse results (null, array, primitive) → {} (defensive)
@@ -242,7 +258,7 @@ export class OpenAICompatibleAdapter implements LLMAdapter {
       requestHeaders['Authorization'] = `Bearer ${options.apiKey}`;
     }
     const fetchFn = await getTauriFetch();
-    const response = await fetchFn(`${baseUrl}/chat/completions`, {
+    let response = await fetchFn(`${baseUrl}/chat/completions`, {
       method: 'POST',
       headers: requestHeaders,
       body: JSON.stringify(body),
@@ -251,7 +267,28 @@ export class OpenAICompatibleAdapter implements LLMAdapter {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw classifyError(response.status, errorText);
+      // Auto-retry once when the model's actual max_tokens limit is lower than
+      // what the capabilities registry advertised. Extract the real limit from
+      // the error message and retry with it so the request succeeds.
+      const retryLimit = extractMaxTokensLimit(errorText);
+      if (response.status === 400 && retryLimit !== null) {
+        logger.warn('max_tokens too large, retrying with model limit', {
+          requested: body.max_tokens,
+          limit: retryLimit,
+        });
+        body.max_tokens = retryLimit;
+        response = await fetchFn(`${baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: requestHeaders,
+          body: JSON.stringify(body),
+          signal: options.signal,
+        });
+        if (!response.ok) {
+          throw classifyError(response.status, await response.text());
+        }
+      } else {
+        throw classifyError(response.status, errorText);
+      }
     }
 
     // ── Non-streaming path (Ollama + tools) ──

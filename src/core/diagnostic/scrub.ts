@@ -48,6 +48,24 @@ const SECRET_FIELD_PATTERNS = [
 ];
 
 /**
+ * Field names that look like secrets (contain a pattern from SECRET_FIELD_PATTERNS)
+ * but are actually benign config values that should remain visible in bundles.
+ * "token" matches "maxOutputTokens", "contextWindowSize" matches nothing but
+ * was previously redacted by a wider rule — list here proactively.
+ */
+const SECRET_FIELD_ALLOWLIST = new Set([
+  'maxtokens',
+  'maxoutputtokens',
+  'maxtokenslimit',
+  'contextwindowsize',
+  'numtokens',
+  'tokenlimit',
+  'tokencount',
+  'tokenbudget',
+  'tokenizer',
+]);
+
+/**
  * Regex patterns that flag secret-shaped strings even when they show up in
  * unexpected places (e.g. inside log lines or tool output text).
  *
@@ -71,6 +89,7 @@ const SECRET_VALUE_PATTERNS: RegExp[] = [
 
 function isSecretField(key: string): boolean {
   const lower = key.toLowerCase();
+  if (SECRET_FIELD_ALLOWLIST.has(lower)) return false;
   return SECRET_FIELD_PATTERNS.some((p) => lower.includes(p));
 }
 
