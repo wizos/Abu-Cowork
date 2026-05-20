@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import type { SearchResult } from '@/types';
 
 import { getCodeBlockRenderer } from './codeBlockRenderers';
+import { closeOpenFences } from './markdownUtils';
 
 SyntaxHighlighter.registerLanguage('tsx', tsx);
 SyntaxHighlighter.registerLanguage('typescript', tsx);
@@ -274,15 +275,8 @@ export function CollapsibleCodeBlock({ codeString, language }: { codeString: str
   );
 }
 
-// Close any unclosed code fence so interrupted streams don't spill content as plain text.
-// Counts fence-opening lines (starting with 3+ backticks); appends a closing fence if odd.
-function closeOpenFences(text: string): string {
-  let inFence = false;
-  for (const line of text.split('\n')) {
-    if (/^`{3,}/.test(line)) inFence = !inFence;
-  }
-  return inFence ? text + '\n```' : text;
-}
+// closeOpenFences moved to ./markdownUtils.ts so non-component utilities can
+// be imported and unit-tested without tripping react-refresh/only-export-components.
 
 // Stable references — avoid recreating on every render
 const remarkPluginsStable = [remarkGfm, remarkBreaks];
