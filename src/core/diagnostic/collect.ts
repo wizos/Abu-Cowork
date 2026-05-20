@@ -17,11 +17,42 @@ import { useMCPStore, type MCPServerEntry } from '@/stores/mcpStore';
 import { usePermissionStore } from '@/stores/permissionStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useDiagnosticStore } from '@/stores/diagnosticStore';
+import { useScheduleStore } from '@/stores/scheduleStore';
 import { skillLoader } from '@/core/skill/loader';
+import { getRecentLogs, getLogDirPath } from '@/core/logging/logger';
 import { APP_VERSION } from '@/utils/version';
 import { platform } from '@tauri-apps/plugin-os';
 import { scrubSecrets, scrubMessage } from './scrub';
 import type { CheckResult, DiagnosticSnapshot, OverallStatus } from './types';
+
+const RUNTIME_LOG_LIMIT = 200;
+const DISK_LOG_TAIL_LINES = 500;
+
+/** localStorage keys for all persisted Zustand stores. Keep in sync with storeVersions.test.ts. */
+const PERSISTED_STORE_KEYS = [
+  'abu-settings',
+  'abu-chat',
+  'abu-scratchpad-store',
+  'abu-permissions',
+  'abu-workspace',
+  'abu-mcp-store',
+  'abu-schedule',
+  'abu-triggers',
+  'abu-im-channel',
+  'abu-projects',
+  'abu-project-hint',
+  'abu-diagnostic-store',
+  'abu-usage-stats',
+] as const;
+
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+function logFileNameForDaysBack(daysBack: number): string {
+  const d = new Date(Date.now() - daysBack * 86_400_000);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}.log`;
+}
 
 interface CollectOptions {
   includeRawText: boolean;
@@ -255,6 +286,97 @@ export async function collectBundleFiles(opts: CollectOptions): Promise<CollectR
     null,
     2,
   );
+
+  // ── logs/runtime.jsonl ───────────────────────────────────────────────
+  // In-memory ring buffer from the structured logger. Captures recent
+  // agentLoop / toolExecutor / contextManager / LLM events including the
+  // warn/error level that's the highest-value debug signal.
+  try {
+    const entries = getRecentLogs().slice(-RUNTIME_LOG_LIMIT);
+    files['logs/runtime.jsonl'] = entries.map((e) => JSON.stringify(e)).join('\n');
+  } catch (e) {
+    files['logs/runtime.jsonl'] = JSON.stringify({ error: e instanceof Error ? e.message : String(e) });
+  }
+
+  // ── logs/YYYY-MM-DD.log ──────────────────────────────────────────────
+  // Today + yesterday's on-disk warn/error log files. Best-effort —
+  // missing files (new install, no warns/errors yet) are silently skipped.
+  try {
+    const logDir = await getLogDirPath();
+    if (logDir) {
+      for (const daysBack of [0, 1]) {
+        const name = logFileNameForDaysBack(daysBack);
+        try {
+          const content = await readTextFile(joinPath(logDir, name));
+          const lines = content.split('\n');
+          files[`logs/${name}`] = lines.slice(-DISK_LOG_TAIL_LINES).join('\n');
+        } catch {
+          // File not present — skip silently
+        }
+      }
+    }
+  } catch (e) {
+    files['logs/disk-read-error.txt'] = e instanceof Error ? e.message : String(e);
+  }
+
+  // ── stores/versions.json ─────────────────────────────────────────────
+  // Schema versions of all persisted Zustand stores. Lets PM spot
+  // migration-related bugs at a glance without needing the user's
+  // localStorage dump.
+  const storeVersions: Record<string, number | 'missing' | 'parse-error'> = {};
+  for (const key of PERSISTED_STORE_KEYS) {
+    const raw = localStorage.getItem(key);
+    if (!raw) {
+      storeVersions[key] = 'missing';
+      continue;
+    }
+    try {
+      const parsed = JSON.parse(raw) as { version?: number };
+      storeVersions[key] = parsed.version ?? 'missing';
+    } catch {
+      storeVersions[key] = 'parse-error';
+    }
+  }
+  files['stores/versions.json'] = JSON.stringify(storeVersions, null, 2);
+
+  // ── conversation/index.json ──────────────────────────────────────────
+  // Metadata for ALL conversations (titles, counts, timestamps). No
+  // message content. Helps diagnose "conversation disappeared / wrong
+  // conversation loaded" type bugs.
+  // workspacePath / imChannelId / triggerId deliberately omitted —
+  // user-local paths and channel IDs are privacy-sensitive and rarely
+  // needed for diagnostic.
+  try {
+    const allMeta = Object.values(chat.conversationIndex).map((m) => ({
+      id: m.id,
+      title: m.title,
+      createdAt: m.createdAt,
+      updatedAt: m.updatedAt,
+      messageCount: m.messageCount,
+      totalCost: m.totalCost,
+      readOnly: m.readOnly,
+    }));
+    files['conversation/index.json'] = JSON.stringify(scrubSecrets(allMeta), null, 2);
+  } catch (e) {
+    files['conversation/index.json'] = JSON.stringify({ error: e instanceof Error ? e.message : String(e) }, null, 2);
+  }
+
+  // ── schedule/summary.json ────────────────────────────────────────────
+  // Scheduled-task status snapshot. Deliberately excludes name / prompt /
+  // description — those are user content. id / status / timing / skill
+  // binding are what PM needs to diagnose scheduler bugs.
+  try {
+    const tasks = Object.values(useScheduleStore.getState().tasks).map((t) => ({
+      id: t.id,
+      status: t.status,
+      skillName: t.skillName,
+      lastRunAt: t.lastRunAt,
+      nextRunAt: t.nextRunAt,
+    }));
+    files['schedule/summary.json'] = JSON.stringify({ taskCount: tasks.length, tasks }, null, 2);
+  } catch (e) {
+    files['schedule/summary.json'] = JSON.stringify({ error: e instanceof Error ? e.message : String(e) }, null, 2);
+  }
 
   // ── README.txt ───────────────────────────────────────────────────────
   const fileList = Object.keys(files).sort().concat(['README.txt']);

@@ -207,5 +207,10 @@ function clearLogs(): void {
   entryCount = 0;
 }
 
-export { createLogger, getRecentLogs, clearLogs };
+/** Public accessor for the on-disk log directory path. Returns '' if unavailable. */
+async function getLogDirPath(): Promise<string> {
+  return getLogDir();
+}
+
+export { createLogger, getRecentLogs, clearLogs, getLogDirPath };
 export type { LogLevel, LogEntry, Logger, LogFilter };
