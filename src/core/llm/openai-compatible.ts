@@ -11,6 +11,43 @@ import { resolveOpenAIBaseUrl } from './urlUtils';
 const logger = createLogger('openai-compatible');
 
 /**
+ * Normalise a provider's `usage` response object into Abu's TokenUsage
+ * shape, including prompt-caching fields. Each vendor uses a different
+ * field name for cache hits, so we probe all known shapes:
+ *
+ *  - OpenAI standard: `usage.prompt_tokens_details.cached_tokens`
+ *    (also豆包/火山引擎, 阿里百炼, 智谱 GLM when they follow the spec)
+ *  - DeepSeek custom: `usage.prompt_cache_hit_tokens` (+ `_miss_tokens`)
+ *  - Some legacy paths put `cached_tokens` at the top level
+ *
+ * Anthropic's cache_creation_input_tokens has no OpenAI equivalent
+ * (their auto-caching doesn't charge for writes), so we leave that
+ * field undefined here.
+ */
+function extractUsage(usage: Record<string, unknown>): {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadInputTokens?: number;
+} {
+  const inputTokens = (usage.prompt_tokens as number) ?? 0;
+  const outputTokens = (usage.completion_tokens as number) ?? 0;
+
+  let cacheReadInputTokens: number | undefined;
+  const details = usage.prompt_tokens_details as Record<string, unknown> | undefined;
+  if (details && typeof details.cached_tokens === 'number') {
+    cacheReadInputTokens = details.cached_tokens;
+  } else if (typeof usage.prompt_cache_hit_tokens === 'number') {
+    // DeepSeek
+    cacheReadInputTokens = usage.prompt_cache_hit_tokens;
+  } else if (typeof usage.cached_tokens === 'number') {
+    // Some providers flatten the field to the top level
+    cacheReadInputTokens = usage.cached_tokens;
+  }
+
+  return { inputTokens, outputTokens, ...(cacheReadInputTokens !== undefined ? { cacheReadInputTokens } : {}) };
+}
+
+/**
  * If the error body indicates that `max_tokens` exceeds the model's limit,
  * return the actual supported limit. Returns null otherwise.
  * Handles: "max_tokens is too large: 32768. This model supports at most 4096 completion tokens"
@@ -306,9 +343,9 @@ export class OpenAICompatibleAdapter implements LLMAdapter {
       }
 
       // Emit usage before done so agentLoop can capture it in finalUsage
-      const usage = data.usage as Record<string, number> | undefined;
+      const usage = data.usage as Record<string, unknown> | undefined;
       if (usage) {
-        onEvent({ type: 'usage', usage: { inputTokens: usage.prompt_tokens ?? 0, outputTokens: usage.completion_tokens ?? 0 } });
+        onEvent({ type: 'usage', usage: extractUsage(usage) });
       }
 
       const toolCalls = msg?.tool_calls as Array<Record<string, unknown>> | undefined;
@@ -531,13 +568,9 @@ export class OpenAICompatibleAdapter implements LLMAdapter {
             // send it as a standalone chunk (OpenAI stream_options), others
             // embed it in the finish_reason chunk alongside choices.
             if (parsed.usage) {
-              const u = parsed.usage as Record<string, number>;
               onEvent({
                 type: 'usage',
-                usage: {
-                  inputTokens: u.prompt_tokens ?? 0,
-                  outputTokens: u.completion_tokens ?? 0,
-                },
+                usage: extractUsage(parsed.usage as Record<string, unknown>),
               });
             }
 
