@@ -79,7 +79,7 @@ export default function InstructionsEditModal({ open, onClose, workspacePath }: 
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-white rounded-2xl shadow-xl w-[480px] max-h-[80vh] flex flex-col p-6 animate-in zoom-in-95 duration-150">
+      <div className="bg-white rounded-2xl shadow-xl w-[480px] flex flex-col p-6 animate-in zoom-in-95 duration-150">
         <h3 className="text-[16px] font-semibold text-[var(--abu-text-primary)] mb-1">
           {t.panel.instructionsTitle}
         </h3>
@@ -88,7 +88,7 @@ export default function InstructionsEditModal({ open, onClose, workspacePath }: 
         </p>
 
         {loading ? (
-          <div className="flex-1 flex items-center justify-center py-12">
+          <div className="flex items-center justify-center py-12">
             <div className="w-5 h-5 border-2 border-[var(--abu-clay)] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
@@ -96,7 +96,7 @@ export default function InstructionsEditModal({ open, onClose, workspacePath }: 
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder={t.panel.instructionsPlaceholder}
-            className="flex-1 min-h-[280px] max-h-[50vh] w-full px-3 py-3 rounded-lg border border-[var(--abu-border)] text-[13px] text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:border-[var(--abu-clay)] transition-colors resize-none font-mono leading-relaxed"
+            className="min-h-[280px] max-h-[50vh] w-full px-3 py-3 rounded-lg border border-[var(--abu-border)] text-[13px] text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:border-[var(--abu-clay)] transition-colors resize-none font-mono leading-relaxed"
           />
         )}
 

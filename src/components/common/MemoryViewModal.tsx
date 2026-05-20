@@ -161,7 +161,7 @@ export default function MemoryViewModal(props: MemoryViewModalProps) {
           if (e.target === e.currentTarget) onClose();
         }}
       >
-        <div className="bg-white rounded-2xl shadow-xl w-[480px] max-h-[80vh] flex flex-col p-6 animate-in zoom-in-95 duration-150">
+        <div className="bg-white rounded-2xl shadow-xl w-[480px] flex flex-col p-6 animate-in zoom-in-95 duration-150">
           <h3 className="text-[16px] font-semibold text-[var(--abu-text-primary)] mb-1">
             {title}
           </h3>
@@ -170,14 +170,14 @@ export default function MemoryViewModal(props: MemoryViewModalProps) {
           </p>
 
           {loading ? (
-            <div className="flex-1 flex items-center justify-center py-12">
+            <div className="flex items-center justify-center py-12">
               <div
                 className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin"
                 style={{ borderColor: accentColor, borderTopColor: 'transparent' }}
               />
             </div>
           ) : headers.length > 0 ? (
-            <div className="flex-1 min-h-0 overflow-y-auto space-y-2 mb-4">
+            <div className="max-h-[60vh] overflow-y-auto space-y-2 mb-4">
               <div className="text-[12px] text-[var(--abu-text-placeholder)] mb-2">
                 {format(t.memory.entryCount, { count: String(headers.length) })}
               </div>
@@ -225,7 +225,7 @@ export default function MemoryViewModal(props: MemoryViewModalProps) {
               ))}
             </div>
           ) : (
-            <div className="flex-1 flex items-center justify-center py-12">
+            <div className="flex items-center justify-center py-12">
               <p className="text-[13px] text-[var(--abu-text-placeholder)]">
                 {t.panel.memoryEmpty}
               </p>

@@ -26,7 +26,7 @@ export default function BundleManifestModal({ open, fileList, onClose }: Props) 
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 animate-in fade-in duration-150"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white rounded-2xl shadow-xl w-[480px] max-h-[80vh] flex flex-col p-6 animate-in zoom-in-95 duration-150">
+      <div className="bg-white rounded-2xl shadow-xl w-[480px] flex flex-col p-6 animate-in zoom-in-95 duration-150">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[16px] font-semibold text-[var(--abu-text-primary)]">
             {t.diagnostic.manifestTitle}
@@ -40,7 +40,7 @@ export default function BundleManifestModal({ open, fileList, onClose }: Props) 
           </button>
         </div>
 
-        <ul className="flex-1 overflow-y-auto rounded-lg border border-[var(--abu-border)] bg-[var(--abu-bg-base)] divide-y divide-[var(--abu-border-subtle)]">
+        <ul className="max-h-[60vh] overflow-y-auto rounded-lg border border-[var(--abu-border)] bg-[var(--abu-bg-base)] divide-y divide-[var(--abu-border-subtle)]">
           {fileList.map((f) => (
             <li key={f} className="px-3 py-2 flex items-center gap-2 text-[12px] font-mono text-[var(--abu-text-primary)]">
               <FileText className="h-3.5 w-3.5 text-[var(--abu-text-tertiary)] shrink-0" />
