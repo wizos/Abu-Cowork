@@ -4,7 +4,7 @@ import { APP_VERSION } from './version'
 const CONSOLE_URL = import.meta.env.VITE_CONSOLE_URL as string | undefined
 
 export function sendFeedback(
-  rating: 'positive' | 'negative',
+  rating: 'positive' | 'negative' | 'cancel',
   conversationId?: string,
   messageId?: string,
 ): void {

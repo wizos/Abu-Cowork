@@ -274,8 +274,9 @@ function MessageActions({ message, onEdit, onDelete, onRegenerate, isUser, conve
         <>
           <button
             onClick={() => {
-              setFeedbackRating('positive');
-              sendFeedback('positive', conversationId, message.id);
+              const next = feedbackRating === 'positive' ? null : 'positive';
+              setFeedbackRating(next);
+              sendFeedback(next ?? 'cancel', conversationId, message.id);
             }}
             className={cn(
               'btn-ghost p-1.5 rounded-md transition-colors',
@@ -289,8 +290,9 @@ function MessageActions({ message, onEdit, onDelete, onRegenerate, isUser, conve
           </button>
           <button
             onClick={() => {
-              setFeedbackRating('negative');
-              sendFeedback('negative', conversationId, message.id);
+              const next = feedbackRating === 'negative' ? null : 'negative';
+              setFeedbackRating(next);
+              sendFeedback(next ?? 'cancel', conversationId, message.id);
             }}
             className={cn(
               'btn-ghost p-1.5 rounded-md transition-colors',
