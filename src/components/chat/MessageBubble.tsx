@@ -281,8 +281,8 @@ function MessageActions({ message, onEdit, onDelete, onRegenerate, isUser, conve
             className={cn(
               'btn-ghost p-1.5 rounded-md transition-colors',
               feedbackRating === 'positive'
-                ? 'text-emerald-500'
-                : 'text-[var(--abu-text-tertiary)] hover:text-emerald-500 hover:bg-[var(--abu-bg-hover)]'
+                ? 'text-emerald-500 bg-[var(--abu-bg-hover)]'
+                : 'text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]'
             )}
             title={t.chat.feedbackPositive}
           >
@@ -297,8 +297,8 @@ function MessageActions({ message, onEdit, onDelete, onRegenerate, isUser, conve
             className={cn(
               'btn-ghost p-1.5 rounded-md transition-colors',
               feedbackRating === 'negative'
-                ? 'text-red-500'
-                : 'text-[var(--abu-text-tertiary)] hover:text-red-500 hover:bg-[var(--abu-bg-hover)]'
+                ? 'text-red-500 bg-[var(--abu-bg-hover)]'
+                : 'text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]'
             )}
             title={t.chat.feedbackNegative}
           >
