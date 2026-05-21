@@ -190,6 +190,8 @@ const zhCN: TranslationDict = {
     setupRequiredDesc: '阿布需要一个 API Key 才能开始工作哦，去设置里配一下吧！',
     setupButton: '去配置',
     thinkingProcess: '思考过程',
+    feedbackPositive: '有用',
+    feedbackNegative: '没用',
     copy: '复制',
     edit: '编辑',
     regenerate: '重新生成',

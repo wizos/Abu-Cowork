@@ -1,9 +1,10 @@
-import { ChevronDown, ChevronRight, Copy, Pencil, Trash2, RefreshCw, Check, Brain, Wand2, AtSign, FileText, FolderOpen, ImageOff } from 'lucide-react';
+import { ChevronDown, ChevronRight, Copy, Pencil, Trash2, RefreshCw, Check, Brain, Wand2, AtSign, FileText, FolderOpen, ImageOff, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import type { Message, MessageContent } from '@/types';
 import MarkdownRenderer from './MarkdownRenderer';
 import ToolCallsGroup from './ToolCallsGroup';
 import { useChatStore, useActiveConversation } from '@/stores/chatStore';
+import { sendFeedback } from '@/utils/consoleFeedback';
 import { cn } from '@/lib/utils';
 import { usePreviewStore } from '@/stores/previewStore';
 import { runAgentLoop } from '@/core/agent/agentLoop';
@@ -203,6 +204,7 @@ interface MessageActionsProps {
   onDelete: () => void;
   onRegenerate: () => void;
   isUser: boolean;
+  conversationId?: string;
 }
 
 /**
@@ -222,9 +224,10 @@ function MessageTimestamp({ timestamp, className = '' }: { timestamp: number; cl
   );
 }
 
-function MessageActions({ message, onEdit, onDelete, onRegenerate, isUser }: MessageActionsProps) {
+function MessageActions({ message, onEdit, onDelete, onRegenerate, isUser, conversationId }: MessageActionsProps) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
+  const [feedbackRating, setFeedbackRating] = useState<'positive' | 'negative' | null>(null);
 
   const handleCopy = async () => {
     const text = getTextContent(message.content);
@@ -264,6 +267,42 @@ function MessageActions({ message, onEdit, onDelete, onRegenerate, isUser }: Mes
         >
           <RefreshCw className="h-3.5 w-3.5" />
         </button>
+      )}
+
+      {/* Feedback buttons - only for assistant messages */}
+      {!isUser && (
+        <>
+          <button
+            onClick={() => {
+              setFeedbackRating('positive');
+              sendFeedback('positive', conversationId, message.id);
+            }}
+            className={cn(
+              'btn-ghost p-1.5 rounded-md transition-colors',
+              feedbackRating === 'positive'
+                ? 'text-emerald-500'
+                : 'text-[var(--abu-text-tertiary)] hover:text-emerald-500 hover:bg-[var(--abu-bg-hover)]'
+            )}
+            title={t.chat.feedbackPositive}
+          >
+            <ThumbsUp className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => {
+              setFeedbackRating('negative');
+              sendFeedback('negative', conversationId, message.id);
+            }}
+            className={cn(
+              'btn-ghost p-1.5 rounded-md transition-colors',
+              feedbackRating === 'negative'
+                ? 'text-red-500'
+                : 'text-[var(--abu-text-tertiary)] hover:text-red-500 hover:bg-[var(--abu-bg-hover)]'
+            )}
+            title={t.chat.feedbackNegative}
+          >
+            <ThumbsDown className="h-3.5 w-3.5" />
+          </button>
+        </>
       )}
 
       {/* Delete button */}
@@ -452,6 +491,7 @@ export default function MessageBubble({
           onDelete={handleDelete}
           onRegenerate={handleRegenerate}
           isUser={false}
+          conversationId={convId}
         />
         {message.timestamp && <MessageTimestamp timestamp={message.timestamp} />}
       </div>
@@ -569,6 +609,7 @@ export default function MessageBubble({
               onDelete={handleDelete}
               onRegenerate={handleRegenerate}
               isUser={false}
+              conversationId={convId}
             />
             {message.timestamp && <MessageTimestamp timestamp={message.timestamp} />}
           </div>
@@ -619,6 +660,7 @@ export default function MessageBubble({
               onDelete={handleDelete}
               onRegenerate={handleRegenerate}
               isUser={false}
+              conversationId={convId}
             />
             {message.timestamp && <MessageTimestamp timestamp={message.timestamp} />}
           </div>

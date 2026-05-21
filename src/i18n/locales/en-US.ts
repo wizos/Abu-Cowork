@@ -190,6 +190,8 @@ const enUS: TranslationDict = {
     setupRequiredDesc: 'Abu needs an API Key to get started. Head to settings to configure it!',
     setupButton: 'Go to Settings',
     thinkingProcess: 'Thinking Process',
+    feedbackPositive: 'Helpful',
+    feedbackNegative: 'Not helpful',
     copy: 'Copy',
     edit: 'Edit',
     regenerate: 'Regenerate',

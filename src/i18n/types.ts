@@ -221,6 +221,8 @@ export interface TranslationDict {
     copy: string;
     edit: string;
     regenerate: string;
+    feedbackPositive: string;
+    feedbackNegative: string;
     saveAndResend: string;
     clickToViewFull: string;
     imageExpired: string;
