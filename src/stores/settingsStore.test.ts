@@ -228,7 +228,9 @@ describe('reconcileActiveProvider', () => {
       expect(state.activeModel.providerId).toBe('usable');
     });
 
-    it('force-enables original as last resort when no fallback exists', () => {
+    it('leaves provider disabled when no fallback exists and provider has no key', () => {
+      // New behavior: no force-enable if the active provider has no key.
+      // This keeps the first-run banner visible so the user is guided to configure.
       const disabledNoKey = makeProvider({
         id: 'p1',
         enabled: false,
@@ -247,19 +249,15 @@ describe('reconcileActiveProvider', () => {
 
       reconcileActiveProvider(state);
 
-      // No usable fallback (p2 is disabled) → degrade to force-enable p1
-      // so getActiveProvider() always resolves and the send-time guard
-      // can route the user to AI Services to add a key.
-      expect(state.providers[0].enabled).toBe(true);
+      // No usable fallback (p2 is disabled) and p1 has no key →
+      // leave disabled so the first-run banner keeps showing.
+      expect(state.providers[0].enabled).toBe(false);
       expect(state.activeModel).toEqual({ providerId: 'p1', modelId: 'm1' });
       expect(state.providers[1].enabled).toBe(false); // p2 untouched
     });
 
     it('does not consider self as fallback (the id !== self guard)', () => {
-      // This guards against an edge case where the find predicate could
-      // match the current activeProvider if it were enabled+keyed. Since
-      // we're in the !enabled branch, this would never hit, but the
-      // explicit !== guard makes intent clear.
+      // Only provider has no key → stays disabled (no force-enable).
       const disabledNoKey = makeProvider({
         id: 'p1',
         enabled: false,
@@ -269,8 +267,7 @@ describe('reconcileActiveProvider', () => {
 
       reconcileActiveProvider(state);
 
-      // Only one provider — degraded force-enable
-      expect(state.providers[0].enabled).toBe(true);
+      expect(state.providers[0].enabled).toBe(false);
     });
   });
 

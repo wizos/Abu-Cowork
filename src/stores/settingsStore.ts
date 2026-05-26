@@ -255,7 +255,7 @@ function createDefaultProviders(): ProviderInstance[] {
     id,
     source: 'builtin' as const,
     name: PROVIDER_CONFIGS[id].name,
-    enabled: id === 'qiniu', // default: only qiniu enabled
+    enabled: false, // default: all providers disabled; user must configure one
     apiFormat: PROVIDER_CONFIGS[id].format,
     baseUrl: PROVIDER_CONFIGS[id].baseUrl,
     apiKey: '',
@@ -525,9 +525,17 @@ export function reconcileActiveProvider(
     };
     // Leave activeProvider disabled — user's intent is preserved.
   } else {
-    // No usable alternative; degrade to original behavior so that
-    // getActiveProvider() and the send-time guard still work.
-    activeProvider.enabled = true;
+    // No usable alternative. Only re-enable if the active provider itself is
+    // usable (has a key, or is keyless like ollama/lmstudio). If it has no key,
+    // leave everything disabled so the first-run banner keeps showing and guides
+    // the user to configure a provider.
+    if (
+      activeProvider.apiKey.trim().length > 0 ||
+      activeProvider.id === 'ollama' ||
+      activeProvider.id === 'lmstudio'
+    ) {
+      activeProvider.enabled = true;
+    }
   }
 }
 
@@ -594,7 +602,7 @@ export const useSettingsStore = create<SettingsStore>()(
     (set) => ({
       // ── Provider & Model defaults ──
       providers: defaultProviders,
-      activeModel: { providerId: 'qiniu', modelId: 'deepseek/deepseek-v3.2-251201' },
+      activeModel: { providerId: 'anthropic', modelId: 'claude-sonnet-4-6' },
       recentModels: [],
       favoriteModels: [],
       auxiliaryServices: {},

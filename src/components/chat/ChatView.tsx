@@ -204,13 +204,8 @@ export default function ChatView() {
   };
 
 
-  // Welcome screen - new conversation state (activeConversationId is null)
-  // First-run banner: show only when no provider has been actually configured.
-  // "Configured" = has an API key OR is a keyless provider (ollama).
-  // We deliberately do NOT count `enabled && !apiKey` as configured, otherwise
-  // the default qiniu placeholder (enabled by default) would suppress the banner
-  // for first-run users. The send-time guard in handleSend (line 159) catches
-  // the secondary "active provider has no key" case.
+  // First-run banner: show when no provider has been configured yet.
+  // "Configured" = has an API key OR is a keyless provider (ollama/lmstudio).
   const needsSetup = useSettingsStore((s) => {
     return !s.providers.some(
       p => p.apiKey.trim().length > 0 || p.id === 'ollama' || p.id === 'lmstudio'
