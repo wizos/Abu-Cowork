@@ -227,6 +227,49 @@ pub async fn ax_enable_electron_a11y(app_name: String) -> Result<Vec<AxTextNode>
     }
 }
 
+/// Bring an application to the foreground (activate it) by name.
+///
+/// macOS: `NSRunningApplication.activateWithOptions` (native AppKit) — does NOT require
+/// the Automation/Apple-Events TCC grant that AppleScript `tell ... to activate` needs
+/// (the source of the recurring -600 / -1743 errors). Cross-app window raising that
+/// AXRaise cannot do is handled here.
+/// Windows: PowerShell `AppActivate`.
+///
+/// Returns the activated app's display name on success.
+#[tauri::command]
+pub fn activate_app(app_name: String) -> Result<String, String> {
+    #[cfg(target_os = "macos")]
+    {
+        macos::activate_app_impl(app_name)
+    }
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        use std::process::{Command, Stdio};
+        let script = format!(
+            r#"$proc = Get-Process -Name '{}' -ErrorAction SilentlyContinue | Select-Object -First 1; if ($proc) {{ [void][System.Reflection.Assembly]::LoadWithPartialName('Microsoft.VisualBasic'); [Microsoft.VisualBasic.Interaction]::AppActivate($proc.Id) }} else {{ Write-Error 'Process not found' }}"#,
+            app_name.replace('\'', "")
+        );
+        let output = Command::new("powershell")
+            .args(["-NoProfile", "-Command", &script])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .creation_flags(0x08000000) // CREATE_NO_WINDOW
+            .output()
+            .map_err(|e| format!("Failed to run PowerShell: {}", e))?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!("Failed to activate '{}': {}", app_name, stderr.trim()));
+        }
+        Ok(format!("Activated '{}'", app_name))
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        let _ = app_name;
+        Err("activate_app is not supported on this platform".to_string())
+    }
+}
+
 /// Snapshot the focused app's AX tree AND cache live element references for actions.
 ///
 /// Returns an `AxSnapshotResult` whose `session_id` can be passed to `ax_press`,
@@ -760,6 +803,68 @@ mod macos {
                     .iter()
                     .filter(|a| !a.name.is_empty())
                     .map(|a| a.name.as_str())
+                    .collect();
+                Err(format!(
+                    "未找到名为 '{}' 的运行中应用。当前运行的应用：{}",
+                    name,
+                    available.join("、")
+                ))
+            }
+        }
+    }
+
+    /// Bring an app to the foreground via NSRunningApplication.activate (no Automation
+    /// permission needed). Matches `name` against localizedName + bundle id, regular apps
+    /// only — same priority order as `get_app_element_by_name`.
+    pub fn activate_app_impl(name: String) -> Result<String, String> {
+        use objc2_app_kit::{
+            NSApplicationActivationOptions, NSApplicationActivationPolicy, NSWorkspace,
+        };
+        let needle = name.to_lowercase();
+        let workspace = NSWorkspace::sharedWorkspace();
+        let apps = workspace.runningApplications();
+
+        // Collect regular apps with their match keys.
+        let regular: Vec<_> = apps
+            .iter()
+            .filter(|a| a.activationPolicy() == NSApplicationActivationPolicy::Regular)
+            .collect();
+
+        let name_of = |a: &objc2_app_kit::NSRunningApplication| {
+            a.localizedName().map(|s| s.to_string()).unwrap_or_default()
+        };
+        let bundle_of = |a: &objc2_app_kit::NSRunningApplication| {
+            a.bundleIdentifier().map(|s| s.to_string()).unwrap_or_default()
+        };
+
+        let matched = regular
+            .iter()
+            .find(|a| name_of(a).to_lowercase() == needle)
+            .or_else(|| {
+                regular
+                    .iter()
+                    .find(|a| bundle_of(a).to_lowercase().rsplit('.').next() == Some(needle.as_str()))
+            })
+            .or_else(|| regular.iter().find(|a| name_of(a).to_lowercase().contains(&needle)))
+            .or_else(|| regular.iter().find(|a| bundle_of(a).to_lowercase().contains(&needle)));
+
+        match matched {
+            Some(app) => {
+                let display = name_of(app);
+                // ActivateAllWindows brings every window of the app forward (cross-app
+                // raise that AXRaise can't do). IgnoringOtherApps is deprecated on macOS 14+.
+                let ok = app.activateWithOptions(NSApplicationActivationOptions::ActivateAllWindows);
+                if ok {
+                    Ok(display)
+                } else {
+                    Err(format!("activateWithOptions 返回 false（{}）", display))
+                }
+            }
+            None => {
+                let available: Vec<String> = regular
+                    .iter()
+                    .map(|a| name_of(a))
+                    .filter(|n| !n.is_empty())
                     .collect();
                 Err(format!(
                     "未找到名为 '{}' 的运行中应用。当前运行的应用：{}",

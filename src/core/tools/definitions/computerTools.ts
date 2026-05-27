@@ -12,7 +12,14 @@ import { TOOL_NAMES } from '../toolNames';
 import { updateLatestScreenshot, checkCUSessionLimits } from '../../agent/computerUseStatus';
 import { checkSensitiveApp, checkBlockedKeyCombo } from '../computerUseSafety';
 
+// Screenshot→global-point mapping. `lastScreenScaleFactor` is points-per-screenshot-pixel
+// and `lastScreenOrigin` is the captured display's top-left in global logical points.
+// A screenshot coord (sx, sy) maps to a click point via:
+//   (originX + sx * scale, originY + sy * scale).
+// This is correct across Retina (scale folds in the backing factor) and multiple
+// monitors (origin shifts for non-main displays). See capture_excluding_impl.
 let lastScreenScaleFactor = 1;
+let lastScreenOrigin = { x: 0, y: 0 };
 const SCREENSHOT_MAX_WIDTH = 1280;
 const AUTO_SCREENSHOT_DELAY_MS = 800;
 
@@ -44,6 +51,33 @@ interface AxSnapshotResult {
   total_visited: number;
   truncated: boolean;
   elements: AxElement[];
+}
+
+interface ScreenshotResult {
+  base64: string;
+  width: number;
+  height: number;
+  scale_factor: number;
+  origin_x?: number;
+  origin_y?: number;
+}
+
+/** Record the screenshot's scale + origin so toScreenCoords maps clicks correctly. */
+function applyScreenshotResult(result: ScreenshotResult): void {
+  lastScreenScaleFactor = result.scale_factor;
+  lastScreenOrigin = { x: result.origin_x ?? 0, y: result.origin_y ?? 0 };
+}
+
+/**
+ * Anchor point (global logical points) used to pick which display to screenshot.
+ * Uses the first AX element of the current snapshot (typically the app's window) so
+ * the capture lands on the monitor the target app is actually on. Null → main display.
+ */
+function currentAxAnchor(): { x: number; y: number } | null {
+  const el = currentAxElements[0];
+  if (!el) return null;
+  const [x, y, w, h] = el.bounds;
+  return { x: x + w / 2, y: y + h / 2 };
 }
 
 /** Release the current AX session and clear the element map. */
@@ -105,11 +139,11 @@ async function typeViaKeyboard(text: string): Promise<string> {
 export function setComputerUseBatchMode(value: boolean) { computerUseBatchMode = value; }
 export function setSkipAutoScreenshot(value: boolean) { skipAutoScreenshot = value; }
 
-/** Map LLM coordinates (in scaled screenshot space) back to real screen pixels. */
+/** Map LLM screenshot-space coordinates to global logical click points. */
 function toScreenCoords(x: number, y: number): { x: number; y: number } {
   return {
-    x: Math.round(x * lastScreenScaleFactor),
-    y: Math.round(y * lastScreenScaleFactor),
+    x: Math.round(lastScreenOrigin.x + x * lastScreenScaleFactor),
+    y: Math.round(lastScreenOrigin.y + y * lastScreenScaleFactor),
   };
 }
 
@@ -124,7 +158,8 @@ async function takeAutoScreenshot(): Promise<ToolResultContent[]> {
 
   try {
     const excludeId = await getExcludeWindowId();
-    let result: { base64: string; width: number; height: number; scale_factor: number };
+    const anchor = currentAxAnchor();
+    let result: ScreenshotResult;
 
     if (excludeId != null && !computerUseBatchMode) {
       // Exclusion mode: Abu is visible, exclude from screenshot (+ overlay if present)
@@ -132,6 +167,7 @@ async function takeAutoScreenshot(): Promise<ToolResultContent[]> {
         excludeWindowId: excludeId,
         x: null, y: null, width: null, height: null,
         maxWidth: SCREENSHOT_MAX_WIDTH,
+        anchorX: anchor?.x ?? null, anchorY: anchor?.y ?? null,
       });
     } else {
       // Batch mode: Abu window is already hidden by toolExecutor, use regular capture
@@ -141,7 +177,7 @@ async function takeAutoScreenshot(): Promise<ToolResultContent[]> {
       });
     }
 
-    lastScreenScaleFactor = result.scale_factor;
+    applyScreenshotResult(result);
     // Update floating console preview
     updateLatestScreenshot(result.base64);
     return [
@@ -218,15 +254,19 @@ async function executeScreenshot(input: Record<string, unknown>): Promise<ToolRe
 
 /** Screenshot via CGWindowListCreateImage excluding Abu window. No window hide needed. */
 async function captureWithExclusion(abuWindowId: number, input: Record<string, unknown>): Promise<ToolResult> {
-  const result = await invoke<{ base64: string; width: number; height: number; scale_factor: number }>('capture_screen_excluding', {
+  // Crop coords (input.x/y/...) are display-relative LOGICAL POINTS: screenshot-coord ×
+  // points-per-pixel. Rust converts back to pixels via the display backing scale.
+  const anchor = currentAxAnchor();
+  const result = await invoke<ScreenshotResult>('capture_screen_excluding', {
     excludeWindowId: abuWindowId,
     x: input.x != null ? Math.round((input.x as number) * lastScreenScaleFactor) : null,
     y: input.y != null ? Math.round((input.y as number) * lastScreenScaleFactor) : null,
     width: input.width != null ? Math.round((input.width as number) * lastScreenScaleFactor) : null,
     height: input.height != null ? Math.round((input.height as number) * lastScreenScaleFactor) : null,
     maxWidth: SCREENSHOT_MAX_WIDTH,
+    anchorX: anchor?.x ?? null, anchorY: anchor?.y ?? null,
   });
-  lastScreenScaleFactor = result.scale_factor;
+  applyScreenshotResult(result);
 
   return formatScreenshotResult(result);
 }
@@ -237,14 +277,14 @@ async function captureWithWindowHide(input: Record<string, unknown>): Promise<To
   await new Promise(r => setTimeout(r, 300));
 
   try {
-    const result = await invoke<{ base64: string; width: number; height: number; scale_factor: number }>('capture_screen', {
+    const result = await invoke<ScreenshotResult>('capture_screen', {
       x: input.x != null ? Math.round((input.x as number) * lastScreenScaleFactor) : null,
       y: input.y != null ? Math.round((input.y as number) * lastScreenScaleFactor) : null,
       width: input.width != null ? Math.round((input.width as number) * lastScreenScaleFactor) : null,
       height: input.height != null ? Math.round((input.height as number) * lastScreenScaleFactor) : null,
       maxWidth: SCREENSHOT_MAX_WIDTH,
     });
-    lastScreenScaleFactor = result.scale_factor;
+    applyScreenshotResult(result);
 
     return formatScreenshotResult(result);
   } finally {
@@ -253,7 +293,7 @@ async function captureWithWindowHide(input: Record<string, unknown>): Promise<To
 }
 
 /** Format screenshot result with saved file path. */
-async function formatScreenshotResult(result: { base64: string; width: number; height: number; scale_factor: number }): Promise<ToolResultContent[]> {
+async function formatScreenshotResult(result: ScreenshotResult): Promise<ToolResultContent[]> {
   // Save screenshot — prefer workspace, then desktop
   let savedPath = '';
   try {
@@ -293,8 +333,9 @@ export const computerTool: ToolDefinition = {
 
 ━━━ 操作列表（action）━━━
 
-🔍 感知（每轮必须先调一次）
-• get_app_state   同时读取 AX 树 + 截图（视觉模型）。参数：app（应用名，如 "Notes"、"Safari"）。不在前台也能读。
+🔍 感知 + 切换（每轮操作前先 get_app_state）
+• get_app_state   先把目标 app 切到前台，再同时读取 AX 树 + 截图（视觉模型）。参数：app（应用名，如 "Notes"、"D-Chat"）。
+• activate_app    只把某个 app 切到前台（不读树）。参数：app。原生切换，不依赖 AppleScript 权限。
 • screenshot      单独截图（AX 树无法覆盖时备用）。可选裁剪：x, y, width, height。
 
 ✅ 推荐操作（AX 路径，不动鼠标/不抢焦点）
@@ -315,7 +356,7 @@ export const computerTool: ToolDefinition = {
     properties: {
       action: {
         type: 'string',
-        description: 'Action: get_app_state, screenshot, click, type, perform_action, scroll, move, drag, key, wait',
+        description: 'Action: get_app_state, activate_app, screenshot, click, type, perform_action, scroll, move, drag, key, wait',
       },
       // App targeting (for get_app_state / get_ui)
       app: { type: 'string', description: 'Target app name (e.g. "Notes", "Safari"). App does NOT need to be in foreground. Used with get_app_state.' },
@@ -387,11 +428,12 @@ export const computerTool: ToolDefinition = {
       return `Waited ${ms}ms`;
     }
 
-    // AX actions drive controls via AXUIElement — no cursor movement, no window hide.
+    // AX / native actions — no pixel capture, no cursor movement, no window hide.
     // get_app_state / get_ui: read-only snapshot.
     // perform_action: named AX action (AXShowMenu etc.).
+    // activate_app / activate: native NSRunningApplication front-raise.
     // click/type with element_id: AX-first (pixel fallback may move cursor if AX fails).
-    const isAxAction = ['get_app_state', 'get_ui', 'ax_click', 'ax_type', 'perform_action'].includes(action)
+    const isAxAction = ['get_app_state', 'get_ui', 'ax_click', 'ax_type', 'perform_action', 'activate_app', 'activate'].includes(action)
       || ((action === 'click' || action === 'type') && input.element_id != null);
 
     // Check system permissions (macOS) — auto-open Settings if missing
@@ -464,6 +506,21 @@ export const computerTool: ToolDefinition = {
           }
           return await executeScreenshot(input);
 
+        // ── Bring an app to the foreground (native, no Apple Events) ──────────
+        case 'activate_app':
+        case 'activate': {
+          const targetApp = (input.app as string | undefined) ?? (input.app_name as string | undefined);
+          if (!targetApp) return 'Error: activate_app 需要 app 参数（应用名，如 "D-Chat"、"Notes"）。';
+          try {
+            const name = await invoke<string>('activate_app', { appName: targetApp });
+            actionResult = `已将「${name}」切到前台。可继续 get_app_state 读取界面或操作。`;
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            return `Error: 激活应用失败：${msg}`;
+          }
+          break;
+        }
+
         // ── Codex-style: AX tree + screenshot together ────────────────────────
         // get_app_state is the new primary action; get_ui is its legacy alias.
         case 'get_app_state':
@@ -472,6 +529,15 @@ export const computerTool: ToolDefinition = {
           const targetApp = (input.app as string | undefined)
             ?? (input.app_name as string | undefined)
             ?? null;
+          // Bring the target app forward first (best-effort) so the window is visible,
+          // the screenshot is meaningful, and the display anchor is correct. Native
+          // activation — no Apple Events permission needed.
+          if (targetApp) {
+            try {
+              await invoke('activate_app', { appName: targetApp });
+              await new Promise(r => setTimeout(r, 250));
+            } catch { /* app may not be running yet; ax_snapshot will report */ }
+          }
           let axPart: string;
           try {
             const snap = await invoke<AxSnapshotResult>('ax_snapshot', { appName: targetApp });
@@ -679,7 +745,7 @@ export const computerTool: ToolDefinition = {
         }
 
         default:
-          return `Unknown action: ${action}. Valid: get_app_state, screenshot, click, type, perform_action, scroll, move, drag, key, wait (legacy: get_ui, ax_click, ax_type)`;
+          return `Unknown action: ${action}. Valid: get_app_state, activate_app, screenshot, click, type, perform_action, scroll, move, drag, key, wait (legacy: get_ui, ax_click, ax_type)`;
       }
 
       // Auto-screenshot after UI-affecting actions so the model can see the result.
