@@ -335,11 +335,18 @@ export const computerTool: ToolDefinition = {
       return `Waited ${ms}ms`;
     }
 
+    // AX actions drive controls directly — no cursor movement, no window hide needed.
+    // Declared early because the permission block below needs it.
+    const isAxAction = ['get_ui', 'ax_click', 'ax_type'].includes(action);
+
     // Check system permissions (macOS) — auto-open Settings if missing
     try {
       const perms = await invoke<{ screen_recording: boolean; accessibility: boolean }>('check_macos_permissions');
 
-      if (!perms.screen_recording) {
+      // AX-only actions (get_ui / ax_click / ax_type) operate entirely through the
+      // Accessibility API — they never capture pixels and do NOT need Screen Recording.
+      const needsScreenRecording = !isAxAction;
+      if (needsScreenRecording && !perms.screen_recording) {
         // Trigger the system permission dialog (first time shows the dialog,
         // subsequent times it's a no-op). The dialog has an "Open System Settings" button.
         const granted = await invoke<boolean>('request_screen_recording');
@@ -348,7 +355,9 @@ export const computerTool: ToolDefinition = {
         }
       }
 
-      if (action !== 'screenshot' && !perms.accessibility) {
+      // AX actions (and non-screenshot pixel actions) need Accessibility permission.
+      const needsAccessibility = isAxAction || action !== 'screenshot';
+      if (needsAccessibility && !perms.accessibility) {
         // No system dialog for Accessibility — need to open Settings directly
         await openMacOSSettings('Accessibility');
         return 'Error: 没有辅助功能权限。已自动打开系统设置，请在「辅助功能」中授权 Abu，然后重启 Abu。\n\nNo Accessibility permission. System Settings has been opened — please grant Abu access in Accessibility, then restart Abu.';
@@ -375,7 +384,7 @@ export const computerTool: ToolDefinition = {
 
     // AX actions drive controls directly — no cursor movement, no window hide needed.
     // Only pixel-based actions (click/move/scroll/drag/type/key) need window hide.
-    const isAxAction = ['get_ui', 'ax_click', 'ax_type'].includes(action);
+    // (isAxAction was declared above the permission check block)
     const needsHideWindow = !computerUseBatchMode && !isAxAction &&
       ['click', 'move', 'scroll', 'drag', 'type', 'key'].includes(action);
     if (needsHideWindow) {

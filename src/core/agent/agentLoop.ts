@@ -1632,6 +1632,10 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
         import('./computerUseStatus').then(({ setComputerUseActive }) => {
           setComputerUseActive(false);
         }).catch(() => {});
+        // Close any open AX session (releases CFRetain'd element refs)
+        import('../tools/definitions/computerTools').then(({ closeAxSession }) => {
+          closeAxSession().catch(() => {});
+        }).catch(() => {});
         // Clear crash recovery checkpoint — loop completed normally
         import('../session/checkpoint').then(({ clearCheckpoint }) => {
           clearCheckpoint(conversationId);
@@ -1738,9 +1742,13 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
         import('../session/checkpoint').then(({ clearCheckpoint }) => {
           clearCheckpoint(conversationId);
         }).catch(() => {});
+        // Close any open AX session (releases CFRetain'd element refs)
+        import('../tools/definitions/computerTools').then(({ closeAxSession }) => {
+          closeAxSession().catch(() => {});
+        }).catch(() => {});
         // Set status back to idle on cancel
         chatStore.setConversationStatus(conversationId, 'idle');
-  
+
         return { reason: 'aborted' as const };
       }
 
@@ -1786,6 +1794,10 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       // Clean up Computer Use session
       import('./computerUseStatus').then(({ setComputerUseActive }) => {
         setComputerUseActive(false);
+      }).catch(() => {});
+      // Close any open AX session (releases CFRetain'd element refs)
+      import('../tools/definitions/computerTools').then(({ closeAxSession }) => {
+        closeAxSession().catch(() => {});
       }).catch(() => {});
       // Clear crash recovery checkpoint — loop ended with error
       import('../session/checkpoint').then(({ clearCheckpoint }) => {
