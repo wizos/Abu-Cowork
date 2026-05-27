@@ -1326,6 +1326,7 @@ pub fn run() {
             computer_use::activate_app,
             accessibility::get_ui_snapshot,
             accessibility::test_ax_snapshot,
+            accessibility::ax_diagnose,
             accessibility::ax_snapshot,
             accessibility::ax_press,
             accessibility::ax_set_value,

@@ -88,6 +88,42 @@ pub struct AxSnapshotResult {
     pub elements: Vec<UiElement>,
 }
 
+/// Diagnostic: probe why an app's AX tree may be empty. Reports the app element's
+/// attributes BEFORE and AFTER activating (bringing it to front), so we can tell
+/// whether empty `AXChildren` is caused by the app not being active (→ activate fix)
+/// or by `AXChildren` being the wrong attribute (→ AXWindows fallback fix).
+#[derive(Serialize)]
+pub struct AxDiagReport {
+    pub pid: i32,
+    pub localized_name: String,
+    pub bundle_id: String,
+    /// State observed without activating the app first.
+    pub before: AxDiagSnapshot,
+    /// State observed after NSRunningApplication.activate + short wait.
+    pub after: AxDiagSnapshot,
+}
+
+/// One observation of the app element's structural attributes.
+#[derive(Serialize)]
+pub struct AxDiagSnapshot {
+    /// NSRunningApplication.isActive at observation time.
+    pub is_active: bool,
+    /// AXRole of the app element (expected "AXApplication").
+    pub ax_role: Option<String>,
+    /// AXTitle of the app element.
+    pub ax_title: Option<String>,
+    /// Number of children under AXChildren (the attribute walk() currently uses).
+    pub ax_children_count: i64,
+    /// Number of windows under AXWindows (candidate fallback attribute).
+    pub ax_windows_count: i64,
+    /// Whether AXMainWindow is present.
+    pub has_main_window: bool,
+    /// Whether AXFocusedWindow is present.
+    pub has_focused_window: bool,
+    /// Total interactable elements a full walk would collect right now.
+    pub walk_elements: usize,
+}
+
 /// Capture a read-only snapshot of the currently focused application's UI tree.
 ///
 /// macOS only. Requires Accessibility permission (the same TCC grant used by the
@@ -122,6 +158,21 @@ pub async fn test_ax_snapshot(app_name: String) -> Result<AxQualityReport, Strin
     {
         let _ = app_name;
         Err("test_ax_snapshot is only supported on macOS".to_string())
+    }
+}
+
+/// Diagnostic: probe an app's AX tree before/after activation. Developer-only.
+///   `window.__TAURI__.core.invoke('ax_diagnose', { appName: 'Notes' })`
+#[tauri::command]
+pub async fn ax_diagnose(app_name: String) -> Result<AxDiagReport, String> {
+    #[cfg(target_os = "macos")]
+    {
+        macos::ax_diagnose_impl(app_name).await
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = app_name;
+        Err("ax_diagnose is only supported on macOS".to_string())
     }
 }
 
@@ -201,7 +252,7 @@ pub fn ax_close_session(session_id: String) -> Result<(), String> {
 
 #[cfg(target_os = "macos")]
 mod macos {
-    use super::{AxQualityReport, UiElement, UiSnapshot};
+    use super::{AxDiagReport, AxDiagSnapshot, AxQualityReport, UiElement, UiSnapshot};
     use core_foundation::base::TCFType;
     use core_foundation::boolean::CFBoolean;
     use core_foundation::dictionary::CFDictionary;
@@ -388,6 +439,33 @@ mod macos {
         }
     }
 
+    /// Count entries in an array-valued attribute. -1 = attribute absent, -2 = present but not an array.
+    unsafe fn attr_array_count(el: CFTypeRef, name: &str) -> i64 {
+        match copy_attr(el, name) {
+            Some(v) => {
+                let count = if CFGetTypeID(v) == CFArrayGetTypeID() {
+                    CFArrayGetCount(v as CFArrayRef) as i64
+                } else {
+                    -2
+                };
+                CFRelease(v);
+                count
+            }
+            None => -1,
+        }
+    }
+
+    /// Whether an attribute is present and non-null.
+    unsafe fn attr_present(el: CFTypeRef, name: &str) -> bool {
+        match copy_attr(el, name) {
+            Some(v) => {
+                CFRelease(v);
+                true
+            }
+            None => false,
+        }
+    }
+
     /// Action names the element advertises (e.g. "AXPress").
     unsafe fn action_names(el: CFTypeRef) -> Vec<String> {
         let mut out = Vec::new();
@@ -530,6 +608,11 @@ mod macos {
         /// Bundle id, e.g. "com.apple.Notes" — useful for matching the model's
         /// English app name against a localized display name.
         bundle_id: String,
+        /// True when activationPolicy == Regular: a normal app with a Dock icon and
+        /// windows. Background helpers, widget/app extensions (e.g.
+        /// "com.apple.Notes.WidgetExtension"), and XPC services are NOT regular and
+        /// have no AX window tree — they must be excluded from app-name matching.
+        is_regular: bool,
     }
 
     /// Enumerate running GUI apps via NSWorkspace.
@@ -539,7 +622,7 @@ mod macos {
     /// when that separate TCC grant is missing. We already hold Accessibility permission,
     /// which is all that AXUIElementCreateApplication needs.
     fn running_apps() -> Vec<RunningApp> {
-        use objc2_app_kit::NSWorkspace;
+        use objc2_app_kit::{NSApplicationActivationPolicy, NSWorkspace};
         let workspace = NSWorkspace::sharedWorkspace();
         let apps = workspace.runningApplications();
         let mut out = Vec::new();
@@ -548,6 +631,7 @@ mod macos {
                 pid: app.processIdentifier() as i32,
                 name: app.localizedName().map(|s| s.to_string()).unwrap_or_default(),
                 bundle_id: app.bundleIdentifier().map(|s| s.to_string()).unwrap_or_default(),
+                is_regular: app.activationPolicy() == NSApplicationActivationPolicy::Regular,
             });
         }
         out
@@ -555,28 +639,35 @@ mod macos {
 
     /// Get an AX element for a named application process.
     ///
+    /// Only considers "regular" apps (Dock icon + windows) — this excludes widget/app
+    /// extensions like "com.apple.Notes.WidgetExtension" whose localizedName is also
+    /// "Notes" but which have NO AX window tree (the cause of empty get_ui results).
+    ///
     /// Matches `name` (case-insensitive) against BOTH the localized display name and the
     /// bundle identifier. This matters on localized systems: on a Chinese macOS, Notes'
     /// localizedName is "备忘录", but its bundle id "com.apple.Notes" still contains "notes",
     /// so the model's English `app_name: "Notes"` resolves correctly.
-    ///
-    /// The app does NOT need to be in the foreground — AX APIs work on any running process.
     fn get_app_element_by_name(name: &str) -> Result<(CFTypeRef, Option<String>), String> {
         let needle = name.to_lowercase();
-        let apps = running_apps();
+        let all = running_apps();
+        // Only regular apps can be valid targets.
+        let apps: Vec<&RunningApp> = all.iter().filter(|a| a.is_regular).collect();
 
-        let matches = |a: &RunningApp| {
-            let n = a.name.to_lowercase();
-            let b = a.bundle_id.to_lowercase();
-            (n, b)
-        };
+        let name_lc = |a: &RunningApp| a.name.to_lowercase();
+        let bundle_lc = |a: &RunningApp| a.bundle_id.to_lowercase();
 
-        // Priority: exact name → name substring → bundle-id substring.
+        // Priority: exact name → exact bundle-leaf → name substring → bundle-id substring.
+        // Exact bundle-leaf ("com.apple.Notes" → "notes") beats a substring match so the
+        // canonical app wins over any sibling whose name merely contains the needle.
         let matched = apps
             .iter()
-            .find(|a| matches(a).0 == needle)
-            .or_else(|| apps.iter().find(|a| matches(a).0.contains(&needle)))
-            .or_else(|| apps.iter().find(|a| matches(a).1.contains(&needle)));
+            .find(|a| name_lc(a) == needle)
+            .or_else(|| {
+                apps.iter()
+                    .find(|a| bundle_lc(a).rsplit('.').next() == Some(needle.as_str()))
+            })
+            .or_else(|| apps.iter().find(|a| name_lc(a).contains(&needle)))
+            .or_else(|| apps.iter().find(|a| bundle_lc(a).contains(&needle)));
 
         match matched {
             Some(found) => unsafe {
@@ -587,8 +678,6 @@ mod macos {
                         found.pid, found.name
                     ));
                 }
-                // Prefer AXTitle, then the NSWorkspace localized name (AXTitle is often
-                // empty for background apps that have no focused window).
                 let ax_title = attr_string(app, "AXTitle");
                 Ok((app, ax_title.or_else(|| Some(found.name.clone()))))
             },
@@ -708,6 +797,100 @@ mod macos {
                 elements: st.elements,
             })
         }
+    }
+
+    /// Observe the app element's structural attributes for a given pid.
+    fn observe_app(pid: i32) -> AxDiagSnapshot {
+        use objc2_app_kit::NSRunningApplication;
+        let is_active = NSRunningApplication::runningApplicationWithProcessIdentifier(pid)
+            .map(|a| a.isActive())
+            .unwrap_or(false);
+        unsafe {
+            let app = AXUIElementCreateApplication(pid);
+            if app.is_null() {
+                return AxDiagSnapshot {
+                    is_active,
+                    ax_role: None,
+                    ax_title: None,
+                    ax_children_count: -1,
+                    ax_windows_count: -1,
+                    has_main_window: false,
+                    has_focused_window: false,
+                    walk_elements: 0,
+                };
+            }
+            let ax_role = attr_string(app, "AXRole");
+            let ax_title = attr_string(app, "AXTitle");
+            let ax_children_count = attr_array_count(app, "AXChildren");
+            let ax_windows_count = attr_array_count(app, "AXWindows");
+            let has_main_window = attr_present(app, "AXMainWindow");
+            let has_focused_window = attr_present(app, "AXFocusedWindow");
+            let mut st = WalkState {
+                elements: Vec::new(),
+                visited: 0,
+                truncated: false,
+            };
+            walk(app, 0, &mut st);
+            CFRelease(app);
+            AxDiagSnapshot {
+                is_active,
+                ax_role,
+                ax_title,
+                ax_children_count,
+                ax_windows_count,
+                has_main_window,
+                has_focused_window,
+                walk_elements: st.elements.len(),
+            }
+        }
+    }
+
+    /// Diagnostic: observe an app's AX structure before and after activating it.
+    pub async fn ax_diagnose_impl(app_name: String) -> Result<AxDiagReport, String> {
+        let needle = app_name.to_lowercase();
+        let all = running_apps();
+        // Same Regular-app filter as get_app_element_by_name so the diagnostic targets
+        // the real app, not a widget/extension sibling.
+        let apps: Vec<&RunningApp> = all.iter().filter(|a| a.is_regular).collect();
+        let found = apps
+            .iter()
+            .find(|a| a.name.to_lowercase() == needle)
+            .or_else(|| {
+                apps.iter()
+                    .find(|a| a.bundle_id.to_lowercase().rsplit('.').next() == Some(needle.as_str()))
+            })
+            .or_else(|| apps.iter().find(|a| a.name.to_lowercase().contains(&needle)))
+            .or_else(|| apps.iter().find(|a| a.bundle_id.to_lowercase().contains(&needle)))
+            .ok_or_else(|| format!("App '{}' not running (regular apps only)", app_name))?;
+        let pid = found.pid;
+
+        // Observe WITHOUT activating.
+        let before = observe_app(pid);
+
+        // Activate (bring to front) via `open` — system-level, works on all macOS versions
+        // (NSRunningApplication.activate is restricted/deprecated on macOS 14+). Prefer
+        // bundle id, fall back to localized name.
+        if !found.bundle_id.is_empty() {
+            let _ = std::process::Command::new("open")
+                .args(["-b", &found.bundle_id])
+                .status();
+        } else if !found.name.is_empty() {
+            let _ = std::process::Command::new("open")
+                .args(["-a", &found.name])
+                .status();
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(600)).await;
+
+        // Observe AFTER activating.
+        let after = observe_app(pid);
+
+        Ok(AxDiagReport {
+            pid,
+            localized_name: found.name.clone(),
+            bundle_id: found.bundle_id.clone(),
+            before,
+            after,
+        })
     }
 
     /// Launch `app_name`, wait for it to gain focus, snapshot its AX tree, and
