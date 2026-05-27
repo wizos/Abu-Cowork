@@ -226,6 +226,125 @@ describe('commandSafety', () => {
     });
   });
 
+  // ── P0: Compound command safe-pattern short-circuit fix ──
+  // Regression: `cd X; Remove-Item Y -Recurse -Force` must NOT be safe.
+  // The old code matched /^cd(\s|$)/ and returned 'safe' without checking the rest.
+  describe('compound command safe-pattern short-circuit (P0-A)', () => {
+    let cleanup: () => void;
+    afterEach(() => {
+      cleanup?.();
+    });
+
+    it('cd + Remove-Item -Recurse -Force → danger (the desktop deletion bug)', () => {
+      cleanup = setPlatformForTest('windows');
+      const cmd = 'cd "C:\\Users\\Windows\\Desktop"; Remove-Item "图片","Word文档" -Recurse -Force';
+      expect(analyzeCommand(cmd).level).toBe('danger');
+    });
+
+    it('cd + Remove-Item -Recurse → danger', () => {
+      cleanup = setPlatformForTest('windows');
+      expect(analyzeCommand('cd C:\\Desktop; Remove-Item * -Recurse').level).toBe('danger');
+    });
+
+    it('echo + del /s → danger (del /s without /q is danger, not block)', () => {
+      cleanup = setPlatformForTest('windows');
+      // del /s /q DRIVE:\ is block; del /s alone (without /q) is danger
+      expect(analyzeCommand('echo hello; del /s C:\\Users').level).toBe('danger');
+    });
+
+    it('mkdir + rmdir /s → danger', () => {
+      cleanup = setPlatformForTest('windows');
+      expect(analyzeCommand('mkdir foo && rmdir /s foo').level).toBe('danger');
+    });
+
+    it('cd alone → still safe (no regression)', () => {
+      cleanup = setPlatformForTest('windows');
+      expect(analyzeCommand('cd C:\\Users').level).toBe('safe');
+    });
+
+    it('echo alone → still safe (no regression)', () => {
+      cleanup = setPlatformForTest('windows');
+      expect(analyzeCommand('echo hello').level).toBe('safe');
+    });
+
+    it('quoted semicolon inside string → not split (no false positive)', () => {
+      cleanup = setPlatformForTest('windows');
+      // Semicolon inside double quotes must not trigger a split
+      expect(analyzeCommand('Write-Output "a;b"').level).not.toBe('block');
+    });
+
+    it('quoted semicolon: safe command with quoted separator → safe', () => {
+      // On macOS: echo with a quoted argument containing semicolon should not split
+      expect(analyzeCommand('echo "hello;world"').level).toBe('safe');
+    });
+  });
+
+  // ── P0: PowerShell destructive verb patterns (P0-B) ──
+  describe('PowerShell Remove-Item patterns (P0-B)', () => {
+    let cleanup: () => void;
+    afterEach(() => {
+      cleanup?.();
+    });
+
+    it('Remove-Item -Recurse → danger', () => {
+      cleanup = setPlatformForTest('windows');
+      expect(analyzeCommand('Remove-Item C:\\Desktop -Recurse').level).toBe('danger');
+    });
+
+    it('Remove-Item -Recurse -Force → danger', () => {
+      cleanup = setPlatformForTest('windows');
+      expect(analyzeCommand('Remove-Item "图片" -Recurse -Force').level).toBe('danger');
+    });
+
+    it('Remove-Item -r (short flag) → danger', () => {
+      cleanup = setPlatformForTest('windows');
+      expect(analyzeCommand('Remove-Item C:\\temp -r').level).toBe('danger');
+    });
+
+    it('ri -Recurse (alias) → danger', () => {
+      cleanup = setPlatformForTest('windows');
+      expect(analyzeCommand('ri C:\\Desktop\\foo -Recurse').level).toBe('danger');
+    });
+
+    it('bare Remove-Item (no -Recurse) → warn', () => {
+      cleanup = setPlatformForTest('windows');
+      expect(analyzeCommand('Remove-Item file.txt').level).toBe('warn');
+    });
+
+    it('Remove-Item alias ri (bare) → warn', () => {
+      cleanup = setPlatformForTest('windows');
+      expect(analyzeCommand('ri file.txt').level).toBe('warn');
+    });
+
+    it('erase file.txt → warn', () => {
+      cleanup = setPlatformForTest('windows');
+      expect(analyzeCommand('erase file.txt').level).toBe('warn');
+    });
+
+    it('Clear-Content → warn', () => {
+      cleanup = setPlatformForTest('windows');
+      expect(analyzeCommand('Clear-Content log.txt').level).toBe('warn');
+    });
+  });
+
+  // ── P0: Windows semicolon-chained injection detection ──
+  describe('Windows semicolon injection detection', () => {
+    let cleanup: () => void;
+    afterEach(() => {
+      cleanup?.();
+    });
+
+    it('detects "; Remove-Item" injection', () => {
+      cleanup = setPlatformForTest('windows');
+      expect(analyzeCommand('dir C:\\; Remove-Item file.txt').level).not.toBe('safe');
+    });
+
+    it('detects "; ri" injection', () => {
+      cleanup = setPlatformForTest('windows');
+      expect(analyzeCommand('dir C:\\; ri file.txt').level).not.toBe('safe');
+    });
+  });
+
   // ── getDangerLevelLabel ──
   describe('getDangerLevelLabel', () => {
     it('returns correct labels', () => {
