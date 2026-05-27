@@ -498,6 +498,8 @@ const enUS: TranslationDict = {
     contentGuardDisableMessage: 'When off, agent-proposed skills and memories skip the safety scan — they may contain dangerous instructions. Only disable temporarily to debug false positives, then re-enable.',
     permissionModeStandard: 'Standard',
     permissionModeStandardDesc: 'Read/write freely inside the workspace; out-of-bounds writes and dangerous commands need confirmation',
+    permissionModeSmart: 'Smart Review',
+    permissionModeSmartDesc: 'Escalations go to an AI reviewer: allows low risk, blocks high risk, asks you when unsure. May misjudge',
     permissionModeAutonomous: 'Full Autonomy',
     permissionModeAutonomousDesc: 'Everything runs automatically except system red lines; use only when you trust the current task',
     // ModelConfigSection
@@ -1547,6 +1549,7 @@ const enUS: TranslationDict = {
     confirm: 'Confirm',
     blocked: 'This command has been blocked for security reasons',
     userCancelled: '[User cancelled this operation]',
+    aiDenied: 'Blocked by AI review',
   },
 
   toolErrors: {

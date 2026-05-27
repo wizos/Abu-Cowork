@@ -498,6 +498,8 @@ const zhCN: TranslationDict = {
     contentGuardDisableMessage: '关闭后 agent 自发创建的 skill 和记忆不会被扫描，可能写入包含危险指令的内容。只在明确需要调试误报时关闭，测试完请立即打开。',
     permissionModeStandard: '标准',
     permissionModeStandardDesc: '工作区内自由读写，越界写入和危险命令需确认',
+    permissionModeSmart: '智能审核',
+    permissionModeSmartDesc: '越界操作交 AI 审核：放行低风险、拦截高风险、不确定才问你。可能误判',
     permissionModeAutonomous: '完全自主',
     permissionModeAutonomousDesc: '除系统红线外全部自动执行，请在信任当前任务时使用',
     // ModelConfigSection
@@ -1548,6 +1550,7 @@ const zhCN: TranslationDict = {
     confirm: '确认执行',
     blocked: '此命令因安全原因被阻止执行',
     userCancelled: '[用户取消了此操作]',
+    aiDenied: 'AI 审核已拒绝此操作',
   },
 
   toolErrors: {

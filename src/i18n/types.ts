@@ -489,6 +489,8 @@ export interface TranslationDict {
     contentGuardDisableMessage: string;
     permissionModeStandard: string;
     permissionModeStandardDesc: string;
+    permissionModeSmart: string;
+    permissionModeSmartDesc: string;
     permissionModeAutonomous: string;
     permissionModeAutonomousDesc: string;
     // ModelConfigSection
@@ -1571,6 +1573,7 @@ export interface TranslationDict {
     confirm: string;
     blocked: string;
     userCancelled: string;
+    aiDenied: string;
   };
 
   // Tool error messages (used in core/tools/registry.ts)
