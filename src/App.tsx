@@ -201,6 +201,14 @@ function App() {
       console.warn('[App] Secret bootstrap error:', err);
     });
 
+    // Restore sleep prevention preference. caffeinate dies with the process,
+    // so we re-enable it on every launch if the user had it turned on.
+    if (useSettingsStore.getState().preventSleep) {
+      invoke('set_prevent_sleep', { enabled: true }).catch((err) => {
+        console.warn('[App] Failed to restore sleep prevention:', err);
+      });
+    }
+
     // Initialize notifications with logging
     initNotifications().then((granted) => {
       console.log('[App] Notification permission initialized:', granted);

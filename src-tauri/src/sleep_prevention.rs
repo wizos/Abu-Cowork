@@ -1,8 +1,9 @@
 //! Sleep prevention — keeps the system awake while Abu is running.
 //!
 //! Platform implementations:
-//!   macOS   – spawns `caffeinate -i` as a child process (prevents idle sleep;
-//!              also works for lid-close when on AC power).
+//!   macOS   – spawns `caffeinate -s -i` as a child process.
+//!              `-s` prevents system sleep (covers lid-close on AC power).
+//!              `-i` prevents idle sleep (covers battery / display-sleep scenarios).
 //!   Windows – calls `SetThreadExecutionState` with ES_CONTINUOUS |
 //!              ES_SYSTEM_REQUIRED | ES_AWAYMODE_REQUIRED.
 //!   Other   – no-op.
@@ -24,7 +25,8 @@ fn enable_sleep_prevention() -> Result<(), String> {
         return Ok(()); // already active
     }
     let child = std::process::Command::new("caffeinate")
-        .arg("-i") // -i: prevent idle sleep (incl. lid-close when on AC power)
+        .arg("-s") // -s: prevent system sleep (covers lid-close on AC power)
+        .arg("-i") // -i: prevent idle sleep (covers no-AC / display-sleep scenarios)
         .spawn()
         .map_err(|e| format!("caffeinate spawn failed: {e}"))?;
     *guard = Some(child);

@@ -479,6 +479,8 @@ export interface TranslationDict {
     computerUseDesc: string;
     computerUsePermissionDenied: string;
     computerUsePermissionGuide: string;
+    preventSleep: string;
+    preventSleepDesc: string;
     // Permission mode
     permissionMode: string;
     permissionModeDesc: string;

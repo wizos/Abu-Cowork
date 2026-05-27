@@ -1333,6 +1333,7 @@ pub fn run() {
             accessibility::ax_snapshot,
             accessibility::ax_press,
             accessibility::ax_set_value,
+            accessibility::ax_perform_action,
             accessibility::ax_close_session,
             overlay::show_screen_border,
             overlay::hide_screen_border,

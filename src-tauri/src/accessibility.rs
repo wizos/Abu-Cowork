@@ -283,6 +283,29 @@ pub fn ax_set_value(session_id: String, element_id: u32, text: String) -> Result
     }
 }
 
+/// Perform a named AX action on a cached element (e.g. "AXShowMenu", "AXPick",
+/// "AXIncrement", "AXDecrement"). Unlike `ax_press` (which hard-codes "AXPress"),
+/// this lets the model invoke any action the element advertises.
+///
+/// Useful for: right-click-equivalent menus (AXShowMenu), combo-box selection
+/// (AXPick), stepper controls (AXIncrement/AXDecrement), disclosure triangles, etc.
+#[tauri::command]
+pub fn ax_perform_action(
+    session_id: String,
+    element_id: u32,
+    action_name: String,
+) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        macos::ax_perform_action_impl(session_id, element_id, action_name)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (session_id, element_id, action_name);
+        Err("ax_perform_action is only supported on macOS".to_string())
+    }
+}
+
 /// Release all CFRetain'd element references held by this session.
 ///
 /// Must be called when the agent turn is done (or on error bailout) to avoid
@@ -1272,6 +1295,30 @@ mod macos {
                 return Err(format!(
                     "AXPress on element {} failed: {} ({})",
                     element_id, err, ax_err_str(err)
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    /// Perform any named AX action on the cached element.
+    pub fn ax_perform_action_impl(session_id: String, element_id: u32, action_name: String) -> Result<(), String> {
+        let cache = session_cache().lock().unwrap();
+        let session = cache
+            .get(&session_id)
+            .ok_or_else(|| format!("Session '{}' not found — call ax_snapshot first.", session_id))?;
+        let el_ref = session
+            .refs
+            .get(element_id as usize)
+            .ok_or_else(|| format!("element_id {} out of range (session has {} elements).", element_id, session.refs.len()))?;
+
+        unsafe {
+            let action = CFString::new(&action_name);
+            let err = AXUIElementPerformAction(el_ref.0, action.as_concrete_TypeRef());
+            if err != 0 {
+                return Err(format!(
+                    "AX action '{}' on element {} failed: {} ({})",
+                    action_name, element_id, err, ax_err_str(err)
                 ));
             }
         }

@@ -489,6 +489,8 @@ const enUS: TranslationDict = {
     computerUseDesc: 'Enable screenshot capture and keyboard/mouse simulation. Abu can see your screen and operate your computer.',
     computerUsePermissionDenied: 'Cannot capture screen. Please grant Screen Recording permission.',
     computerUsePermissionGuide: 'Go to System Settings → Privacy & Security → Screen Recording, and allow Abu. You may also need to grant Accessibility permission for keyboard/mouse control.',
+    preventSleep: 'Prevent system sleep',
+    preventSleepDesc: 'Keep the system awake while Abu is running. When on AC power, closing the lid will not interrupt tasks. (Windows: idle sleep only)',
     // Permission mode
     permissionMode: 'Permission Mode',
     permissionModeDesc: 'Controls confirmation behavior for tool execution',

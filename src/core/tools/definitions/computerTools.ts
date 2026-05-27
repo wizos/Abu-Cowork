@@ -21,9 +21,12 @@ let computerUseBatchMode = false;
 let skipAutoScreenshot = false;
 
 // ── AX session state ──────────────────────────────────────────────────────────
-// One session per get_ui call. Holds live AX element refs on the Rust side.
-// auto-closed when a new get_ui is called; survives multiple ax_click / ax_type.
+// One session per get_app_state / get_ui call. Holds live AX element refs on
+// the Rust side, plus a JS-side element array for bound lookups (element-based
+// scroll/click fallback). Auto-closed when a new snapshot is taken; survives
+// multiple click/type/perform_action calls within the same turn.
 let currentAxSessionId: string | null = null;
+let currentAxElements: AxElement[] = [];
 
 interface AxElement {
   id: number;
@@ -43,12 +46,13 @@ interface AxSnapshotResult {
   elements: AxElement[];
 }
 
-/** Release the current AX session (no-op if none). Call before taking a new snapshot. */
+/** Release the current AX session and clear the element map. */
 async function closeCurrentAxSession(): Promise<void> {
   if (currentAxSessionId) {
     try { await invoke('ax_close_session', { sessionId: currentAxSessionId }); } catch { /* ignore */ }
     currentAxSessionId = null;
   }
+  currentAxElements = [];
 }
 
 /** Format AX elements as a numbered list for the model (Set-of-Mark style). */
@@ -69,6 +73,33 @@ function formatAxElements(elements: AxElement[]): string {
 /** Export so agent loop can close session on conversation end. */
 export async function closeAxSession(): Promise<void> {
   await closeCurrentAxSession();
+}
+
+/**
+ * Type text via keyboard / clipboard (no element_id, no AX).
+ * Handles CJK via clipboard-paste to avoid IME issues.
+ */
+async function typeViaKeyboard(text: string): Promise<string> {
+  const hasNonAscii = /[^ -~\t\n\r]/.test(text);
+  if (hasNonAscii) {
+    let savedClipboard: string | null = null;
+    try { savedClipboard = await clipboardReadText(); } catch { /* empty clipboard */ }
+    try {
+      await clipboardWriteText(text);
+      await new Promise(r => setTimeout(r, 50));
+      const pasteModifier = isMacOS() ? 'meta' : 'ctrl';
+      await invoke<string>('keyboard_press', { key: 'v', modifiers: [pasteModifier] });
+      await new Promise(r => setTimeout(r, 150));
+    } finally {
+      if (savedClipboard != null) {
+        try { await clipboardWriteText(savedClipboard); } catch { /* ignore */ }
+      }
+    }
+    return `Typed (via paste): ${text} (${text.length} chars)`;
+  } else {
+    await invoke<string>('keyboard_type', { text });
+    return `Typed: ${text} (${text.length} chars)`;
+  }
 }
 
 export function setComputerUseBatchMode(value: boolean) { computerUseBatchMode = value; }
@@ -251,40 +282,53 @@ async function formatScreenshotResult(result: { base64: string; width: number; h
 
 export const computerTool: ToolDefinition = {
   name: TOOL_NAMES.COMPUTER,
-  description: `操控电脑屏幕：截图、无障碍树操作（推荐）、鼠标和键盘操作。仅在必须看屏幕画面或操作 GUI 界面时才用，能用其他工具完成的不要用此工具。
+  description: `操控电脑屏幕：无障碍树操作（推荐）、截图、鼠标键盘操作。仅在必须看屏幕画面或操作 GUI 界面时才用。
 
-【推荐工作流】先 get_ui 读无障碍树 → 再 ax_click / ax_type 操作元素。这条路径不移动鼠标、不抢焦点、丝滑无感知。只有 get_ui 拿不到元素（canvas/自绘 app）时再退回 screenshot + click(x,y)。
+【推荐工作流（Codex 同款）】
+① get_app_state（可加 app 参数指定目标应用）→ 同时返回 AX 元素列表 + 截图
+② click(element_id=N) 或 type(element_id=N, text="...") 操作元素 —— AX 路径不移动鼠标、不抢焦点
+③ 每次重要操作后再调 get_app_state 确认结果
 
-操作类型（action）：
+只有 get_app_state 拿不到元素（canvas/自绘 app）时才退回 screenshot + click(x,y)。
 
-无障碍树操作（AX 路径，推荐）：
-- get_ui：读取目标应用的无障碍树，返回可交互元素列表（id / role / label / bounds / actions）。不截图、不动鼠标。参数：app_name（推荐，如 "Notes"、"Safari"）——指定后不需要该 App 在前台，用户可以继续操作电脑；不指定则读当前前台应用。
-- ax_click：按元素 id 点击控件（AXPress），不移动光标。参数：element_id。可选降级坐标：x, y。
-- ax_type：按元素 id 设置文本（AXSetValue），不合成键盘事件。参数：element_id, text。
+━━━ 操作列表（action）━━━
 
-像素坐标操作（降级路径，当 AX 不可用时使用）：
-- screenshot：截屏（阿布窗口不会出现在截图中）。可选 x, y, width, height 裁剪区域。
-- click：点击坐标。参数：x, y, button（left/right/middle/double，默认 left）。
-- move：移动鼠标。参数：x, y。
-- scroll：滚动。参数：x, y, direction（up/down/left/right）, amount（默认 3）。
-- drag：拖拽。参数：startX, startY, endX, endY。
-- type：输入文本（中文自动使用剪贴板粘贴）。参数：text。
-- key：按键组合。参数：key（如 Return, Tab, a）, modifiers（如 ["ctrl","shift"]）。
-- wait：等待指定毫秒数。参数：duration（默认 1000，最大 10000）。
+🔍 感知（每轮必须先调一次）
+• get_app_state   同时读取 AX 树 + 截图（视觉模型）。参数：app（应用名，如 "Notes"、"Safari"）。不在前台也能读。
+• screenshot      单独截图（AX 树无法覆盖时备用）。可选裁剪：x, y, width, height。
 
-像素坐标使用截图像素坐标系（最大宽度 ${SCREENSHOT_MAX_WIDTH}px），自动映射回真实屏幕坐标。`,
+✅ 推荐操作（AX 路径，不动鼠标/不抢焦点）
+• click           点击。element_id=N（AXPress，优先）或 x, y（像素点击）。可选 button(left/right/middle/double)。
+• type            输入文本。element_id=N（AXSetValue，优先）+ text，或只用 text（键盘输入）。
+• perform_action  执行 AX 次级动作，如右键菜单(AXShowMenu)、选中(AXPick)、加减(AXIncrement/AXDecrement)。参数：element_id, action_name。
+• scroll          滚动。element_id=N（按元素位置滚动）或 x, y。direction(up/down/left/right)，amount(默认 3)。
+
+⌨️ 低级操作（AX 不可用时）
+• move            移动鼠标。参数：x, y。
+• drag            拖拽。参数：startX, startY, endX, endY。
+• key             按键。参数：key(Return/Tab/Escape/a 等)，modifiers([ctrl/shift/alt/meta])。
+• wait            等待。参数：duration(ms，默认 1000，最大 10000)。
+
+所有像素坐标使用截图空间（最大宽度 ${SCREENSHOT_MAX_WIDTH}px），自动换算为真实屏幕坐标。`,
   inputSchema: {
     type: 'object',
     properties: {
       action: {
         type: 'string',
-        description: 'Action to perform: screenshot, click, move, scroll, drag, type, key, wait',
+        description: 'Action: get_app_state, screenshot, click, type, perform_action, scroll, move, drag, key, wait',
       },
-      // Coordinate params (for click, move, scroll, screenshot crop)
-      x: { type: 'number', description: 'X coordinate (screenshot space)' },
-      y: { type: 'number', description: 'Y coordinate (screenshot space)' },
+      // App targeting (for get_app_state / get_ui)
+      app: { type: 'string', description: 'Target app name (e.g. "Notes", "Safari"). App does NOT need to be in foreground. Used with get_app_state.' },
+      app_name: { type: 'string', description: 'Alias for app (legacy, prefer app).' },
+      // AX element reference
+      element_id: { type: 'number', description: 'Element id from get_app_state output. Used with click, type, perform_action, scroll.' },
+      // Named AX action (perform_action)
+      action_name: { type: 'string', description: 'AX action name for perform_action, e.g. "AXShowMenu", "AXPick", "AXIncrement", "AXDecrement".' },
+      // Coordinate params (click, move, scroll, screenshot crop)
+      x: { type: 'number', description: 'X coordinate (screenshot pixel space)' },
+      y: { type: 'number', description: 'Y coordinate (screenshot pixel space)' },
       // Click
-      button: { type: 'string', description: 'Mouse button: left, right, middle, double (default: left)' },
+      button: { type: 'string', description: 'Mouse button: left (default), right, middle, double' },
       // Scroll
       direction: { type: 'string', description: 'Scroll direction: up, down, left, right' },
       amount: { type: 'number', description: 'Scroll ticks (default 3)' },
@@ -296,10 +340,10 @@ export const computerTool: ToolDefinition = {
       // Screenshot crop
       width: { type: 'number', description: 'Crop width (screenshot only)' },
       height: { type: 'number', description: 'Crop height (screenshot only)' },
-      // Type
-      text: { type: 'string', description: 'Text to type' },
+      // Text input (type / ax_type)
+      text: { type: 'string', description: 'Text to type or set on the element' },
       // Key
-      key: { type: 'string', description: 'Key name (Return, Tab, Escape, Space, ArrowUp, a, etc.)' },
+      key: { type: 'string', description: 'Key name: Return, Tab, Escape, Space, ArrowUp, ArrowDown, a, etc.' },
       modifiers: {
         type: 'array',
         items: { type: 'string' },
@@ -307,13 +351,10 @@ export const computerTool: ToolDefinition = {
       },
       // Wait
       duration: { type: 'number', description: 'Wait duration in ms (default 1000, max 10000)' },
-      // AX actions (get_ui / ax_click / ax_type)
-      element_id: { type: 'number', description: 'Element id from get_ui snapshot (for ax_click / ax_type)' },
-      app_name: { type: 'string', description: 'Target app name for get_ui (e.g. "Notes", "Safari"). When provided, the app does NOT need to be in the foreground — AX operates on any running app. Omit to target the current frontmost window.' },
       // Display control
       show_user: {
         type: 'boolean',
-        description: 'Whether to display the screenshot to the user in chat. Set true when user asks to see the screen. Default: true for screenshot action, false for other actions.',
+        description: 'Show screenshot to user in chat. Default true for screenshot/get_app_state, false for other actions.',
       },
     },
     required: ['action'],
@@ -346,16 +387,20 @@ export const computerTool: ToolDefinition = {
       return `Waited ${ms}ms`;
     }
 
-    // AX actions drive controls directly — no cursor movement, no window hide needed.
-    // Declared early because the permission block below needs it.
-    const isAxAction = ['get_ui', 'ax_click', 'ax_type'].includes(action);
+    // AX actions drive controls via AXUIElement — no cursor movement, no window hide.
+    // get_app_state / get_ui: read-only snapshot.
+    // perform_action: named AX action (AXShowMenu etc.).
+    // click/type with element_id: AX-first (pixel fallback may move cursor if AX fails).
+    const isAxAction = ['get_app_state', 'get_ui', 'ax_click', 'ax_type', 'perform_action'].includes(action)
+      || ((action === 'click' || action === 'type') && input.element_id != null);
 
     // Check system permissions (macOS) — auto-open Settings if missing
     try {
       const perms = await invoke<{ screen_recording: boolean; accessibility: boolean }>('check_macos_permissions');
 
-      // AX-only actions (get_ui / ax_click / ax_type) operate entirely through the
-      // Accessibility API — they never capture pixels and do NOT need Screen Recording.
+      // AX-only actions (get_app_state / get_ui / ax_click / ax_type / perform_action) operate
+      // entirely through the Accessibility API — they never capture pixels and do NOT need
+      // Screen Recording. click/type with element_id take the AX path first too.
       const needsScreenRecording = !isAxAction;
       if (needsScreenRecording && !perms.screen_recording) {
         // Trigger the system permission dialog (first time shows the dialog,
@@ -394,8 +439,9 @@ export const computerTool: ToolDefinition = {
     }
 
     // AX actions drive controls directly — no cursor movement, no window hide needed.
-    // Only pixel-based actions (click/move/scroll/drag/type/key) need window hide.
-    // (isAxAction was declared above the permission check block)
+    // For click/type with element_id we treat them as AX (no hide); the pixel fallback
+    // inside those cases will move the cursor but does not need a separate hide/show
+    // cycle because the AX element bounds are already in absolute screen coordinates.
     const needsHideWindow = !computerUseBatchMode && !isAxAction &&
       ['click', 'move', 'scroll', 'drag', 'type', 'key'].includes(action);
     if (needsHideWindow) {
@@ -403,28 +449,92 @@ export const computerTool: ToolDefinition = {
       await new Promise(r => setTimeout(r, 100)); // Let window animate away
     }
 
-    // Actions that should auto-screenshot after execution.
-    // AX actions (ax_click / ax_type) are intentionally excluded: they return structured
-    // text feedback directly and don't need a screenshot to verify. Auto-screenshotting
-    // after AX actions also fails for non-vision models ("No endpoints found that
-    // support image input"). The model can call get_ui or screenshot explicitly if needed.
-    const autoScreenshotActions = ['click', 'type', 'key', 'scroll', 'drag'];
+    // Actions that should auto-screenshot after execution (vision models only).
+    // AX-only actions (ax_click / ax_type) excluded — model calls get_app_state to verify.
+    // perform_action included — may change UI state needing visual confirmation.
+    // click / type included regardless of AX/pixel path.
+    const autoScreenshotActions = ['click', 'type', 'key', 'scroll', 'drag', 'perform_action'];
 
     try {
       let actionResult: string;
       switch (action) {
         case 'screenshot':
           if (!modelSupportsVision) {
-            return '当前模型不支持图片识别，截图对它没有意义。请改用无障碍树路径：get_ui（可加 app_name 指定应用）读取界面元素，再用 ax_click(element_id) / ax_type(element_id, text) 操作。\n\nThe current model has no vision capability — screenshots are useless to it. Use the accessibility path instead: get_ui (optionally with app_name) to read elements, then ax_click / ax_type to operate.';
+            return '当前模型不支持图片识别，截图对它没有意义。请改用 get_app_state（可加 app 参数指定应用）读取 AX 元素，再用 click(element_id) / type(element_id, text) 操作。\n\nThe current model has no vision capability. Use get_app_state to read AX elements, then click(element_id) / type(element_id, text) to operate.';
           }
           return await executeScreenshot(input);
 
+        // ── Codex-style: AX tree + screenshot together ────────────────────────
+        // get_app_state is the new primary action; get_ui is its legacy alias.
+        case 'get_app_state':
+        case 'get_ui': {
+          await closeCurrentAxSession();
+          const targetApp = (input.app as string | undefined)
+            ?? (input.app_name as string | undefined)
+            ?? null;
+          let axPart: string;
+          try {
+            const snap = await invoke<AxSnapshotResult>('ax_snapshot', { appName: targetApp });
+            currentAxSessionId = snap.session_id;
+            currentAxElements = snap.elements;
+            const formatted = formatAxElements(snap.elements);
+            const note = snap.truncated ? '\n⚠️ 元素列表已截断（树太大）。' : '';
+            axPart =
+              `AX 树（${snap.app ?? 'unknown'}）：${snap.elements.length} 个可交互元素，` +
+              `遍历 ${snap.total_visited} 个节点。${note}\n\n${formatted}`;
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            axPart = `AX 树获取失败：${msg}\n（可尝试 screenshot 查看当前界面）`;
+            currentAxElements = [];
+          }
+
+          // Vision models: also take screenshot and return both together (Codex style).
+          // Non-vision: AX tree only — still actionable via element_id.
+          if (modelSupportsVision) {
+            const screenshotContent = await takeAutoScreenshot();
+            const axSuffix = '\n\n操作：click(element_id=N)、type(element_id=N, text=...)、perform_action(element_id=N, action_name=...)。AX 路径不移动鼠标。';
+            return [
+              { type: 'text', text: axPart + axSuffix + '\n\n--- 截图（优先用上方 element_id，坐标仅降级备用）---' },
+              ...screenshotContent,
+            ];
+          }
+          actionResult = axPart + '\n\n操作：click(element_id=N)、type(element_id=N, text=...)、perform_action(element_id=N, action_name=...)。';
+          break;
+        }
+
+        // ── Unified click: element_id (AX-first) or x,y (pixel) ─────────────
         case 'click': {
-          const sc = toScreenCoords(input.x as number, input.y as number);
-          actionResult = await invoke<string>('mouse_click', {
-            x: sc.x, y: sc.y,
-            button: (input.button as string) || undefined,
-          });
+          const elemId = input.element_id as number | undefined;
+          const btn = (input.button as string) || undefined;
+
+          if (elemId !== undefined && currentAxSessionId != null) {
+            // AX path: try AXPress first (no cursor movement)
+            try {
+              await invoke('ax_press', { sessionId: currentAxSessionId, elementId: elemId });
+              actionResult = `click 成功：元素 [${elemId}] AXPress（光标未移动）`;
+            } catch (e) {
+              const msg = e instanceof Error ? e.message : String(e);
+              // Fallback 1: pixel click at element center (AX bounds are screen points)
+              const elem = currentAxElements[elemId];
+              if (elem) {
+                const cx = Math.round(elem.bounds[0] + elem.bounds[2] / 2);
+                const cy = Math.round(elem.bounds[1] + elem.bounds[3] / 2);
+                await invoke<string>('mouse_click', { x: cx, y: cy, button: btn });
+                actionResult = `click: AXPress 失败（${msg}），降级像素点击元素中心 (${cx},${cy})`;
+              } else if (input.x != null && input.y != null) {
+                // Fallback 2: caller-supplied screenshot-space coords
+                const sc = toScreenCoords(input.x as number, input.y as number);
+                await invoke<string>('mouse_click', { x: sc.x, y: sc.y, button: btn });
+                actionResult = `click: AXPress 失败（${msg}），降级像素点击 (${sc.x},${sc.y})`;
+              } else {
+                return `Error: click 失败：${msg}。请提供 x,y 坐标或先调用 get_app_state。`;
+              }
+            }
+          } else {
+            // Pixel-only path (no element_id or session expired)
+            const sc = toScreenCoords(input.x as number, input.y as number);
+            actionResult = await invoke<string>('mouse_click', { x: sc.x, y: sc.y, button: btn });
+          }
           break;
         }
 
@@ -434,13 +544,30 @@ export const computerTool: ToolDefinition = {
           break;
         }
 
+        // ── Unified scroll: element_id (element center) or x,y (pixel) ───────
         case 'scroll': {
-          const sc = toScreenCoords(input.x as number, input.y as number);
-          actionResult = await invoke<string>('mouse_scroll', {
-            x: sc.x, y: sc.y,
-            direction: input.direction as string,
-            amount: (input.amount as number) || undefined,
-          });
+          const elemId = input.element_id as number | undefined;
+          const dir = input.direction as string;
+          const amt = (input.amount as number) || undefined;
+
+          if (elemId !== undefined) {
+            const elem = currentAxElements[elemId];
+            if (elem) {
+              // Scroll at element center (AX bounds → screen points, no scale needed)
+              const cx = Math.round(elem.bounds[0] + elem.bounds[2] / 2);
+              const cy = Math.round(elem.bounds[1] + elem.bounds[3] / 2);
+              actionResult = await invoke<string>('mouse_scroll', { x: cx, y: cy, direction: dir, amount: amt });
+              actionResult = `scroll ${dir}×${amt ?? 3} 在元素 [${elemId}] 中心 (${cx},${cy})`;
+            } else if (input.x != null && input.y != null) {
+              const sc = toScreenCoords(input.x as number, input.y as number);
+              actionResult = await invoke<string>('mouse_scroll', { x: sc.x, y: sc.y, direction: dir, amount: amt });
+            } else {
+              return `Error: scroll: element_id ${elemId} 不在当前快照，请提供 x,y 坐标或先调用 get_app_state。`;
+            }
+          } else {
+            const sc = toScreenCoords(input.x as number, input.y as number);
+            actionResult = await invoke<string>('mouse_scroll', { x: sc.x, y: sc.y, direction: dir, amount: amt });
+          }
           break;
         }
 
@@ -454,30 +581,22 @@ export const computerTool: ToolDefinition = {
           break;
         }
 
+        // ── Unified type: element_id (AX set_value) or keyboard ───────────────
         case 'type': {
           const text = input.text as string;
-          // Detect non-ASCII (Chinese/CJK etc.) — use clipboard + Cmd+V for reliable input
-          const hasNonAscii = /[^\u0020-\u007E\t\n\r]/.test(text);
-          if (hasNonAscii) {
-            // Save user's clipboard, paste our text, then restore
-            let savedClipboard: string | null = null;
-            try { savedClipboard = await clipboardReadText(); } catch { /* empty clipboard */ }
+          const elemId = input.element_id as number | undefined;
+
+          if (elemId !== undefined && currentAxSessionId != null) {
             try {
-              await clipboardWriteText(text);
-              await new Promise(r => setTimeout(r, 50));
-              const pasteModifier = isMacOS() ? 'meta' : 'ctrl';
-              await invoke<string>('keyboard_press', { key: 'v', modifiers: [pasteModifier] });
-              // Wait for paste to take effect before restoring
-              await new Promise(r => setTimeout(r, 150));
-            } finally {
-              // Restore original clipboard content
-              if (savedClipboard != null) {
-                try { await clipboardWriteText(savedClipboard); } catch { /* ignore */ }
-              }
+              await invoke('ax_set_value', { sessionId: currentAxSessionId, elementId: elemId, text });
+              actionResult = `type 成功：元素 [${elemId}] AXSetValue（无键盘事件）`;
+            } catch (e) {
+              const msg = e instanceof Error ? e.message : String(e);
+              actionResult = await typeViaKeyboard(text);
+              actionResult = `type: AXSetValue 失败（${msg}），降级键盘输入`;
             }
-            actionResult = `Typed (via paste): ${text} (${text.length} characters)`;
           } else {
-            actionResult = await invoke<string>('keyboard_type', { text });
+            actionResult = await typeViaKeyboard(text);
           }
           break;
         }
@@ -489,49 +608,45 @@ export const computerTool: ToolDefinition = {
           });
           break;
 
-        // ── AX path (no cursor movement, no window hide) ───────────────────
-
-        case 'get_ui': {
-          // Close previous session before taking a fresh snapshot.
-          await closeCurrentAxSession();
-          const targetApp = (input.app_name as string | undefined) ?? null;
+        // ── Perform secondary AX action (AXShowMenu, AXPick, etc.) ───────────
+        case 'perform_action': {
+          const elemId = input.element_id as number;
+          const actionName = input.action_name as string;
+          if (!actionName) return 'Error: perform_action 需要 action_name 参数（如 "AXShowMenu"、"AXPick"、"AXIncrement"）。';
+          if (currentAxSessionId == null) {
+            return 'Error: 需要先调用 get_app_state 获取 UI 快照，再使用 perform_action。';
+          }
           try {
-            const snap = await invoke<AxSnapshotResult>('ax_snapshot', {
-              appName: targetApp,
+            await invoke('ax_perform_action', {
+              sessionId: currentAxSessionId,
+              elementId: elemId,
+              actionName,
             });
-            currentAxSessionId = snap.session_id;
-            const formatted = formatAxElements(snap.elements);
-            const note = snap.truncated ? '\n⚠️ 元素列表已截断（树太大）。' : '';
-            actionResult =
-              `UI 树快照成功（${snap.app ?? 'unknown'}）` +
-              `，共 ${snap.elements.length} 个可交互元素，遍历 ${snap.total_visited} 个节点。${note}\n\n` +
-              `${formatted}\n\n` +
-              `要操作元素，使用 ax_click(element_id) 点击按钮/链接，或 ax_type(element_id, text) 输入文字。`;
+            actionResult = `perform_action 成功：元素 [${elemId}] 执行了 ${actionName}`;
           } catch (e) {
             const msg = e instanceof Error ? e.message : String(e);
-            // AX unavailable (no permission, non-macOS, etc.)
-            actionResult = `get_ui 不可用：${msg}`;
+            return `Error: perform_action 失败：${msg}`;
           }
           break;
         }
 
+        // ── Legacy AX actions (kept for backward compat) ──────────────────────
         case 'ax_click': {
           const elemId = input.element_id as number;
           if (currentAxSessionId == null) {
-            return 'Error: 需要先调用 get_ui 获取 UI 快照，再使用 ax_click。';
+            return 'Error: 需要先调用 get_app_state / get_ui 获取 UI 快照，再使用 ax_click。';
           }
           try {
             await invoke('ax_press', { sessionId: currentAxSessionId, elementId: elemId });
-            actionResult = `ax_click 成功：元素 [${elemId}] 已按下（AXPress，光标未移动）`;
+            actionResult = `ax_click 成功：元素 [${elemId}] AXPress（光标未移动）`;
           } catch (e) {
             const msg = e instanceof Error ? e.message : String(e);
-            // Fallback: pixel click if caller provided coordinates
             if (input.x != null && input.y != null) {
               const sc = toScreenCoords(input.x as number, input.y as number);
               await invoke<string>('mouse_click', { x: sc.x, y: sc.y, button: undefined });
-              actionResult = `ax_click 失败（${msg}），已降级为像素点击 (${sc.x}, ${sc.y})`;
+              actionResult = `ax_click 失败（${msg}），降级像素点击 (${sc.x},${sc.y})`;
             } else {
-              return `Error: ax_click 失败：${msg}。请尝试 screenshot 后用 click(x, y)。`;
+              return `Error: ax_click 失败：${msg}。请尝试 click(element_id) 或 screenshot 后 click(x,y)。`;
             }
           }
           break;
@@ -541,42 +656,21 @@ export const computerTool: ToolDefinition = {
           const elemId = input.element_id as number;
           const text = input.text as string;
           if (currentAxSessionId == null) {
-            return 'Error: 需要先调用 get_ui 获取 UI 快照，再使用 ax_type。';
+            return 'Error: 需要先调用 get_app_state / get_ui 获取 UI 快照，再使用 ax_type。';
           }
           try {
-            await invoke('ax_set_value', {
-              sessionId: currentAxSessionId,
-              elementId: elemId,
-              text,
-            });
-            actionResult = `ax_type 成功：元素 [${elemId}] 已设置文本（无键盘事件）`;
+            await invoke('ax_set_value', { sessionId: currentAxSessionId, elementId: elemId, text });
+            actionResult = `ax_type 成功：元素 [${elemId}] AXSetValue（无键盘事件）`;
           } catch (e) {
             const msg = e instanceof Error ? e.message : String(e);
-            // Fallback: keyboard / clipboard
-            const hasNonAscii = /[^ -~\t\n\r]/.test(text);
-            if (hasNonAscii) {
-              let saved: string | null = null;
-              try { saved = await clipboardReadText(); } catch { /* empty */ }
-              try {
-                await clipboardWriteText(text);
-                await new Promise(r => setTimeout(r, 50));
-                await invoke<string>('keyboard_press', {
-                  key: 'v', modifiers: [isMacOS() ? 'meta' : 'ctrl'],
-                });
-                await new Promise(r => setTimeout(r, 150));
-              } finally {
-                if (saved != null) try { await clipboardWriteText(saved); } catch { /* ignore */ }
-              }
-            } else {
-              await invoke<string>('keyboard_type', { text });
-            }
-            actionResult = `ax_type 失败（${msg}），已降级为键盘输入`;
+            actionResult = await typeViaKeyboard(text);
+            actionResult = `ax_type 失败（${msg}），降级键盘输入`;
           }
           break;
         }
 
         default:
-          return `Unknown action: ${action}. Valid actions: screenshot, click, move, scroll, drag, type, key, wait, get_ui, ax_click, ax_type`;
+          return `Unknown action: ${action}. Valid: get_app_state, screenshot, click, type, perform_action, scroll, move, drag, key, wait (legacy: get_ui, ax_click, ax_type)`;
       }
 
       // Auto-screenshot after UI-affecting actions so the model can see the result.
