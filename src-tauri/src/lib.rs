@@ -15,12 +15,14 @@ mod trigger_server;
 mod feishu_ws;
 mod window_info;
 mod computer_use;
+mod accessibility;
 mod overlay;
 mod pet;
 mod secrets;
 mod atomic_write;
 mod notice;
 mod notice_db;
+mod sleep_prevention;
 
 /// Maximum number of output lines to collect from a shell command.
 /// Prevents OOM when commands produce unbounded output.
@@ -1322,7 +1324,17 @@ pub fn run() {
             computer_use::request_screen_recording,
             computer_use::get_abu_window_id,
             computer_use::capture_screen_excluding,
-            computer_use::activate_app,
+            accessibility::get_ui_snapshot,
+            accessibility::test_ax_snapshot,
+            accessibility::ax_diagnose,
+            accessibility::ax_probe_text,
+            accessibility::ax_enable_electron_a11y,
+            accessibility::ax_snapshot,
+            accessibility::activate_app,
+            accessibility::ax_press,
+            accessibility::ax_set_value,
+            accessibility::ax_perform_action,
+            accessibility::ax_close_session,
             overlay::show_screen_border,
             overlay::hide_screen_border,
             overlay::get_overlay_window_id,
@@ -1354,7 +1366,8 @@ pub fn run() {
             atomic_write::atomic_write_text,
             atomic_write::atomic_write_with_backup,
             atomic_write::restore_from_backup,
-            atomic_write::cleanup_old_backups
+            atomic_write::cleanup_old_backups,
+            sleep_prevention::set_prevent_sleep
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

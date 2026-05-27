@@ -465,7 +465,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
   return createPortal(
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50"
-      onMouseDown={(e) => { if (e.target === e.currentTarget) handleClose(); }}
+      onMouseDown={(e) => { e.stopPropagation(); }}
     >
       <div
         className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-150"
@@ -700,8 +700,8 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
                 <label className="text-sm font-medium text-[var(--abu-text-primary)]">
                   {t.settings.models}
                 </label>
-                {/* Fetch/refresh models button */}
-                {!isOllama && selectedOption?.format !== 'anthropic' && (
+                {/* Fetch/refresh models button — only when baseUrl is filled */}
+                {!isOllama && selectedOption?.format !== 'anthropic' && baseUrl.trim() && (
                   <button
                     type="button"
                     onClick={handleFetchModels}

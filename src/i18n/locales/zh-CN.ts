@@ -489,6 +489,8 @@ const zhCN: TranslationDict = {
     computerUseDesc: '启用截屏和键鼠模拟。阿布可以看到你的屏幕并操作电脑。',
     computerUsePermissionDenied: '无法截取屏幕，请授予屏幕录制权限',
     computerUsePermissionGuide: '请前往「系统设置 → 隐私与安全性 → 屏幕录制」，允许阿布。键鼠操控还需要在「辅助功能」中授权。',
+    preventSleep: '防止系统睡眠',
+    preventSleepDesc: '阿布运行时保持系统唤醒，盒盖不中断任务（需接通电源；Windows 仅防空闲睡眠）',
     // Permission mode
     permissionMode: '权限模式',
     permissionModeDesc: '控制工具执行时的确认行为',
@@ -565,6 +567,7 @@ const zhCN: TranslationDict = {
     deleteProviderConfirm: '确定要删除这个服务吗？',
     noProviders: '还没有 AI 服务',
     noProvidersHint: '添加一个 AI 服务开始使用',
+    noProvidersAction: '模型设置',
     auxiliary: '辅助能力',
     auxiliarySearch: '联网搜索',
     auxiliaryImageGen: '图片生成',
@@ -1523,6 +1526,18 @@ const zhCN: TranslationDict = {
     deviceId: '设备 ID',
     deviceIdHint: '遇到问题时发给开发者，用于定位你的设备记录',
     copied: '已复制',
+    disclaimerLink: '免责声明',
+    licenseLinkLabel: 'Apache 2.0 许可证',
+    disclaimerTitle: '免责声明',
+    disclaimerClose: '收起',
+  },
+
+  disclaimerBanner: {
+    line1: 'AI 输出仅供参考，重要内容请自行核实',
+    line2: '文件 / 命令操作的后果由用户自行承担',
+    line3: 'API Key 直接发往你配置的 LLM 服务商',
+    viewFull: '查看完整说明',
+    dismiss: '我知道了',
   },
 
   guide: {

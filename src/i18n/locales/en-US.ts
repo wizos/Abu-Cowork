@@ -489,6 +489,8 @@ const enUS: TranslationDict = {
     computerUseDesc: 'Enable screenshot capture and keyboard/mouse simulation. Abu can see your screen and operate your computer.',
     computerUsePermissionDenied: 'Cannot capture screen. Please grant Screen Recording permission.',
     computerUsePermissionGuide: 'Go to System Settings → Privacy & Security → Screen Recording, and allow Abu. You may also need to grant Accessibility permission for keyboard/mouse control.',
+    preventSleep: 'Prevent system sleep',
+    preventSleepDesc: 'Keep the system awake while Abu is running. When on AC power, closing the lid will not interrupt tasks. (Windows: idle sleep only)',
     // Permission mode
     permissionMode: 'Permission Mode',
     permissionModeDesc: 'Controls confirmation behavior for tool execution',
@@ -565,6 +567,7 @@ const enUS: TranslationDict = {
     deleteProviderConfirm: 'Are you sure you want to delete this service?',
     noProviders: 'No AI services yet',
     noProvidersHint: 'Add an AI service to get started',
+    noProvidersAction: 'Model Settings',
     auxiliary: 'Auxiliary Capabilities',
     auxiliarySearch: 'Web Search',
     auxiliaryImageGen: 'Image Generation',
@@ -1522,6 +1525,18 @@ const enUS: TranslationDict = {
     deviceId: 'Device ID',
     deviceIdHint: 'Share with the developer when reporting issues',
     copied: 'Copied',
+    disclaimerLink: 'Disclaimer',
+    licenseLinkLabel: 'Apache 2.0 License',
+    disclaimerTitle: 'Disclaimer',
+    disclaimerClose: 'Collapse',
+  },
+
+  disclaimerBanner: {
+    line1: 'AI output is for reference only — verify important results yourself',
+    line2: 'File / command operations are your responsibility',
+    line3: 'Your API Key is sent directly to your configured LLM provider',
+    viewFull: 'View full disclaimer',
+    dismiss: 'Got it',
   },
 
   guide: {

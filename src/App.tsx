@@ -61,6 +61,7 @@ import { checkForUpdate } from '@/core/updates/checker';
 import { sendConsolePing } from '@/utils/consolePing';
 import { fetchUnseenAnnouncements, markSeen, type AnnouncementItem } from '@/utils/consoleAnnouncement';
 import AnnouncementBanner from '@/components/common/AnnouncementBanner';
+import DisclaimerBanner from '@/components/common/DisclaimerBanner';
 import { pushDiagnosticSnapshot } from '@/utils/consoleDiagnostic';
 import { useDiagnosticStore } from '@/stores/diagnosticStore';
 
@@ -199,6 +200,14 @@ function App() {
     bootstrapSecrets().catch((err) => {
       console.warn('[App] Secret bootstrap error:', err);
     });
+
+    // Restore sleep prevention preference. caffeinate dies with the process,
+    // so we re-enable it on every launch if the user had it turned on.
+    if (useSettingsStore.getState().preventSleep) {
+      invoke('set_prevent_sleep', { enabled: true }).catch((err) => {
+        console.warn('[App] Failed to restore sleep prevention:', err);
+      });
+    }
 
     // Initialize notifications with logging
     initNotifications().then((granted) => {
@@ -505,6 +514,10 @@ function App() {
             content and offer to mark them private. Self-gates on the
             hasRunSensitiveAudit_v015 settings flag. */}
         <SensitiveAuditDialog />
+
+        {/* First-launch disclaimer banner — shows once until dismissed.
+            Self-gates on hasAcknowledgedDisclaimer in settingsStore. */}
+        <DisclaimerBanner />
 
         {/* Cloud announcement banner — shows the first unseen announcement */}
         {pendingAnnouncements.length > 0 && pendingAnnouncements[0] && (

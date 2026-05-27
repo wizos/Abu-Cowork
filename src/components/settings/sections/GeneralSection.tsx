@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { type LanguageSetting, useI18n } from '@/i18n';
 import { Trash2 } from 'lucide-react';
@@ -16,6 +17,8 @@ export default function GeneralSection() {
   const setBehaviorSensorEnabled = useSettingsStore(s => s.setBehaviorSensorEnabled);
   const computerUseEnabled = useSettingsStore(s => s.computerUseEnabled);
   const setComputerUseEnabled = useSettingsStore(s => s.setComputerUseEnabled);
+  const preventSleep = useSettingsStore(s => s.preventSleep);
+  const setPreventSleep = useSettingsStore(s => s.setPreventSleep);
   const [sensorTesting, setSensorTesting] = useState(false);
   const [computerUseTesting, setComputerUseTesting] = useState(false);
   const { t } = useI18n();
@@ -56,6 +59,16 @@ export default function GeneralSection() {
         message: t.settings.computerUsePermissionGuide,
       });
     }
+  };
+
+  const handleTogglePreventSleep = async () => {
+    const next = !preventSleep;
+    // Best-effort: if Tauri command fails (e.g. caffeinate not available),
+    // we still update UI state so the preference is persisted for the next launch.
+    await invoke('set_prevent_sleep', { enabled: next }).catch((err) => {
+      console.warn('[GeneralSection] set_prevent_sleep failed:', err);
+    });
+    setPreventSleep(next);
   };
 
   const closeOptions = [
@@ -139,6 +152,19 @@ export default function GeneralSection() {
             disabled={computerUseTesting}
           />
         </div>
+      </div>
+
+      {/* Prevent sleep */}
+      <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--abu-border)] bg-[var(--abu-bg-muted)]">
+        <div className="flex-1 mr-4">
+          <p className="text-sm text-[var(--abu-text-primary)]">{t.settings.preventSleep}</p>
+          <p className="text-xs text-[var(--abu-text-muted)] mt-0.5">{t.settings.preventSleepDesc}</p>
+        </div>
+        <Toggle
+          checked={preventSleep}
+          onChange={handleTogglePreventSleep}
+          size="lg"
+        />
       </div>
     </div>
   );
