@@ -319,6 +319,7 @@ interface SettingsState {
   guideShown: boolean;
   behaviorSensorEnabled: boolean;
   computerUseEnabled: boolean;
+  preventSleep: boolean;
   allowSkillCommands: boolean;
   soulInitialized: boolean;
   skillRegistry: string;
@@ -445,6 +446,7 @@ interface SettingsActions {
   setGuideShown: (shown: boolean) => void;
   setBehaviorSensorEnabled: (enabled: boolean) => void;
   setComputerUseEnabled: (enabled: boolean) => void;
+  setPreventSleep: (enabled: boolean) => void;
   setSoulInitialized: (initialized: boolean) => void;
   setProactivity: (level: 'shy' | 'companion' | 'butler') => void;
   setDraftsOnboardingShown: (shown: boolean) => void;
@@ -651,6 +653,7 @@ export const useSettingsStore = create<SettingsStore>()(
       guideShown: false,
       behaviorSensorEnabled: false,
       computerUseEnabled: false,
+      preventSleep: false,
       allowSkillCommands: true,
       soulInitialized: false,
       skillRegistry: '',
@@ -927,6 +930,7 @@ export const useSettingsStore = create<SettingsStore>()(
       setGuideShown: (guideShown) => set({ guideShown }),
       setBehaviorSensorEnabled: (behaviorSensorEnabled) => set({ behaviorSensorEnabled }),
       setComputerUseEnabled: (computerUseEnabled) => set({ computerUseEnabled }),
+      setPreventSleep: (preventSleep) => set({ preventSleep }),
       setSoulInitialized: (soulInitialized) => set({ soulInitialized }),
       setProactivity: (level) =>
         set((s) => ({ soul: { ...s.soul, proactivity: level } })),
@@ -972,9 +976,22 @@ export const useSettingsStore = create<SettingsStore>()(
     }),
     {
       name: 'abu-settings',
-      version: 31,
+      version: 32,
       migrate: (persisted: unknown, version: number) => {
         const state = persisted as Record<string, unknown>;
+
+        // ════════════════════════════════════════════════
+        // V32: Add preventSleep setting (default false — opt-in only).
+        // ════════════════════════════════════════════════
+        if (version < 32) {
+          try {
+            if (typeof state.preventSleep !== 'boolean') {
+              state.preventSleep = false;
+            }
+          } catch (err) {
+            console.error('[settingsStore] V32 migration failed:', err);
+          }
+        }
 
         // ════════════════════════════════════════════════
         // V31: Add hasAcknowledgedDisclaimer flag. Existing users start
@@ -1575,6 +1592,7 @@ export const useSettingsStore = create<SettingsStore>()(
         guideShown: state.guideShown,
         behaviorSensorEnabled: state.behaviorSensorEnabled,
         computerUseEnabled: state.computerUseEnabled,
+        preventSleep: state.preventSleep,
         allowSkillCommands: state.allowSkillCommands,
         soulInitialized: state.soulInitialized,
         skillRegistry: state.skillRegistry,
