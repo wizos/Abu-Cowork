@@ -5,6 +5,7 @@ import { ModelSelector, CapabilityBadge } from '@/components/chat/ModelSelector'
 // import AgentSelector from '@/components/chat/AgentSelector';
 import { open } from '@tauri-apps/plugin-dialog';
 import { readFile } from '@tauri-apps/plugin-fs';
+import { invoke } from '@tauri-apps/api/core';
 import { useFileDragDrop } from '@/hooks/useFileDragDrop';
 import { uint8ArrayToBase64 } from '@/utils/base64';
 import { getBaseName, IMAGE_MIME_MAP } from '@/utils/pathUtils';
@@ -12,6 +13,7 @@ import { isImageFile } from '@/components/chat/FileAttachment';
 import { enqueueUserInput } from '@/core/agent/userInputQueue';
 import { getCurrentLoopContext } from '@/core/agent/permissionBridge';
 import { useChatStore, useActiveConversation } from '@/stores/chatStore';
+import ContextIndicator from '@/components/chat/ContextIndicator';
 import { useDiscoveryStore } from '@/stores/discoveryStore';
 import { useSettingsStore, getEffectiveModel, getActiveProvider } from '@/stores/settingsStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
@@ -87,6 +89,8 @@ async function processFilePaths(
 
 export default function ChatInput({ variant, onSend, disabled, scenarioPlaceholder, onInputChange }: ChatInputProps) {
   const isWelcome = variant === 'welcome';
+  // Context usage indicator shows only in chat variant once a conversation exists.
+  const activeConvIdForIndicator = useChatStore((s) => (isWelcome ? null : s.activeConversationId));
 
   const [text, setText] = useState('');
   const [images, setImages] = useState<ImageAttachment[]>([]);
@@ -166,14 +170,57 @@ export default function ChatInput({ variant, onSend, disabled, scenarioPlacehold
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showModelPicker]);
 
-  // Handle pasting images from clipboard
+  // Handle pasting from clipboard.
+  //
+  // Two distinct sources land here:
+  //   (a) Files copied from Finder/Explorer (Cmd/Ctrl+C on a file) — we want
+  //       chips identical to drag-drop, which means we need the *real OS
+  //       path*. The browser ClipboardEvent never exposes that, so we ask
+  //       the Rust side to read the native pasteboard (NSPasteboard /
+  //       CF_HDROP) and then reuse the same processFilePaths pipeline that
+  //       handles drag-drop.
+  //   (b) Raw bitmaps with no backing file (screenshots taken with
+  //       Cmd+Shift+Ctrl+4 on macOS, snipping-tool pastes on Windows). These
+  //       have no file URL on the pasteboard, so we fall back to the legacy
+  //       getAsFile() image path.
+  //
+  // The preventDefault MUST run synchronously the moment we see any
+  // `kind === 'file'` item — once we hit `await`, the textarea will have
+  // already swallowed the default paste (which is what causes filename text
+  // to leak into the input on the current build).
   const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items;
     if (!items) return;
 
+    const hasFileItem = Array.from(items).some((it) => it.kind === 'file');
+    if (!hasFileItem) return; // plain text / html → let textarea handle it
+
+    e.preventDefault();
+
+    // (a) Try OS pasteboard for real file paths — full parity with drag-drop.
+    let paths: string[] = [];
+    try {
+      paths = await invoke<string[]>('read_clipboard_file_paths');
+    } catch {
+      // Native command unavailable or failed — fall through to bitmap branch.
+    }
+
+    if (paths.length > 0) {
+      await processFilePaths(
+        paths,
+        (imgs) => setImages((prev) => [...prev, ...imgs]),
+        (newFiles) => setFiles((prev) => {
+          const existing = new Set(prev.map((f) => f.path));
+          const deduped = newFiles.filter((f) => !existing.has(f.path));
+          return deduped.length > 0 ? [...prev, ...deduped] : prev;
+        }),
+      );
+      return;
+    }
+
+    // (b) Bitmap-only fallback (screenshots etc.).
     for (const item of Array.from(items)) {
       if (SUPPORTED_IMAGE_TYPES.includes(item.type)) {
-        e.preventDefault();
         const file = item.getAsFile();
         if (!file) continue;
         const { data, mediaType } = await readFileAsBase64(file);
@@ -820,7 +867,7 @@ export default function ChatInput({ variant, onSend, disabled, scenarioPlacehold
                 </Button>
               </div>
 
-              {/* Right Actions: Model picker + Send / Stop */}
+              {/* Right Actions: Model picker + Context indicator + Send / Stop */}
               <div className="flex items-center gap-1">
                 {/* Model picker */}
                 <div className="relative" ref={modelPickerRef}>
@@ -848,6 +895,13 @@ export default function ChatInput({ variant, onSend, disabled, scenarioPlacehold
                     anchorRef={modelPickerRef as React.RefObject<HTMLElement>}
                   />
                 </div>
+
+                {/* Context usage ring — between model picker and send button */}
+                {activeConvIdForIndicator && (
+                  <div className="flex items-center justify-center h-7 px-1">
+                    <ContextIndicator conversationId={activeConvIdForIndicator} />
+                  </div>
+                )}
 
                 {isStreaming ? (
                   <Button

@@ -36,10 +36,12 @@ import { emitHook } from './lifecycleHooks';
 import { getI18n, format } from '../../i18n';
 import { clearAllSkillHooks } from '../tools/builtins';
 import { executeToolBatch } from './toolExecutor';
+import { startConversationTrace, endConversationTrace, startGeneration } from '../observability/langfuse';
+import { calculateTurnCost } from '../llm/costTracker';
 import { formatTodosForPrompt } from './todoManager';
 import { isWindows } from '../../utils/platform';
 import { getBuiltinSearchConfig } from '../capabilities';
-import { resolveCapabilities, computeReasoningParams, type ModelCapabilities } from '../llm/modelCapabilities';
+import { resolveCapabilities, resolveEffectiveContextWindow, computeReasoningParams, type ModelCapabilities } from '../llm/modelCapabilities';
 import { TOOL_NAMES } from '../tools/toolNames';
 import { prefetchTools } from '../tools/toolPrefetch';
 import { classifyTools, buildDeferredToolsSummary } from '../tools/toolSearch';
@@ -805,6 +807,13 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
     loopId,
   });
 
+  // Observability: open a trace for this run (no-op when Langfuse disabled)
+  startConversationTrace(conversationId, {
+    name: route.name ?? 'abu',
+    input: userMessage,
+    metadata: { loopId, model: effectiveModelId, routeType: route.type },
+  });
+
   let continueLoop = true;
   let exitReason: AgentLoopExitReason = 'completed';
   let exitError: string | undefined;
@@ -997,10 +1006,15 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
         freshSettings.maxOutputTokens ?? effectiveModelMaxOutput,
       );
       let maxOutputTokens = reasoningParams.maxTokens;
-      const userContextWindow = freshSettings.contextWindowSize ?? effectiveModelContext;
-      const contextWindowSize = discoveredCaps?.contextWindow
-        ? Math.min(userContextWindow, discoveredCaps.contextWindow)
-        : userContextWindow;
+      // Effective context window = min(model published cap, user setting, runtime-discovered).
+      // This prevents the UI/agent from claiming more capacity than the model actually
+      // supports — e.g. mimo/gpt-4o/kimi at 128k were silently being reported as 200k
+      // because the project default settingsStore.contextWindowSize is 200k.
+      const contextWindowSize = resolveEffectiveContextWindow(
+        effectiveModelId,
+        freshSettings.contextWindowSize,
+        discoveredCaps?.contextWindow,
+      );
 
       // Escalate maxOutputTokens on max_tokens recovery (legacy CC pattern),
       // clamped to the model's real ceiling so we never re-ask above a known limit.
@@ -1036,13 +1050,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       // String form for token estimation and context management
       let effectiveSystemPrompt = sectionsToString(allSections);
 
-      // Compute context warning level for UI feedback and compression decisions
-      const preCompressionTokens = estimateTokens(effectiveSystemPrompt) + estimateMessageTokens(historyMessages) + toolTokens;
       const maxInputTokens = contextWindowSize - maxOutputTokens;
-      const warningLevel = autoCompactTracker.updateLevel(preCompressionTokens, maxInputTokens);
-
-      // Update chatStore with warning level so UI can display context indicators
-      useChatStore.getState().setContextWarningLevel(conversationId, warningLevel);
 
       // Step 1: Semantic compression — use cached summary or auto-compact based on warning level
       // Compression triggers when: enough turns AND (cached result available OR warning level triggers compaction)
@@ -1060,7 +1068,8 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
           messagesForContext = [...firstRound, cache.summaryMessage, ...newMessages];
           compressionApplied = true;
         } else {
-          // No valid cache — attempt compression
+          // No valid cache — attempt compression (set isCompressing for the UI spinner)
+          useChatStore.getState().setIsCompressing(conversationId, true);
           try {
             const compressionResult = await compressContextIfNeeded(
               historyMessages,
@@ -1096,6 +1105,8 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
           } catch {
             // Compression failed — record for circuit breaker
             autoCompactTracker.recordFailure();
+          } finally {
+            useChatStore.getState().setIsCompressing(conversationId, false);
           }
         }
       }
@@ -1119,6 +1130,28 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       // Step 2: Trim old screenshots dynamically based on context usage
       const postCompressionTokens = estimateTokens(effectiveSystemPrompt) + estimateMessageTokens(messagesForContext) + toolTokens;
       const usagePercent = getUsagePercent(postCompressionTokens, maxInputTokens);
+      // NOTE: usage MUST be published on post-compression tokens. Pre-compression
+      // tokens stay critically high in long conversations even after cache-hit
+      // compression brings the actual payload below the threshold, which
+      // previously left the UI stuck in the red Critical state.
+      // Update tracker (its lastLevel may be read elsewhere downstream)
+      autoCompactTracker.updateLevel(postCompressionTokens, maxInputTokens);
+      // Publish usage to chatStore for UI consumption.
+      // tokensMax uses the FULL contextWindow (not the maxInputTokens budget)
+      // so the denominator the user sees matches the model's published context
+      // window (e.g. 200k for Claude / mimo-v2.5-pro), which is the mental
+      // model users have. The maxInputTokens budget (contextWindow - output
+      // reservation) is an internal compression-trigger detail.
+      // overhead = system prompt + tool schema tokens. Published so the indicator
+      // can compute live = overhead + estimateMessageTokens(messagesNow) without
+      // waiting for the next loop iteration (fixes streaming + post-restart UX).
+      const systemAndToolsOverhead = estimateTokens(effectiveSystemPrompt) + toolTokens;
+      useChatStore.getState().setContextUsage(conversationId, {
+        percent: getUsagePercent(postCompressionTokens, contextWindowSize),
+        tokensUsed: postCompressionTokens,
+        tokensMax: contextWindowSize,
+        overhead: systemAndToolsOverhead,
+      });
       const trimmedMessages = trimOldScreenshots(messagesForContext, usagePercent);
 
       // Step 3: Hard truncation as safety net
@@ -1324,6 +1357,9 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
           }
         };
 
+      // Observability: mark when this turn's LLM call begins (for generation latency)
+      const genStartTime = Date.now();
+
       // Execute with retry and context-too-long recovery
       try {
         await withRetry(
@@ -1437,6 +1473,24 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
         } else {
           throw retryErr;
         }
+      }
+
+      // Observability: record this turn's LLM call as a generation (no-op when disabled)
+      {
+        const turnMsg = useChatStore.getState().conversations[conversationId]?.messages.find(m => m.id === assistantMsgId);
+        startGeneration(conversationId, {
+          name: `turn-${turnCount}`,
+          model: effectiveModelId,
+          input: preparedMessages,
+          startTime: new Date(genStartTime),
+        }).end({
+          output: {
+            content: turnMsg?.content,
+            toolCalls: collectedToolCalls.map(tc => ({ name: tc.name, input: tc.input })),
+          },
+          usage: finalUsage,
+          costUsd: finalUsage ? calculateTurnCost(effectiveModelId, finalUsage) : undefined,
+        });
       }
 
       // Update usage on message if available
@@ -1753,6 +1807,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
         // Set status back to idle on cancel
         chatStore.setConversationStatus(conversationId, 'idle');
 
+        endConversationTrace(conversationId, { output: { reason: 'aborted' } });
         return { reason: 'aborted' as const };
       }
 
@@ -1817,5 +1872,6 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       continueLoop = false;
     }
   }
+  endConversationTrace(conversationId, { output: { reason: exitReason }, error: exitError });
   return { reason: exitReason, error: exitError };
 }

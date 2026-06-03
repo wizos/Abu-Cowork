@@ -2,7 +2,7 @@
   "name": "abu",
   "private": false,
   "license": "Apache-2.0",
-  "version": "0.22.1",
+  "version": "0.23.0",
   "description": "Abu - AI Desktop Office Assistant",
   "type": "module",
   "scripts": {
@@ -47,6 +47,7 @@
     "docx-preview": "^0.3.7",
     "fflate": "^0.8.2",
     "immer": "^11.1.4",
+    "langfuse": "^3.38.20",
     "linkedom": "^0.18.12",
     "lucide-react": "^0.575.0",
     "mermaid": "^11.15.0",

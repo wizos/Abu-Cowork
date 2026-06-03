@@ -244,7 +244,21 @@ export interface Conversation {
   imPlatform?: string;  // IM platform name (dchat/feishu/dingtalk/wecom/slack)
   projectId?: string;  // If set, this conversation belongs to a project
   contextCache?: ContextCache;  // Ephemeral compression cache (not persisted)
-  contextWarningLevel?: 0 | 1 | 2 | 3;  // Ephemeral context usage warning level (not persisted)
+  // Ephemeral context usage state — NOT persisted (excluded by JSONL writer + chatStore partialize).
+  // Published by agentLoop each turn from post-compression tokens. ContextIndicator
+  // derives the live water-level from this baseline + estimateMessageTokens(messages),
+  // so streaming output and post-restart history view both stay accurate without
+  // waiting for the next agent-loop iteration.
+  contextUsage?: {
+    percent: number;      // 0–100+; round(tokensUsed / contextWindow * 100)
+    tokensUsed: number;   // post-compression input tokens (system + tools + messages snapshot)
+    tokensMax: number;    // contextWindow (NOT contextWindow - reservedOutput — users expect the published model window)
+    // System prompt + tool schema overhead. Stored so the indicator can compute
+    // live = overhead + estimateMessageTokens(messagesNow) without a second
+    // agent-loop pass. Empirically ~7-8k for Abu; absent on first-open (use fallback).
+    overhead?: number;
+  };
+  isCompressing?: boolean;  // True while compressContextIfNeeded is awaiting LLM
   /**
    * Post-loop proposal nudge, stashed by agentLoop completion when the
    * last loop was "sink-worthy" (see `proposalSignal.ts`). Read by the

@@ -310,7 +310,8 @@ interface ChatActions {
   // Context compression cache
   setContextCache: (convId: string, cache: import('../types').ContextCache) => void;
   clearContextCache: (convId: string) => void;
-  setContextWarningLevel: (convId: string, level: 0 | 1 | 2 | 3) => void;
+  setContextUsage: (convId: string, usage: NonNullable<Conversation['contextUsage']> | undefined) => void;
+  setIsCompressing: (convId: string, value: boolean) => void;
 
   // Export/Import
   exportConversation: (convId: string) => string | null;
@@ -1098,10 +1099,16 @@ export const useChatStore = create<ChatStore>()(
           if (conv) conv.contextCache = undefined;
         });
       },
-      setContextWarningLevel: (convId: string, level: 0 | 1 | 2 | 3) => {
+      setContextUsage: (convId, usage) => {
         set((state) => {
           const conv = state.conversations[convId];
-          if (conv) conv.contextWarningLevel = level;
+          if (conv) conv.contextUsage = usage;
+        });
+      },
+      setIsCompressing: (convId, value) => {
+        set((state) => {
+          const conv = state.conversations[convId];
+          if (conv) conv.isCompressing = value;
         });
       },
 

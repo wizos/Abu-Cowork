@@ -253,11 +253,11 @@ export interface TranslationDict {
     scenarioPrompts: Record<string, string>;
     /** Full prompt sent on click (falls back to scenarioPrompts if absent) */
     scenarioFullPrompts: Record<string, string>;
-    // Context warning bar
-    contextWarning: string;
-    contextCritical: string;
-    contextCompressBtn: string;
-    contextNewChatBtn: string;
+    // Context indicator (ring + tooltip)
+    contextTooltipIdle: string;
+    contextTooltipCompressing: string;
+    contextTooltipUsage: string;
+    contextTooltipSubtitle: string;
     // Agent loop max turns
     maxTurnsReached: string;
     // Usage chip
@@ -265,6 +265,7 @@ export interface TranslationDict {
     usageChipOutput: string;
     usageChipCache: string;
     usageChipRequests: string;
+    usageChipSubtitle: string;
   };
 
   // Share (conversation export / import)
