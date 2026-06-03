@@ -11,7 +11,6 @@ import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { useI18n } from '@/i18n';
 import MessageGroup from './MessageGroup';
 import ChatInput from './ChatInput';
-import ContextIndicator from './ContextIndicator';
 import BackgroundAgents from './BackgroundAgents';
 import ScenarioGuide from './ScenarioGuide';
 import { agentRegistry } from '@/core/agent/registry';
@@ -450,7 +449,6 @@ export default function ChatView() {
           <BackgroundAgents />
           <ChatInput variant="chat" onSend={handleSend} />
           <div className="flex items-center justify-center gap-3 mt-1.5">
-            <ContextIndicator conversationId={activeConv.id} />
             <UsageChip conversationId={activeConv.id} />
             <p className="text-[11px] text-[var(--abu-text-muted)]">
               {t.chat.disclaimer}

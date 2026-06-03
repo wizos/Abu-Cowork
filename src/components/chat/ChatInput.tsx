@@ -13,6 +13,7 @@ import { isImageFile } from '@/components/chat/FileAttachment';
 import { enqueueUserInput } from '@/core/agent/userInputQueue';
 import { getCurrentLoopContext } from '@/core/agent/permissionBridge';
 import { useChatStore, useActiveConversation } from '@/stores/chatStore';
+import ContextIndicator from '@/components/chat/ContextIndicator';
 import { useDiscoveryStore } from '@/stores/discoveryStore';
 import { useSettingsStore, getEffectiveModel, getActiveProvider } from '@/stores/settingsStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
@@ -88,6 +89,8 @@ async function processFilePaths(
 
 export default function ChatInput({ variant, onSend, disabled, scenarioPlaceholder, onInputChange }: ChatInputProps) {
   const isWelcome = variant === 'welcome';
+  // Context usage indicator shows only in chat variant once a conversation exists.
+  const activeConvIdForIndicator = useChatStore((s) => (isWelcome ? null : s.activeConversationId));
 
   const [text, setText] = useState('');
   const [images, setImages] = useState<ImageAttachment[]>([]);
@@ -864,7 +867,7 @@ export default function ChatInput({ variant, onSend, disabled, scenarioPlacehold
                 </Button>
               </div>
 
-              {/* Right Actions: Model picker + Send / Stop */}
+              {/* Right Actions: Model picker + Context indicator + Send / Stop */}
               <div className="flex items-center gap-1">
                 {/* Model picker */}
                 <div className="relative" ref={modelPickerRef}>
@@ -892,6 +895,13 @@ export default function ChatInput({ variant, onSend, disabled, scenarioPlacehold
                     anchorRef={modelPickerRef as React.RefObject<HTMLElement>}
                   />
                 </div>
+
+                {/* Context usage ring — between model picker and send button */}
+                {activeConvIdForIndicator && (
+                  <div className="flex items-center justify-center h-7 px-1">
+                    <ContextIndicator conversationId={activeConvIdForIndicator} />
+                  </div>
+                )}
 
                 {isStreaming ? (
                   <Button
