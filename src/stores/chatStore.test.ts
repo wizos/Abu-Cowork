@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useChatStore, flushTokenBuffer } from './chatStore';
+import type { Conversation } from '@/types';
 
 // Stable workspace store mock — Task #34 regression tests need to assert
 // that clearWorkspace is NOT called on start/switch flows, so the fn
@@ -881,6 +882,43 @@ describe('chatStore', () => {
       const tc = getToolCall(convId);
       expect(tc?.result).toBe('not json at all');
       expect(tc?.noticeCard).toBeUndefined();
+    });
+  });
+
+  describe('context indicator ephemeral state', () => {
+    beforeEach(() => {
+      useChatStore.setState({ conversations: {
+        c1: {
+          id: 'c1',
+          title: 't',
+          messages: [],
+          createdAt: 0,
+          updatedAt: 0,
+        } as Conversation,
+      } });
+    });
+
+    it('setContextUsage writes and clears usage on the conversation', () => {
+      useChatStore.getState().setContextUsage('c1', { percent: 73, tokensUsed: 1400, tokensMax: 2000 });
+      expect(useChatStore.getState().conversations.c1.contextUsage).toEqual({ percent: 73, tokensUsed: 1400, tokensMax: 2000 });
+
+      useChatStore.getState().setContextUsage('c1', undefined);
+      expect(useChatStore.getState().conversations.c1.contextUsage).toBeUndefined();
+    });
+
+    it('setIsCompressing toggles isCompressing on the conversation', () => {
+      useChatStore.getState().setIsCompressing('c1', true);
+      expect(useChatStore.getState().conversations.c1.isCompressing).toBe(true);
+
+      useChatStore.getState().setIsCompressing('c1', false);
+      expect(useChatStore.getState().conversations.c1.isCompressing).toBe(false);
+    });
+
+    it('actions are no-ops for unknown conversation id', () => {
+      useChatStore.getState().setContextUsage('nope', { percent: 50, tokensUsed: 1, tokensMax: 2 });
+      useChatStore.getState().setIsCompressing('nope', true);
+      // Should not throw, should not create a new conversation entry
+      expect(useChatStore.getState().conversations.nope).toBeUndefined();
     });
   });
 });

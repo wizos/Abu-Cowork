@@ -404,7 +404,7 @@ describe('Agent Pipeline Integration', () => {
       //  - The LLM does 2 tool-use turns (so turnCount reaches 3 in the loop
       //    where the cache-hit check fires), then returns end_turn on turn 3
       //
-      // Expected: after runAgentLoop, contextWarningLevel === 0
+      // Expected: after runAgentLoop, contextUsage.percent < 60 (Level 0 threshold)
 
       // --- Token estimator override ------------------------------------------
       // Large message array (pre-cache history, turns 1+2, ≥ 8 msgs) → 180 000 tokens → Level 3
@@ -491,7 +491,7 @@ describe('Agent Pipeline Integration', () => {
       // Before the T2 bug fix this would have been Level 3 because the warning
       // level was computed on the pre-compression (10+) message history.
       const conv = useChatStore.getState().conversations[convId];
-      expect(conv.contextWarningLevel).toBe(0);
+      expect(conv.contextUsage?.percent).toBeLessThan(60);
     });
   });
 });

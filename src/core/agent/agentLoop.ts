@@ -1126,8 +1126,14 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       // Pre-compression tokens stay critically high in long conversations
       // even after cache-hit compression brings the actual payload below the threshold,
       // which previously left the UI stuck in the red Critical state.
-      const warningLevel = autoCompactTracker.updateLevel(postCompressionTokens, maxInputTokens);
-      useChatStore.getState().setContextWarningLevel(conversationId, warningLevel);
+      // Update tracker (its lastLevel may be read elsewhere downstream)
+      autoCompactTracker.updateLevel(postCompressionTokens, maxInputTokens);
+      // Publish usage to chatStore for UI consumption
+      useChatStore.getState().setContextUsage(conversationId, {
+        percent: usagePercent,
+        tokensUsed: postCompressionTokens,
+        tokensMax: maxInputTokens,
+      });
       const trimmedMessages = trimOldScreenshots(messagesForContext, usagePercent);
 
       // Step 3: Hard truncation as safety net

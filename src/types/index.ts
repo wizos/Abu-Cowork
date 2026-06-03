@@ -244,7 +244,14 @@ export interface Conversation {
   imPlatform?: string;  // IM platform name (dchat/feishu/dingtalk/wecom/slack)
   projectId?: string;  // If set, this conversation belongs to a project
   contextCache?: ContextCache;  // Ephemeral compression cache (not persisted)
-  contextWarningLevel?: 0 | 1 | 2 | 3;  // Ephemeral context usage warning level (not persisted)
+  // Ephemeral context usage state — NOT persisted (excluded by JSONL writer + chatStore partialize).
+  // Computed each agent-loop iteration from post-compression tokens.
+  contextUsage?: {
+    percent: number;      // 0–100+; >100 means over the hard limit (rare, hard-truncation kicks in)
+    tokensUsed: number;   // post-compression input tokens
+    tokensMax: number;    // contextWindow - reserveForOutput
+  };
+  isCompressing?: boolean;  // True while compressContextIfNeeded is awaiting LLM
   /**
    * Post-loop proposal nudge, stashed by agentLoop completion when the
    * last loop was "sink-worthy" (see `proposalSignal.ts`). Read by the
