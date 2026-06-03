@@ -587,14 +587,6 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
   chatStore.clearAbortController(conversationId);
   const abortController = chatStore.getAbortController(conversationId);
 
-  // Safety net: if the loop is aborted mid-compression, the finally in the
-  // compression try block normally clears isCompressing. This listener fires
-  // for unusual abort timings (e.g. abort raised before the await yielded) and
-  // is idempotent — `{ once: true }` plus the per-loop AbortController.
-  abortController.signal.addEventListener('abort', () => {
-    useChatStore.getState().setIsCompressing(conversationId, false);
-  }, { once: true });
-
   // Set conversation status to running
   chatStore.setConversationStatus(conversationId, 'running');
 
