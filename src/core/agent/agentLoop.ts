@@ -1045,13 +1045,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       // String form for token estimation and context management
       let effectiveSystemPrompt = sectionsToString(allSections);
 
-      // Compute context warning level for UI feedback and compression decisions
-      const preCompressionTokens = estimateTokens(effectiveSystemPrompt) + estimateMessageTokens(historyMessages) + toolTokens;
       const maxInputTokens = contextWindowSize - maxOutputTokens;
-      const warningLevel = autoCompactTracker.updateLevel(preCompressionTokens, maxInputTokens);
-
-      // Update chatStore with warning level so UI can display context indicators
-      useChatStore.getState().setContextWarningLevel(conversationId, warningLevel);
 
       // Step 1: Semantic compression — use cached summary or auto-compact based on warning level
       // Compression triggers when: enough turns AND (cached result available OR warning level triggers compaction)
@@ -1128,6 +1122,12 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       // Step 2: Trim old screenshots dynamically based on context usage
       const postCompressionTokens = estimateTokens(effectiveSystemPrompt) + estimateMessageTokens(messagesForContext) + toolTokens;
       const usagePercent = getUsagePercent(postCompressionTokens, maxInputTokens);
+      // NOTE: warningLevel MUST be computed on post-compression tokens.
+      // Pre-compression tokens stay critically high in long conversations
+      // even after cache-hit compression brings the actual payload below the threshold,
+      // which previously left the UI stuck in the red Critical state.
+      const warningLevel = autoCompactTracker.updateLevel(postCompressionTokens, maxInputTokens);
+      useChatStore.getState().setContextWarningLevel(conversationId, warningLevel);
       const trimmedMessages = trimOldScreenshots(messagesForContext, usagePercent);
 
       // Step 3: Hard truncation as safety net
