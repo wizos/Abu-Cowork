@@ -293,6 +293,7 @@ export async function runSubagentLoop(options: SubagentLoopOptions): Promise<Sub
       const maxOutputTokens = reasoningParams.maxTokens;
 
       // Step 1: Semantic compression for long subagent runs
+      // TODO: PR2 follow-up — wire isCompressing for subagent compressions
       let messagesForContext = messages;
       if (turn >= 3) { // Only attempt compression after a few turns
         try {

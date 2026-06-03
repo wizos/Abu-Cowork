@@ -587,6 +587,14 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
   chatStore.clearAbortController(conversationId);
   const abortController = chatStore.getAbortController(conversationId);
 
+  // Safety net: if the loop is aborted mid-compression, the finally in the
+  // compression try block normally clears isCompressing. This listener fires
+  // for unusual abort timings (e.g. abort raised before the await yielded) and
+  // is idempotent — `{ once: true }` plus the per-loop AbortController.
+  abortController.signal.addEventListener('abort', () => {
+    useChatStore.getState().setIsCompressing(conversationId, false);
+  }, { once: true });
+
   // Set conversation status to running
   chatStore.setConversationStatus(conversationId, 'running');
 
@@ -1063,7 +1071,8 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
           messagesForContext = [...firstRound, cache.summaryMessage, ...newMessages];
           compressionApplied = true;
         } else {
-          // No valid cache — attempt compression
+          // No valid cache — attempt compression (set isCompressing for the UI spinner)
+          useChatStore.getState().setIsCompressing(conversationId, true);
           try {
             const compressionResult = await compressContextIfNeeded(
               historyMessages,
@@ -1099,6 +1108,8 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
           } catch {
             // Compression failed — record for circuit breaker
             autoCompactTracker.recordFailure();
+          } finally {
+            useChatStore.getState().setIsCompressing(conversationId, false);
           }
         }
       }
