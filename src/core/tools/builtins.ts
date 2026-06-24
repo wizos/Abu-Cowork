@@ -41,6 +41,9 @@ import { toolSearchTool } from './definitions/toolSearchTool';
 // --- Todo tools ---
 import { createTodoTool } from './definitions/todoTools';
 
+// --- Orchestration tools ---
+import { runAgentBatchTool } from './definitions/orchestrationTools';
+
 // --- Computer tools ---
 import { computerTool } from './definitions/computerTools';
 export { setComputerUseBatchMode, setSkipAutoScreenshot } from './definitions/computerTools';
@@ -84,4 +87,5 @@ export function registerBuiltinTools(): void {
   toolRegistry.register(skillManageTool);
   toolRegistry.register(toolSearchTool);
   toolRegistry.register(createTodoTool);
+  toolRegistry.register(runAgentBatchTool);
 }

@@ -69,6 +69,9 @@ export const TOOL_NAMES = {
 
   // Inbox proposals
   CREATE_TODO: 'create_todo',
+
+  // Orchestration
+  RUN_AGENT_BATCH: 'run_agent_batch',
 } as const;
 
 export type ToolName = typeof TOOL_NAMES[keyof typeof TOOL_NAMES];
