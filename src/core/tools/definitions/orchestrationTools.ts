@@ -65,21 +65,77 @@ export function clampConcurrency(n: unknown): number {
   return Math.floor(n);
 }
 
+/** Per-sub-agent wall-clock timeout; tunable, candidate for a future user setting. */
+export const SUBAGENT_WALLCLOCK_TIMEOUT_MS = 10 * 60 * 1000; // 10 min per sub-agent
+
+/**
+ * Run `factory` with its own AbortSignal, racing against a hard wall-clock timeout.
+ *
+ * - Creates a per-task AbortController.
+ * - If `parentSignal` is already aborted, aborts the controller immediately;
+ *   otherwise forwards parent abort via a `{ once: true }` listener.
+ * - After `timeoutMs`, aborts the controller and rejects with a timeout error.
+ * - Cleans up the timeout and the parent-abort listener in `finally`.
+ */
+export function runWithTimeout<T>(
+  factory: (signal: AbortSignal) => Promise<T>,
+  timeoutMs: number,
+  parentSignal?: AbortSignal,
+): Promise<T> {
+  const controller = new AbortController();
+
+  // Forward parent abort to the task controller.
+  const onParentAbort = () => controller.abort();
+  if (parentSignal?.aborted) {
+    controller.abort();
+  } else if (parentSignal) {
+    parentSignal.addEventListener('abort', onParentAbort, { once: true });
+  }
+
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+
+  // Single outer promise avoids a floating rejected timeoutPromise that would
+  // trigger Vitest / Node unhandledRejection events between the timer callback
+  // running synchronously and the microtask handlers being called.
+  return new Promise<T>((resolve, reject) => {
+    timeoutHandle = setTimeout(() => {
+      controller.abort();
+      reject(new Error('子代理执行超时（已中止）'));
+    }, timeoutMs);
+    // Attach to factory; once the outer promise settles, subsequent
+    // resolve/reject calls are no-ops (Promise semantics).
+    factory(controller.signal).then(resolve, reject);
+  }).finally(() => {
+    clearTimeout(timeoutHandle);
+    if (parentSignal) {
+      parentSignal.removeEventListener('abort', onParentAbort);
+    }
+  });
+}
+
 /**
  * Run `items` through `fn` with at most `limit` concurrent in-flight calls.
  * Result order matches input order. Errors from `fn` produce `rejected`
  * settled results rather than propagating (same contract as Promise.allSettled).
+ *
+ * When `signal` is provided and becomes aborted, workers stop claiming new
+ * items. Any slot that was never claimed (queued-but-not-started) is filled
+ * with `{ status: 'rejected', reason: Error('已取消') }` so the returned
+ * array always has exactly `items.length` settled entries.
  */
 export async function runWithConcurrency<T, R>(
   items: T[],
   limit: number,
   fn: (item: T, index: number) => Promise<R>,
+  signal?: AbortSignal,
 ): Promise<PromiseSettledResult<R>[]> {
   const results: PromiseSettledResult<R>[] = new Array(items.length);
   let nextIndex = 0;
 
   async function worker(): Promise<void> {
     while (nextIndex < items.length) {
+      // Stop pulling new items if the batch was cancelled.
+      if (signal?.aborted) break;
       const i = nextIndex++;
       try {
         results[i] = { status: 'fulfilled', value: await fn(items[i], i) };
@@ -95,6 +151,16 @@ export async function runWithConcurrency<T, R>(
     workers.push(worker());
   }
   await Promise.all(workers);
+
+  // Fill any slots that workers never reached (aborted before claiming them).
+  for (let i = 0; i < results.length; i++) {
+    if (results[i] === undefined) {
+      (results as Array<PromiseSettledResult<R> | undefined>)[i] = {
+        status: 'rejected',
+        reason: new Error('已取消'),
+      };
+    }
+  }
 
   return results;
 }
@@ -305,37 +371,45 @@ export const runAgentBatchTool: ToolDefinition = {
       resolvedTasks,
       concurrency,
       async (resolved, idx) => {
+        // Belt-and-suspenders: if we raced the abort check in the worker loop,
+        // bail before starting a fresh sub-agent run.
+        if (loopCtx?.signal?.aborted) throw new Error('已取消');
         const effectiveTask =
           schema !== undefined
             ? resolved.task + buildSchemaInstruction(schema)
             : resolved.task;
         let currentTurn = 0;
-        return runSubagentLoop({
-          agent: resolved.agent,
-          task: effectiveTask,
-          context: resolved.context,
-          parentConversationSummary,
-          signal: loopCtx?.signal,
-          commandConfirmCallback: loopCtx?.commandConfirmCallback,
-          filePermissionCallback: loopCtx?.filePermissionCallback,
-          onProgress: (event) => {
-            try {
-              const store = useBatchProgressStore.getState();
-              if (event.type === 'tool-start') {
-                if (store.batches[batchId]?.tasks[idx]?.status === 'queued') {
-                  store.setTaskRunning(batchId, idx);
+        return runWithTimeout(
+          (sig) => runSubagentLoop({
+            agent: resolved.agent,
+            task: effectiveTask,
+            context: resolved.context,
+            parentConversationSummary,
+            signal: sig,
+            commandConfirmCallback: loopCtx?.commandConfirmCallback,
+            filePermissionCallback: loopCtx?.filePermissionCallback,
+            onProgress: (event) => {
+              try {
+                const store = useBatchProgressStore.getState();
+                if (event.type === 'tool-start') {
+                  if (store.batches[batchId]?.tasks[idx]?.status === 'queued') {
+                    store.setTaskRunning(batchId, idx);
+                  }
+                  store.setTaskActivity(batchId, idx, `调用 ${event.toolName}`, currentTurn);
+                } else if (event.type === 'turn-complete') {
+                  currentTurn = event.turn;
+                  store.setTaskActivity(batchId, idx, '', currentTurn);
                 }
-                store.setTaskActivity(batchId, idx, `调用 ${event.toolName}`, currentTurn);
-              } else if (event.type === 'turn-complete') {
-                currentTurn = event.turn;
-                store.setTaskActivity(batchId, idx, '', currentTurn);
+              } catch {
+                // Best-effort: never let store errors break the batch
               }
-            } catch {
-              // Best-effort: never let store errors break the batch
-            }
-          },
-        });
+            },
+          }),
+          SUBAGENT_WALLCLOCK_TIMEOUT_MS,
+          loopCtx?.signal,
+        );
       },
+      loopCtx?.signal,
     );
 
     // Mark all tasks done in store (best-effort)

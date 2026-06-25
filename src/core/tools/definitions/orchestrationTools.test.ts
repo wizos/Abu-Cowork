@@ -13,10 +13,11 @@
  * §切片1: "只 import `runSubagentLoop`").
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   clampConcurrency,
   runWithConcurrency,
+  runWithTimeout,
   aggregateBatchResults,
   aggregateStructuredResults,
 } from './orchestrationTools';
@@ -156,6 +157,49 @@ describe('runWithConcurrency', () => {
     expect(captured).toContainEqual(['y', 1]);
     expect(captured).toContainEqual(['z', 2]);
   });
+
+  it('stops claiming new items after signal is aborted, fills remaining slots as rejected', async () => {
+    // Concurrency 1, 3 items. Item 0's fn aborts the controller, so items 1
+    // and 2 should never be started. The returned array must still be length 3
+    // with indices 1 and 2 as rejected settled results.
+    const controller = new AbortController();
+    const invoked: number[] = [];
+
+    const results = await runWithConcurrency(
+      [0, 1, 2],
+      1,
+      async (_item, index) => {
+        invoked.push(index);
+        if (index === 0) {
+          // Abort right after item 0 finishes — queued items should not start.
+          controller.abort();
+        }
+        return index;
+      },
+      controller.signal,
+    );
+
+    // fn must have been called for index 0 only
+    expect(invoked).toEqual([0]);
+    expect(invoked).not.toContain(1);
+    expect(invoked).not.toContain(2);
+
+    // Array must be fully populated (no holes)
+    expect(results).toHaveLength(3);
+
+    // Index 0 succeeded
+    expect(results[0]).toEqual({ status: 'fulfilled', value: 0 });
+
+    // Indices 1 and 2 were never started — must be rejected with the cancel error
+    expect(results[1].status).toBe('rejected');
+    expect(results[2].status).toBe('rejected');
+    if (results[1].status === 'rejected') {
+      expect((results[1].reason as Error).message).toBe('已取消');
+    }
+    if (results[2].status === 'rejected') {
+      expect((results[2].reason as Error).message).toBe('已取消');
+    }
+  });
 });
 
 // ─── aggregateBatchResults ────────────────────────────────────────────────
@@ -270,5 +314,103 @@ describe('aggregateStructuredResults', () => {
     const result = aggregateStructuredResults(entries);
     const parsed = JSON.parse(result) as Array<{ task: string }>;
     expect(parsed.map((e) => e.task)).toEqual(['first', 'second', 'third']);
+  });
+});
+
+// ─── runWithTimeout ───────────────────────────────────────────────────────────
+
+describe('runWithTimeout', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('(a) resolves with factory value when factory completes before timeout', async () => {
+    const result = await runWithTimeout(
+      async (_sig) => 'done',
+      5000,
+    );
+    expect(result).toBe('done');
+  });
+
+  it('(b) rejects with timeout error after timeoutMs, and aborts the factory signal', async () => {
+    let capturedSignal: AbortSignal | undefined;
+
+    const racePromise = runWithTimeout(
+      (sig) => {
+        capturedSignal = sig;
+        // Factory never resolves
+        return new Promise<never>(() => {});
+      },
+      5000,
+    );
+
+    // Pre-attach the rejection handler BEFORE advancing the timer so the
+    // promise is always "handled" when the timeout fires. Advancing the timer
+    // AFTER attaching avoids Vitest / Node unhandledRejection events.
+    const assertion = expect(racePromise).rejects.toThrow('超时');
+    await vi.advanceTimersByTimeAsync(5000);
+    await assertion;
+    expect(capturedSignal?.aborted).toBe(true);
+  });
+
+  it('(b) error message contains the full Chinese timeout string', async () => {
+    const racePromise = runWithTimeout(
+      () => new Promise<never>(() => {}),
+      3000,
+    );
+    // Pre-attach before advancing timer.
+    const assertion = expect(racePromise).rejects.toThrow('子代理执行超时（已中止）');
+    await vi.advanceTimersByTimeAsync(3000);
+    await assertion;
+  });
+
+  it('(c) already-aborted parentSignal aborts the factory signal immediately', async () => {
+    const parent = new AbortController();
+    parent.abort();
+
+    let capturedSignal: AbortSignal | undefined;
+    // Factory resolves quickly once the signal is aborted — we just capture the signal
+    const promise = runWithTimeout(
+      (sig) => {
+        capturedSignal = sig;
+        return Promise.resolve('value');
+      },
+      5000,
+      parent.signal,
+    );
+
+    await promise;
+    expect(capturedSignal?.aborted).toBe(true);
+  });
+
+  it('(c) parent abort fired after start propagates to factory signal', async () => {
+    const parent = new AbortController();
+    let capturedSignal: AbortSignal | undefined;
+
+    const promise = runWithTimeout(
+      (sig) => {
+        capturedSignal = sig;
+        return new Promise<never>(() => {});
+      },
+      60000,
+      parent.signal,
+    );
+
+    // Factory is still pending — trigger parent abort now
+    parent.abort();
+
+    // The timeout (60s) hasn't fired; the race should still be pending here,
+    // but the captured signal must already be aborted.
+    expect(capturedSignal?.aborted).toBe(true);
+
+    // Pre-attach the rejection handler BEFORE advancing the timer to avoid
+    // Vitest / Node unhandledRejection events when the 60s timeout fires.
+    const catchPromise = promise.catch(() => {});
+    await vi.advanceTimersByTimeAsync(60000);
+    await catchPromise;
   });
 });
