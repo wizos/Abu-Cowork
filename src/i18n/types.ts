@@ -1849,6 +1849,20 @@ export interface TranslationDict {
     errAccountPending: string;
     errAccountSuspended: string;
     errGeneric: string;
+    /** Rate-limited; interpolates {seconds} when Retry-After is available. */
+    errSlowDown: string;
+    /** Rate-limited fallback when no Retry-After header is present. */
+    errSlowDownGeneric: string;
+    /** Magic-link code has expired. */
+    errExpiredToken: string;
+    /** The chosen login method is not enabled on this server. */
+    errMethodNotEnabled: string;
+    /** New registrations are closed. */
+    errRegistrationClosed: string;
+    /** Email domain not in the allowlist. */
+    errDomainNotAllowed: string;
+    /** Malformed request (developer-facing but shown as generic client error). */
+    errInvalidRequest: string;
     processing: string;
   };
 }

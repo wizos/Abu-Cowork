@@ -1796,6 +1796,13 @@ const zhCN: TranslationDict = {
     errAccountPending: '账号待审批，请联系管理员',
     errAccountSuspended: '账号已停用，请联系管理员',
     errGeneric: '登录失败，请稍后重试',
+    errSlowDown: '请求过于频繁，请 {seconds} 秒后重试',
+    errSlowDownGeneric: '请求过于频繁，请稍后重试',
+    errExpiredToken: '验证码已过期，请重新发送',
+    errMethodNotEnabled: '该登录方式未启用，请联系管理员',
+    errRegistrationClosed: '当前不开放注册，请联系管理员',
+    errDomainNotAllowed: '邮箱域名不在允许范围内',
+    errInvalidRequest: '请求参数错误，请刷新后重试',
     processing: '处理中...',
   },
 };

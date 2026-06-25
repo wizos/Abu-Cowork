@@ -1795,6 +1795,13 @@ const enUS: TranslationDict = {
     errAccountPending: 'Account pending approval — contact your admin',
     errAccountSuspended: 'Account suspended — contact your admin',
     errGeneric: 'Sign-in failed, please try again',
+    errSlowDown: 'Too many requests — please wait {seconds} seconds and retry',
+    errSlowDownGeneric: 'Too many requests — please wait a moment and retry',
+    errExpiredToken: 'Verification code expired — please request a new one',
+    errMethodNotEnabled: 'This sign-in method is not enabled — contact your admin',
+    errRegistrationClosed: 'New registrations are closed — contact your admin',
+    errDomainNotAllowed: 'Email domain not permitted for this organisation',
+    errInvalidRequest: 'Invalid request — please refresh and try again',
     processing: 'Processing…',
   },
 };

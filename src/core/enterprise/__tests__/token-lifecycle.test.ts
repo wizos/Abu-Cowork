@@ -61,11 +61,12 @@ const NEW_TOKENS = {
 
 const mockGetBinding = vi.fn<[], EnterpriseBinding | null>()
 const mockBind = vi.fn<[EnterpriseBinding], Promise<void>>().mockResolvedValue(undefined)
+const mockUnbind = vi.fn<[], Promise<void>>().mockResolvedValue(undefined)
 
 vi.mock('@/stores/enterpriseStore', () => ({
   getBinding: mockGetBinding,
   useEnterpriseStore: {
-    getState: () => ({ bind: mockBind }),
+    getState: () => ({ bind: mockBind, unbind: mockUnbind }),
   },
 }))
 
@@ -294,6 +295,61 @@ describe('token-lifecycle', () => {
       expect((caught as InstanceType<typeof EnterpriseApiError>).status).toBe(401)
       // Only one fetch call (no refresh, no retry)
       expect(fetch).toHaveBeenCalledOnce()
+    })
+  })
+
+  // ── callEnterprise — token_reuse_detected security hard-logout ──────────
+  //
+  // SPEC §3.3 / §12: when the server returns token_reuse_detected the refresh
+  // token was potentially stolen.  The client MUST call unbind() to wipe all
+  // local credentials — soft-offline is not sufficient.
+
+  describe('callEnterprise — token_reuse_detected triggers hard logout', () => {
+    it('calls unbind() on reactive token_reuse_detected (401 → refresh → reuse)', async () => {
+      const binding = makeValidBinding()
+      mockGetBinding.mockReturnValue(binding)
+
+      vi.mocked(fetch)
+        .mockResolvedValueOnce(makeResponse({ error: 'unauthenticated' }, 401))           // original → 401
+        .mockResolvedValueOnce(makeResponse({ error: 'token_reuse_detected' }, 401))      // refresh → reuse
+
+      const { callEnterprise, EnterpriseSessionExpiredError } = await import('../api')
+
+      let caught: unknown
+      try { await callEnterprise('/api/client/v1/session') } catch (e) { caught = e }
+
+      expect(caught).toBeInstanceOf(EnterpriseSessionExpiredError)
+      expect(mockUnbind).toHaveBeenCalledOnce()
+      expect(mockBind).not.toHaveBeenCalled()
+    })
+
+    it('calls unbind() on proactive token_reuse_detected (expiring token → refresh → reuse)', async () => {
+      const binding = makeFreshBinding()   // within 60s proactive window
+      mockGetBinding.mockReturnValue(binding)
+
+      vi.mocked(fetch).mockResolvedValueOnce(
+        makeResponse({ error: 'token_reuse_detected' }, 401),
+      )
+
+      const { callEnterprise, EnterpriseSessionExpiredError } = await import('../api')
+
+      await expect(callEnterprise('/api/client/v1/session')).rejects.toBeInstanceOf(EnterpriseSessionExpiredError)
+      expect(mockUnbind).toHaveBeenCalledOnce()
+      expect(mockBind).not.toHaveBeenCalled()
+    })
+
+    it('does NOT call unbind() on ordinary expired_token refresh failure', async () => {
+      const binding = makeValidBinding()
+      mockGetBinding.mockReturnValue(binding)
+
+      vi.mocked(fetch)
+        .mockResolvedValueOnce(makeResponse({ error: 'unauthenticated' }, 401))
+        .mockResolvedValueOnce(makeResponse({ error: 'expired_token' }, 401))
+
+      const { callEnterprise, EnterpriseSessionExpiredError } = await import('../api')
+
+      await expect(callEnterprise('/api/client/v1/session')).rejects.toBeInstanceOf(EnterpriseSessionExpiredError)
+      expect(mockUnbind).not.toHaveBeenCalled()
     })
   })
 

@@ -96,11 +96,29 @@ export default function EnterpriseLoginPage({ serverUrl, bootstrap, onSuccess, o
     onSuccess()
   }
 
-  const translateError = (code: string): string => {
+  const translateError = (code: string, retryAfter?: number): string => {
     if (code === 'invalid_credentials') return tl.errInvalidCredentials
     if (code === 'account_pending') return tl.errAccountPending
     if (code === 'account_suspended') return tl.errAccountSuspended
+    if (code === 'slow_down') {
+      return retryAfter != null && !isNaN(retryAfter)
+        ? format(tl.errSlowDown, { seconds: String(retryAfter) })
+        : tl.errSlowDownGeneric
+    }
+    if (code === 'expired_token') return tl.errExpiredToken
+    if (code === 'method_not_enabled') return tl.errMethodNotEnabled
+    if (code === 'registration_closed') return tl.errRegistrationClosed
+    if (code === 'domain_not_allowed') return tl.errDomainNotAllowed
+    if (code === 'invalid_request') return tl.errInvalidRequest
     return tl.errGeneric
+  }
+
+  /** Parse the Retry-After header value into seconds (integer), or undefined. */
+  const parseRetryAfter = (res: Response): number | undefined => {
+    const h = res.headers.get('Retry-After')
+    if (!h) return undefined
+    const n = parseInt(h, 10)
+    return isNaN(n) ? undefined : n
   }
 
   // ── Password ─────────────────────────────────────────────────────────────────
@@ -114,7 +132,7 @@ export default function EnterpriseLoginPage({ serverUrl, bootstrap, onSuccess, o
         body: JSON.stringify({ email, password, device_label: navigator.userAgent.slice(0, 80) }),
       })
       const body = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(translateError(body.error as string))
+      if (!res.ok) throw new Error(translateError(body.error as string, parseRetryAfter(res)))
       await handleTokenPair(body as TokenPair)
     } catch (e) {
       setErr((e as Error).message)
@@ -135,7 +153,7 @@ export default function EnterpriseLoginPage({ serverUrl, bootstrap, onSuccess, o
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(translateError((body as { error?: string }).error ?? ''))
+        throw new Error(translateError((body as { error?: string }).error ?? '', parseRetryAfter(res)))
       }
       setMagicStep('verify')
     } catch (e) {
@@ -155,7 +173,7 @@ export default function EnterpriseLoginPage({ serverUrl, bootstrap, onSuccess, o
         body: JSON.stringify({ email: magicEmail, code: magicCode, device_label: navigator.userAgent.slice(0, 80) }),
       })
       const body = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(translateError((body as { error?: string }).error ?? ''))
+      if (!res.ok) throw new Error(translateError((body as { error?: string }).error ?? '', parseRetryAfter(res)))
       const typed = body as { status?: string } & TokenPair
       if (typed.status === 'pending') throw new Error(tl.errAccountPending)
       await handleTokenPair(typed)
@@ -174,7 +192,12 @@ export default function EnterpriseLoginPage({ serverUrl, bootstrap, onSuccess, o
       setSsoUserCode(initResp.user_code)
       const r = await result
       const session = await fetchSession(r.accessToken)
-      await bind(buildBinding(r.accessToken, session, { llmEndpoint: r.llmEndpoint, llmVirtualKey: r.llmVirtualKey }))
+      await bind(buildBinding(r.accessToken, session, {
+        refreshToken: r.refreshToken,
+        accessExpiresAt: r.accessExpiresAt,
+        llmEndpoint: r.llmEndpoint,
+        llmVirtualKey: r.llmVirtualKey,
+      }))
       onSuccess()
     } catch (e) {
       setErr((e as Error).message)

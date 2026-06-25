@@ -17,11 +17,22 @@ export interface RefreshResult {
 export class TokenRefreshError extends Error {
   readonly status: number
   readonly body: unknown
+  /**
+   * True when the server returned `error: "token_reuse_detected"`.
+   * Callers MUST treat this as a security event: wipe all stored credentials
+   * immediately (unbind) rather than soft-offline — the refresh token may have
+   * been stolen and replayed.  (SPEC §3.3 / §12)
+   */
+  readonly isTokenReuseDetected: boolean
   constructor(status: number, body: unknown) {
     super(`Token refresh failed: HTTP ${status}`)
     this.name = 'TokenRefreshError'
     this.status = status
     this.body = body
+    this.isTokenReuseDetected =
+      typeof body === 'object' &&
+      body !== null &&
+      (body as Record<string, unknown>)['error'] === 'token_reuse_detected'
   }
 }
 

@@ -1,7 +1,7 @@
 // src/core/enterprise/api.ts
 import { getBinding, useEnterpriseStore } from '@/stores/enterpriseStore'
 import type { EnterpriseBinding } from './types'
-import { refreshAccessToken } from './token-refresh'
+import { refreshAccessToken, TokenRefreshError } from './token-refresh'
 
 export class EnterpriseApiError extends Error {
   readonly status: number
@@ -38,9 +38,23 @@ let inflightRefresh: Promise<EnterpriseBinding> | null = null
 /**
  * Internal: call the refresh endpoint, persist the new token pair, and return
  * the updated binding.  Must only be called when `b.refreshToken` is defined.
+ *
+ * Security: if the server returns `token_reuse_detected`, the refresh token
+ * was stolen and replayed.  We immediately call `unbind()` to wipe all local
+ * credentials (disk + keychain) before re-throwing — do NOT leave the
+ * compromised token on disk.  (SPEC §3.3 / §12)
  */
 async function doRefresh(b: EnterpriseBinding): Promise<EnterpriseBinding> {
-  const result = await refreshAccessToken(b.serverUrl, b.refreshToken!)
+  let result: Awaited<ReturnType<typeof refreshAccessToken>>
+  try {
+    result = await refreshAccessToken(b.serverUrl, b.refreshToken!)
+  } catch (err) {
+    if (err instanceof TokenRefreshError && err.isTokenReuseDetected) {
+      // Hard logout: wipe credentials before propagating.
+      await useEnterpriseStore.getState().unbind()
+    }
+    throw err
+  }
   const updated: EnterpriseBinding = {
     ...b,
     accessToken: result.accessToken,
