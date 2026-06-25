@@ -236,8 +236,16 @@ export async function runSubagentLoop(options: SubagentLoopOptions): Promise<Sub
       const blocked = new Set(agent.disallowedTools);
       tools = tools.filter((t) => !blocked.has(t.name));
     }
-    // Always remove delegate_to_agent (prevent recursion) and update_soul (main agent only)
-    tools = tools.filter((t) => t.name !== TOOL_NAMES.DELEGATE_TO_AGENT && t.name !== TOOL_NAMES.UPDATE_SOUL);
+    // Always strip the orchestration tools from sub-agents to prevent recursive
+    // fan-out (a sub-agent spawning its own batch → unbounded blow-up, since there
+    // is no depth/total-agent cap). Multi-agent orchestration is a main-agent-only
+    // concern. update_soul is likewise main-agent only.
+    tools = tools.filter(
+      (t) =>
+        t.name !== TOOL_NAMES.DELEGATE_TO_AGENT &&
+        t.name !== TOOL_NAMES.RUN_AGENT_BATCH &&
+        t.name !== TOOL_NAMES.UPDATE_SOUL,
+    );
 
     // 4. Create LLM adapter
     // Enterprise mode always uses OpenAI-compatible adapter (LiteLLM exposes that interface).
