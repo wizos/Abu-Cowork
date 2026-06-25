@@ -329,12 +329,18 @@ export default function TaskBlock({ steps, executionSteps, isActive, onRetry }: 
             const hasTrailingNodes = allCompleted || isActive || hasError;
             const isFullyExpanded = displayMode === 'expanded' || !needsTruncation;
             const showConnector = !isLastVisible || (isFullyExpanded && hasTrailingNodes);
+            // For a thinking step, signal whether execution has moved on to a
+            // tool step after it — used to auto-collapse the reasoning panel.
+            const hasLaterToolStep = unifiedSteps
+              .slice(unifiedSteps.indexOf(step) + 1)
+              .some((s) => s.type !== 'thinking');
 
             return (
               <TaskStepItem
                 key={step.id}
                 step={step}
                 showConnector={showConnector}
+                hasLaterToolStep={hasLaterToolStep}
                 locale={locale}
                 t={t}
               />
@@ -424,9 +430,10 @@ export default function TaskBlock({ steps, executionSteps, isActive, onRetry }: 
 /**
  * Individual step item with vertical timeline connector
  */
-function TaskStepItem({ step, showConnector, locale, t }: {
+function TaskStepItem({ step, showConnector, hasLaterToolStep, locale, t }: {
   step: UnifiedStep;
   showConnector: boolean;
+  hasLaterToolStep: boolean;
   locale: string;
   t: TranslationDict;
 }) {
@@ -471,6 +478,17 @@ function TaskStepItem({ step, showConnector, locale, t }: {
     }
     prevThinkingRunning.current = isRunning;
   }, [isThinking, isRunning]);
+
+  // Once thinking is done and execution has moved on to a tool step, auto-collapse
+  // the reasoning so attention shifts to the running work. Fires once; the user can
+  // still manually re-expand via the "思考过程" toggle without it snapping shut again.
+  const didAutoCollapseThinking = useRef(false);
+  useEffect(() => {
+    if (isThinking && isCompleted && hasLaterToolStep && !didAutoCollapseThinking.current) {
+      setThinkingExpanded(false);
+      didAutoCollapseThinking.current = true;
+    }
+  }, [isThinking, isCompleted, hasLaterToolStep]);
 
   // Auto-scroll the streaming thinking pane to the bottom as new tokens arrive,
   // so the latest reasoning text stays in view instead of being clipped by max-height.
@@ -651,11 +669,15 @@ function TaskStepItem({ step, showConnector, locale, t }: {
           <div className="mt-2 pl-1 border-l-2 border-[var(--abu-bg-hover)] ml-0.5">
             {step.childSteps.map((childStep, childIndex) => {
               const isLastChild = childIndex === step.childSteps!.length - 1;
+              const childHasLaterToolStep = step.childSteps!
+                .slice(childIndex + 1)
+                .some((s) => s.type !== 'thinking');
               return (
                 <TaskStepItem
                   key={childStep.id}
                   step={childStep}
                   showConnector={!isLastChild}
+                  hasLaterToolStep={childHasLaterToolStep}
                   locale={locale}
                   t={t}
                 />
