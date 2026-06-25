@@ -537,6 +537,22 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
   const settings = useSettingsStore.getState();
   const taskExecutionStore = useTaskExecutionStore.getState();
 
+  // ── Per-conversation model pin ──────────────────────────────────────────
+  // A conversation runs on its own pinned model (conv.model); a new or legacy
+  // conversation inherits the current global activeModel. Both the model name
+  // and the provider identity (adapter / baseUrl / apiKey) derive from this one
+  // pinned pair via `settingsForModel`, so they can never diverge and a global
+  // model switch made for another conversation never bleeds into this in-flight
+  // one. Pinned onto the conversation on first run (below) so it also survives
+  // later global switches for display + future runs.
+  const pinnedConv = chatStore.conversations[conversationId];
+  const baseModel =
+    pinnedConv?.model ??
+    chatStore.conversationIndex[conversationId]?.model ??
+    settings.activeModel;
+  const settingsForModel: typeof settings =
+    baseModel === settings.activeModel ? settings : { ...settings, activeModel: baseModel };
+
   // Generate a unique loopId for this agent loop - all messages in this loop share it
   const loopId = generateId();
 
@@ -550,11 +566,11 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
 
   // Enterprise mode bypasses personal key requirement — gateway provides the key.
   const { forceOpenAiCompatible: _startForce } = (() => {
-    try { return resolveEffectiveLlmCreds(getActiveApiKey(settings), undefined) }
+    try { return resolveEffectiveLlmCreds(getActiveApiKey(settingsForModel), undefined) }
     catch { return { forceOpenAiCompatible: false } }
   })()
   const isEnterpriseGatewayMode = _startForce
-  if (!isEnterpriseGatewayMode && providerRequiresApiKey(settings) && !getActiveApiKey(settings)) {
+  if (!isEnterpriseGatewayMode && providerRequiresApiKey(settingsForModel) && !getActiveApiKey(settingsForModel)) {
     // Persist the user's input first so the chat history isn't an orphan warning.
     // Use raw userMessage (orchestrator hasn't run); skill metadata is intentionally omitted —
     // the user needs to configure a key before any skill/agent routing takes effect.
@@ -616,12 +632,24 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
   };
 
   // Determine effective model — agent can override (with provider compatibility check)
-  let effectiveModelId = getEffectiveModel(settings);
+  let effectiveModelId = getEffectiveModel(settingsForModel);
   if (route.type === 'agent' && route.definition?.model) {
     effectiveModelId = resolveAgentModel(route.definition.model, settings);
   }
   // Set active model for per-model token calibration
   setActiveModel(effectiveModelId);
+
+  // Pin the resolved model to the conversation on first run, so it survives
+  // later global model switches (for display + future runs). Pins the
+  // user-selected baseModel, NOT effectiveModelId (which may be agent-overridden
+  // per-invocation). Skipped in enterprise mode (model selection is gateway-
+  // scoped) and when the conversation already carries a pin.
+  if (!isEnterpriseGatewayMode && pinnedConv && !pinnedConv.model) {
+    useChatStore.getState().setConversationModel(conversationId, {
+      providerId: baseModel.providerId,
+      modelId: baseModel.modelId,
+    });
+  }
 
   // Add user message with loopId (use cleanInput for display)
   // Include skill info if a skill was triggered; build multimodal content if images are attached
@@ -644,7 +672,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
   });
 
   // Enterprise mode always uses OpenAI-compatible adapter (LiteLLM exposes that interface).
-  const adapter: LLMAdapter = (isEnterpriseGatewayMode || getActiveProvider(settings)?.apiFormat === 'openai-compatible')
+  const adapter: LLMAdapter = (isEnterpriseGatewayMode || getActiveProvider(settingsForModel)?.apiFormat === 'openai-compatible')
     ? new OpenAICompatibleAdapter()
     : new ClaudeAdapter();
 
@@ -957,7 +985,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       // ("deepseek endpoint, model mimo-v2.5-pro"). freshSettings below is only
       // for non-identity, mid-loop-tunable knobs (computerUse, maxOutputTokens,
       // contextWindowSize).
-      const activeProvider = getActiveProvider(settings);
+      const activeProvider = getActiveProvider(settingsForModel);
       const builtinWebSearch = activeProvider
         ? getBuiltinSearchConfig(activeProvider.id as LLMProvider, true)
         : undefined;
@@ -1085,8 +1113,8 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
           useChatStore.getState().setIsCompressing(conversationId, true);
           try {
             const compressionCreds = resolveEffectiveLlmCreds(
-              getActiveApiKey(settings),
-              getActiveProvider(settings)?.baseUrl || undefined,
+              getActiveApiKey(settingsForModel),
+              getActiveProvider(settingsForModel)?.baseUrl || undefined,
             )
             const compressionResult = await compressContextIfNeeded(
               historyMessages,
@@ -1183,8 +1211,8 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       // Resolve apiKey + baseUrl — enterprise gateway overrides personal creds.
       // Throws EnterpriseLlmUnavailableError if enforced but gateway unreachable.
       const effectiveCreds = resolveEffectiveLlmCreds(
-        getActiveApiKey(settings),
-        getActiveProvider(settings)?.baseUrl || undefined,
+        getActiveApiKey(settingsForModel),
+        getActiveProvider(settingsForModel)?.baseUrl || undefined,
       )
 
       const chatOptions = {
@@ -1438,8 +1466,8 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
           if (!autoCompactTracker.isDisabled()) {
             try {
               const recoveryCreds = resolveEffectiveLlmCreds(
-                getActiveApiKey(settings),
-                getActiveProvider(settings)?.baseUrl || undefined,
+                getActiveApiKey(settingsForModel),
+                getActiveProvider(settingsForModel)?.baseUrl || undefined,
               )
               const compressionResult = await compressContextIfNeeded(
                 historyMessages,

@@ -272,6 +272,7 @@ export interface Conversation {
   activeSkills?: string[];  // Skill names active in this conversation
   activeSkillArgs?: Record<string, string>;  // Per-skill invocation arguments
   workspacePath?: string | null;  // Workspace bound to this conversation
+  model?: { providerId: string; modelId: string };  // Model pinned to this conversation (undefined = inherit global activeModel; pinned on first run)
   enabledMCPServers?: string[];  // Per-session MCP server filter (undefined = all enabled)
   scheduledTaskId?: string;  // If set, this conversation was created by a scheduled task
   triggerId?: string;  // If set, this conversation was created by a trigger

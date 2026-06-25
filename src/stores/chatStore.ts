@@ -248,6 +248,7 @@ interface ChatActions {
   switchConversation: (id: string) => Promise<void>;
   setConversationWorkspace: (convId: string, path: string | null) => void;
   setConversationProject: (convId: string, projectId: string | undefined) => void;
+  setConversationModel: (convId: string, model: { providerId: string; modelId: string } | undefined) => void;
   deleteConversation: (id: string) => void;
   renameConversation: (id: string, title: string) => void;
 
@@ -474,6 +475,27 @@ export const useChatStore = create<ChatStore>()(
           }
           if (state.conversationIndex[convId]) {
             state.conversationIndex[convId].projectId = projectId;
+          }
+        });
+        // Persist to disk index
+        import('../core/session/conversationStorage').then(({ updateIndexEntry }) => {
+          const meta = get().conversationIndex[convId];
+          if (meta) updateIndexEntry(meta).catch(() => {});
+        });
+      },
+
+      // Pin a model to a conversation (undefined = clear → inherit global).
+      // Mirrors setConversationProject: updates both the loaded conversation and
+      // the index entry, then persists to disk. agentLoop reads conv.model first
+      // and pins on first run; the ModelSelector writes it on explicit pick.
+      setConversationModel: (convId, model) => {
+        set((state) => {
+          const conv = state.conversations[convId];
+          if (conv) {
+            conv.model = model;
+          }
+          if (state.conversationIndex[convId]) {
+            state.conversationIndex[convId].model = model;
           }
         });
         // Persist to disk index
@@ -1281,6 +1303,7 @@ export const useChatStore = create<ChatStore>()(
               messages,
               status: 'idle',
               workspacePath: meta.workspacePath,
+              model: meta.model,
               imChannelId: meta.imChannelId,
               imPlatform: meta.imPlatform,
               scheduledTaskId: meta.scheduledTaskId,
@@ -1304,6 +1327,7 @@ export const useChatStore = create<ChatStore>()(
                 messages: [],
                 status: 'idle',
                 workspacePath: meta.workspacePath,
+                model: meta.model,
                 imChannelId: meta.imChannelId,
                 imPlatform: meta.imPlatform,
                 scheduledTaskId: meta.scheduledTaskId,
@@ -1346,7 +1370,7 @@ export const useChatStore = create<ChatStore>()(
     })),
     {
       name: 'abu-chat',
-      version: 5,
+      version: 6,
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         // v1 → v2: added executionSteps on Message (optional field, no-op migration)
@@ -1355,6 +1379,9 @@ export const useChatStore = create<ChatStore>()(
         if (version < 3) { /* no transform needed */ }
         // v4 → v5: added readOnly + importedFrom on ConversationMeta (optional fields, no-op migration)
         if (version < 5) { /* no transform needed */ }
+        // v5 → v6: added per-conversation `model` on ConversationMeta (optional field;
+        // undefined = inherit global activeModel, pinned on first run, no-op migration)
+        if (version < 6) { /* no transform needed */ }
         // v3 → v4: migrate conversations from localStorage to file system
         if (version < 4) {
           // Mark for async migration in onRehydrateStorage

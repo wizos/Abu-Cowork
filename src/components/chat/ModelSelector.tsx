@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Globe, Wrench, Brain, Eye, Image, Search, Star, Clock, BookOpen } from 'lucide-react';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useActiveConversation, useChatStore } from '@/stores/chatStore';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -116,6 +117,11 @@ export function ModelSelector({ open, onClose, anchorRef }: ModelSelectorProps) 
   const { t } = useI18n();
   const providers = useSettingsStore((s) => s.providers);
   const activeModel = useSettingsStore((s) => s.activeModel);
+  const activeConv = useActiveConversation();
+  const setConversationModel = useChatStore((s) => s.setConversationModel);
+  // When a conversation is open, the picker reflects/edits ITS pinned model
+  // (falling back to the global selection for new/legacy conversations).
+  const effectiveActiveModel = activeConv?.model ?? activeModel;
   const recentModels = useSettingsStore((s) => s.recentModels);
   const favoriteModels = useSettingsStore((s) => s.favoriteModels);
   const selectModel = useSettingsStore((s) => s.selectModel);
@@ -186,8 +192,8 @@ export function ModelSelector({ open, onClose, anchorRef }: ModelSelectorProps) 
 
   const isModelActive = useCallback(
     (providerId: string, modelId: string) =>
-      activeModel.providerId === providerId && activeModel.modelId === modelId,
-    [activeModel]
+      effectiveActiveModel.providerId === providerId && effectiveActiveModel.modelId === modelId,
+    [effectiveActiveModel]
   );
 
   const isModelFavorite = useCallback(
@@ -226,10 +232,14 @@ export function ModelSelector({ open, onClose, anchorRef }: ModelSelectorProps) 
 
   const handleSelect = useCallback(
     (providerId: string, modelId: string) => {
+      // Update the global selection (drives the default for NEW conversations +
+      // the recents list), and pin it to the open conversation so it sticks for
+      // this conversation regardless of later global switches.
       selectModel(providerId, modelId);
+      if (activeConv) setConversationModel(activeConv.id, { providerId, modelId });
       onClose();
     },
-    [selectModel, onClose]
+    [selectModel, setConversationModel, activeConv, onClose]
   );
 
   const handleToggleFavorite = useCallback(
@@ -310,7 +320,7 @@ export function ModelSelector({ open, onClose, anchorRef }: ModelSelectorProps) 
                   </span>
                 </div>
                 {filtered.map(modelId => {
-                  const isActive = activeModel.modelId === modelId
+                  const isActive = effectiveActiveModel.modelId === modelId
                   return (
                     <button
                       key={modelId}
