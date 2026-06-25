@@ -948,7 +948,16 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
     try {
       // ── Per-turn: refresh tools and dynamic prompt sections ──
       const freshSettings = useSettingsStore.getState();
-      const activeProvider = getActiveProvider(freshSettings);
+      // Provider identity (id/baseUrl/apiKey/apiFormat) is pinned to the ENTRY
+      // snapshot (`settings`), NOT freshSettings: the model name (effectiveModelId),
+      // the adapter (chosen once at loop start), and the provider must stay a
+      // matched pair for the whole loop. Otherwise switching the global active
+      // model mid-loop (e.g. for another conversation) bleeds into this in-flight
+      // loop — sending the old model name to the new provider's endpoint
+      // ("deepseek endpoint, model mimo-v2.5-pro"). freshSettings below is only
+      // for non-identity, mid-loop-tunable knobs (computerUse, maxOutputTokens,
+      // contextWindowSize).
+      const activeProvider = getActiveProvider(settings);
       const builtinWebSearch = activeProvider
         ? getBuiltinSearchConfig(activeProvider.id as LLMProvider, true)
         : undefined;
@@ -1076,8 +1085,8 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
           useChatStore.getState().setIsCompressing(conversationId, true);
           try {
             const compressionCreds = resolveEffectiveLlmCreds(
-              getActiveApiKey(freshSettings),
-              getActiveProvider(freshSettings)?.baseUrl || undefined,
+              getActiveApiKey(settings),
+              getActiveProvider(settings)?.baseUrl || undefined,
             )
             const compressionResult = await compressContextIfNeeded(
               historyMessages,
@@ -1174,8 +1183,8 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       // Resolve apiKey + baseUrl — enterprise gateway overrides personal creds.
       // Throws EnterpriseLlmUnavailableError if enforced but gateway unreachable.
       const effectiveCreds = resolveEffectiveLlmCreds(
-        getActiveApiKey(freshSettings),
-        getActiveProvider(freshSettings)?.baseUrl || undefined,
+        getActiveApiKey(settings),
+        getActiveProvider(settings)?.baseUrl || undefined,
       )
 
       const chatOptions = {
@@ -1429,8 +1438,8 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
           if (!autoCompactTracker.isDisabled()) {
             try {
               const recoveryCreds = resolveEffectiveLlmCreds(
-                getActiveApiKey(freshSettings),
-                getActiveProvider(freshSettings)?.baseUrl || undefined,
+                getActiveApiKey(settings),
+                getActiveProvider(settings)?.baseUrl || undefined,
               )
               const compressionResult = await compressContextIfNeeded(
                 historyMessages,
