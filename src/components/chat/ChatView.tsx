@@ -12,7 +12,6 @@ import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { useI18n } from '@/i18n';
 import MessageGroup from './MessageGroup';
 import ChatInput from './ChatInput';
-import BackgroundAgents from './BackgroundAgents';
 import UserQuestionDock from './UserQuestionDock';
 import ScenarioGuide from './ScenarioGuide';
 import { agentRegistry } from '@/core/agent/registry';
@@ -455,7 +454,6 @@ export default function ChatView() {
       {/* Bottom Input */}
       <div className="shrink-0 px-6 md:px-10 pb-4 pt-1.5 bg-[var(--abu-bg-base)]">
         <div className="max-w-4xl mx-auto flex flex-col gap-1.5">
-          <BackgroundAgents />
           {/* Docked ask_user_question card — sits flush above the composer,
               same width. Render the first pending question that belongs to the
               active conversation and whose owning message can be located. */}
