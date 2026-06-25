@@ -349,7 +349,7 @@ export interface ToolExecutionContext {
   loopId?: string;
   /** Conversation ID — tools should prefer this over activeConversationId */
   conversationId?: string;
-  /** Tool call ID — injected by toolExecutor so the tool can locate itself */
+  /** Tool call ID — injected by toolExecutor; lets a tool locate itself and key per-call state (e.g. run_agent_batch progress) */
   toolCallId?: string;
 }
 

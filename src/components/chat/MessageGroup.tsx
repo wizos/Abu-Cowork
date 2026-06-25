@@ -8,6 +8,7 @@ import MessageBubble from './MessageBubble';
 import SkillProposalCard from './SkillProposalCard';
 import UserQuestionCard from './UserQuestionCard';
 import TaskBlock from './TaskBlock';
+import BatchProgress from './BatchProgress';
 import MarkdownRenderer from './MarkdownRenderer';
 import FileAttachment, { ImagePreviewCard, ImageThumbnail, isImageFile } from './FileAttachment';
 import SourcesSection from './SourcesSection';
@@ -557,6 +558,12 @@ export default function MessageGroup({ messages, isLastGroup: isLastGroupProp = 
                     .filter((tc) => tc.name === TOOL_NAMES.ASK_USER_QUESTION && tc.userQuestionAnswers)
                 : [];
 
+              // Live run_agent_batch progress cards for this steps segment (tc.id = LLM
+              // call id, matches the batchProgressStore key set by the tool's execute)
+              const segActiveBatches = seg.stepsMsgs
+                .flatMap((m) => m.toolCalls ?? [])
+                .filter((tc) => tc.name === TOOL_NAMES.RUN_AGENT_BATCH && tc.isExecuting && tc.result === undefined);
+
               return (
                 <div key={`steps-${segIdx}`}>
                   {hasExecSteps ? (
@@ -572,6 +579,9 @@ export default function MessageGroup({ messages, isLastGroup: isLastGroupProp = 
                       onRetry={seg.isLastGroup && hasError && !isStreaming ? handleRetry : undefined}
                     />
                   )}
+                  {segActiveBatches.map((tc) => (
+                    <BatchProgress key={`batch-${tc.id}`} toolCallId={tc.id} />
+                  ))}
                   {segSettledUQCards.map((tc) => (
                     <UserQuestionCard key={`uq-${tc.id}`} toolCall={tc} />
                   ))}

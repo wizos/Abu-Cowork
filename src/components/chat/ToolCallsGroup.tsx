@@ -160,6 +160,7 @@ function ToolCallItem({ toolCall, isLast }: { toolCall: ToolCall; isLast: boolea
   const [showDetails, setShowDetails] = useState(false);
   const awaitingUser = isAwaitingUser(toolCall);
   const isExecuting = toolCall.isExecuting && !awaitingUser;
+  const [batchResultExpanded, setBatchResultExpanded] = useState(false);
   const isCompleted = toolCall.result !== undefined;
 
   return (
@@ -220,29 +221,57 @@ function ToolCallItem({ toolCall, isLast }: { toolCall: ToolCall; isLast: boolea
           {toolCall.result !== undefined && (
             <div className="border-t border-white/10 pt-2">
               <div className="text-[9px] font-semibold text-white/30 uppercase tracking-wider mb-1">Output</div>
-              {/* Screenshot thumbnail from resultContent — Computer Use only.
-                  Non-computer image results (e.g. read_file PNGs / QR codes) render
-                  inline in the message bubble via InlineToolResultImages instead. */}
-              {toolCall.name === TOOL_NAMES.COMPUTER
-                && toolCall.resultContent?.some(b => b.type === 'image')
-                && !toolCall.hideScreenshot && (
-                <ScreenshotThumbnail resultContent={toolCall.resultContent} />
-              )}
-              {toolCall.result.includes('[sandbox-blocked]') ? (
-                <div className="space-y-1.5">
-                  <div className="px-2 py-1.5 rounded bg-red-500/20 border border-red-500/30">
-                    <p className="text-[11px] font-mono text-red-300 leading-relaxed">
-                      {toolCall.result.split('\n')[0].replace('[sandbox-blocked] ', '')}
-                    </p>
+              {toolCall.name === TOOL_NAMES.RUN_AGENT_BATCH ? (
+                <div>
+                  {/* Collapsed summary line with expand toggle */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[11px] text-[#b5c9a8]">
+                      {toolCall.result.split('\n')[0]}
+                    </span>
+                    <button
+                      onClick={() => setBatchResultExpanded((v) => !v)}
+                      className="inline-flex items-center gap-0.5 text-[10px] text-[var(--abu-clay)] hover:text-[var(--abu-clay-hover)]"
+                    >
+                      {batchResultExpanded ? (
+                        <><ChevronDown className="h-3 w-3" />{t.batch.collapse}</>
+                      ) : (
+                        <><ChevronRight className="h-3 w-3" />{t.batch.expand}</>
+                      )}
+                    </button>
                   </div>
-                  <pre className="text-[11px] font-mono text-[#b5c9a8]/70 whitespace-pre-wrap break-words leading-relaxed max-h-24 overflow-y-auto">
-                    {toolCall.result.split('\n').slice(2).join('\n')}
-                  </pre>
+                  {batchResultExpanded && (
+                    <pre className="mt-2 text-[11px] font-mono text-[#b5c9a8] whitespace-pre-wrap break-words leading-relaxed max-h-64 overflow-y-auto">
+                      {toolCall.result}
+                    </pre>
+                  )}
                 </div>
               ) : (
-                <pre className="text-[11px] font-mono text-[#b5c9a8] whitespace-pre-wrap break-words leading-relaxed max-h-32 overflow-y-auto">
-                  {toolCall.result}
-                </pre>
+                <>
+                  {/* Screenshot thumbnail from resultContent — Computer Use only.
+                      Non-computer image results (e.g. read_file PNGs / QR codes) render
+                      inline in the message bubble via InlineToolResultImages instead. */}
+                  {toolCall.name === TOOL_NAMES.COMPUTER
+                    && toolCall.resultContent?.some(b => b.type === 'image')
+                    && !toolCall.hideScreenshot && (
+                    <ScreenshotThumbnail resultContent={toolCall.resultContent} />
+                  )}
+                  {toolCall.result.includes('[sandbox-blocked]') ? (
+                    <div className="space-y-1.5">
+                      <div className="px-2 py-1.5 rounded bg-red-500/20 border border-red-500/30">
+                        <p className="text-[11px] font-mono text-red-300 leading-relaxed">
+                          {toolCall.result.split('\n')[0].replace('[sandbox-blocked] ', '')}
+                        </p>
+                      </div>
+                      <pre className="text-[11px] font-mono text-[#b5c9a8]/70 whitespace-pre-wrap break-words leading-relaxed max-h-24 overflow-y-auto">
+                        {toolCall.result.split('\n').slice(2).join('\n')}
+                      </pre>
+                    </div>
+                  ) : (
+                    <pre className="text-[11px] font-mono text-[#b5c9a8] whitespace-pre-wrap break-words leading-relaxed max-h-32 overflow-y-auto">
+                      {toolCall.result}
+                    </pre>
+                  )}
+                </>
               )}
             </div>
           )}

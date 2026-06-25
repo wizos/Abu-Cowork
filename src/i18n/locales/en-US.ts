@@ -406,6 +406,15 @@ const enUS: TranslationDict = {
     collapse: 'Collapse',
   },
 
+  batch: {
+    runningTitle: 'Running {n} parallel sub-tasks',
+    stopButton: 'Stop',
+    turnLabel: 'Turn {n}',
+    completionSummary: '✓ {n} sub-tasks completed',
+    expand: 'Expand',
+    collapse: 'Collapse',
+  },
+
   settings: {
     title: 'System Settings',
     apiConfig: 'API Config',
