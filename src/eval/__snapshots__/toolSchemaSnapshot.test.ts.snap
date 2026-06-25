@@ -332,6 +332,7 @@ exports[`Tool schema snapshot > all tool schemas match snapshot 1`] = `
     "name": "run_agent_batch",
     "paramNames": [
       "concurrency",
+      "schema",
       "tasks",
     ],
     "requiredParams": [
