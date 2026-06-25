@@ -9,6 +9,7 @@ import { useTaskExecutionStore } from './taskExecutionStore';
 import { clearTodos } from '../core/agent/todoManager';
 import { clearInputQueue } from '../core/agent/userInputQueue';
 import { clearSkillHooksByConversation } from '../core/tools/builtins';
+import { clearPlanMode } from '../core/agent/planMode';
 import { setComputerUseActive } from '../core/agent/computerUseStatus';
 import type { ConversationMeta } from '../core/session/conversationStorage';
 import type { ShareBundle } from '../core/session/shareBundle';
@@ -544,6 +545,9 @@ export const useChatStore = create<ChatStore>()(
         import('../core/agent/permissionBridge').then(({ drainUserQuestionsForConversation }) => {
           drainUserQuestionsForConversation(id);
         }).catch(() => {});
+        // Clear plan mode state to prevent the module-level Map from leaking
+        // an entry for a conversation that no longer exists.
+        clearPlanMode(id);
         const wasActive = get().activeConversationId === id;
         // Compute the successor BEFORE the deletion mutates state, so the
         // helper can see the deleted entry's scope (projectId / scheduledTaskId

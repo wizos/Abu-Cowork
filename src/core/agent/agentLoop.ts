@@ -149,6 +149,7 @@ import {
   drainWorkspaceRequest,
   drainUserQuestions,
 } from './permissionBridge';
+import { clearPlanMode } from './planMode';
 
 /** Persist execution steps onto the last assistant message for the given loop, then evict from memory */
 export function persistExecutionSnapshot(conversationId: string, loopId: string): void {
@@ -533,6 +534,9 @@ export function escalateMaxOutputTokens(
 }
 
 export async function runAgentLoop(conversationId: string, userMessage: string, options?: AgentLoopOptions): Promise<AgentLoopResult> {
+  // New turn starts clean: drop any stale plan-mode lock from a prior/abandoned plan (see planMode.ts).
+  clearPlanMode(conversationId);
+
   const chatStore = useChatStore.getState();
   const settings = useSettingsStore.getState();
   const taskExecutionStore = useTaskExecutionStore.getState();

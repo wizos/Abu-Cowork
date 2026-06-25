@@ -8,6 +8,7 @@ import {
   clearPlanMode,
   evaluatePlanGate,
   READONLY_FALLBACK_TOOLS,
+  type PlanModeState,
 } from './planMode';
 import { TOOL_NAMES } from '@/core/tools/toolNames';
 
@@ -58,6 +59,42 @@ describe('planMode state map', () => {
     setPlanMode('conv-a', 'approved');
     expect(getPlanMode('conv-a')).toBe('approved');
   });
+});
+
+// ── runAgentLoop reset contract ──────────────────────────────────────────────
+
+// runAgentLoop calls clearPlanMode(conversationId) at the start of every new
+// turn so a conversation abandoned mid-plan cannot leak its 'planning' or
+// 'approved' state into the next run. The integration wiring is verified by
+// reading agentLoop.ts; this test documents and regression-guards the
+// clearPlanMode → 'off' invariant that the loop relies on.
+describe('runAgentLoop reset contract (clearPlanMode invariant)', () => {
+  beforeEach(() => {
+    clearPlanMode('conv-reset');
+  });
+
+  it('clearPlanMode resets "planning" to "off" (abandoned-plan-lock prevention)', () => {
+    // Simulates: model submitted report_plan → user ignored it → new run starts
+    setPlanMode('conv-reset', 'planning');
+    clearPlanMode('conv-reset');
+    expect(getPlanMode('conv-reset')).toBe('off');
+  });
+
+  it('clearPlanMode resets "approved" to "off" (stale-approval prevention)', () => {
+    // Simulates: plan was approved but loop crashed → new run must start clean
+    setPlanMode('conv-reset', 'approved');
+    clearPlanMode('conv-reset');
+    expect(getPlanMode('conv-reset')).toBe('off');
+  });
+
+  it.each([['planning' as PlanModeState], ['approved' as PlanModeState]])(
+    'getPlanMode returns "off" after clearPlanMode from any prior state (%s)',
+    (prior) => {
+      setPlanMode('conv-reset', prior);
+      clearPlanMode('conv-reset');
+      expect(getPlanMode('conv-reset')).toBe('off');
+    },
+  );
 });
 
 // ── evaluatePlanGate ──
