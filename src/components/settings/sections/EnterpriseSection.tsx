@@ -5,9 +5,10 @@ import { MountPoint } from '@/core/enterprise/mounts'
 import { getEnterpriseMount } from '@/core/enterprise/mounts-registry'
 import { Button } from '@/components/ui/button'
 import BindToEnterpriseFlow from '@/components/enterprise/BindToEnterpriseFlow'
-import MigrationWizard from '@/components/enterprise/MigrationWizard'
-// Side-effect import to register the meTransparencyPage mount
-import '@/components/enterprise/MeTransparencyView'
+// The /me transparency page and migration wizard are registered by the
+// enterprise-modules entry point (real impls in the enterprise build, no-op in
+// OSS). Read below via getEnterpriseMount() — NullComponent fallback in OSS, so
+// this file never imports enterprise UI directly.
 
 export default function EnterpriseSection() {
   const mode = useEnterpriseStore(s => s.mode)
@@ -46,6 +47,7 @@ export default function EnterpriseSection() {
   const config = mode.kind === 'enterprise' ? mode.config : mode.kind === 'offline' ? mode.lastConfig : null
 
   const MeView = getEnterpriseMount('meTransparencyPage')
+  const MigrationWizard = getEnterpriseMount('migrationWizard')
 
   return (
     <div className="space-y-4">

@@ -14,9 +14,10 @@ import { getEnterpriseMount } from '@/core/enterprise/mounts-registry';
 import SkillsSection from '../customize/SkillsSection';
 import AgentsSection from '../customize/AgentsSection';
 import MCPSection from '../customize/MCPSection';
-// Side-effect imports to register enterprise mounts
-import '@/components/enterprise/EnterpriseSkillTab';
-import '@/components/enterprise/EnterpriseMcpTab';
+// Enterprise skill/MCP tab implementations are registered by the enterprise-modules
+// entry point (real impls in the enterprise build, no-op in the OSS build). The
+// consumers below read them via getEnterpriseMount(), which returns a NullComponent
+// fallback when unregistered — so the OSS build never imports enterprise UI directly.
 
 // Extended tab type — enterprise tabs are local-only (not persisted in store)
 type ExtendedTab = ToolboxTab | 'enterprise-skills' | 'enterprise-mcp';
