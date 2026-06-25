@@ -239,12 +239,15 @@ export async function runSubagentLoop(options: SubagentLoopOptions): Promise<Sub
     // Always strip the orchestration tools from sub-agents to prevent recursive
     // fan-out (a sub-agent spawning its own batch → unbounded blow-up, since there
     // is no depth/total-agent cap). Multi-agent orchestration is a main-agent-only
-    // concern. update_soul is likewise main-agent only.
+    // concern. update_soul is likewise main-agent only. ask_user_question requires
+    // a toolCallId injected by the main harness that sub-agents never receive —
+    // leaving it visible causes a confusing "内部错误" response, so strip it here.
     tools = tools.filter(
       (t) =>
         t.name !== TOOL_NAMES.DELEGATE_TO_AGENT &&
         t.name !== TOOL_NAMES.RUN_AGENT_BATCH &&
-        t.name !== TOOL_NAMES.UPDATE_SOUL,
+        t.name !== TOOL_NAMES.UPDATE_SOUL &&
+        t.name !== TOOL_NAMES.ASK_USER_QUESTION,
     );
 
     // 4. Create LLM adapter
