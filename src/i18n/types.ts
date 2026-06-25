@@ -1820,4 +1820,35 @@ export interface TranslationDict {
     rulesTruncated: string;
     rulesNotModifiable: string;
   };
+
+  // Enterprise Login
+  enterpriseLogin: {
+    bindTitle: string;
+    bindDescription: string;
+    serverUrlLabel: string;
+    serverUrlPlaceholder: string;
+    continueButton: string;
+    cancelButton: string;
+    backButton: string;
+    tabPassword: string;
+    tabMagicLink: string;
+    tabSso: string;
+    emailLabel: string;
+    emailPlaceholder: string;
+    passwordLabel: string;
+    passwordPlaceholder: string;
+    signInButton: string;
+    magicSendCodeButton: string;
+    magicCodeLabel: string;
+    magicCodePlaceholder: string;
+    magicVerifyButton: string;
+    magicSentHint: string;
+    ssoCodeHint: string;
+    ssoWaiting: string;
+    errInvalidCredentials: string;
+    errAccountPending: string;
+    errAccountSuspended: string;
+    errGeneric: string;
+    processing: string;
+  };
 }
