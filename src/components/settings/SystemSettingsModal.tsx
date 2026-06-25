@@ -9,6 +9,7 @@ import SoulSection from './sections/SoulSection';
 import DiagnosticSection from './sections/DiagnosticSection';
 import UsageSection from './sections/UsageSection';
 import EnterpriseSection from './sections/EnterpriseSection';
+import { IS_ENTERPRISE_BUILD } from '@/config/featureGates';
 
 export default function SystemSettingsView() {
   const {
@@ -28,7 +29,11 @@ export default function SystemSettingsView() {
     { id: 'diagnostic', label: t.diagnostic.title, icon: Activity },
     { id: 'feedback', label: t.about.feedback, icon: MessageCircle },
     { id: 'about', label: t.common.version, icon: Info },
-    { id: 'enterprise', label: '企业模式', icon: Building2 },
+    // Enterprise mode is an enterprise-build-only entry — hidden in OSS builds
+    // (the bind flow / business modules aren't part of the public product).
+    ...(IS_ENTERPRISE_BUILD
+      ? [{ id: 'enterprise' as SystemSettingsTab, label: '企业模式', icon: Building2 }]
+      : []),
   ];
 
   const renderContent = () => {
@@ -54,7 +59,7 @@ export default function SystemSettingsView() {
       case 'feedback':
         return <FeedbackSection />;
       case 'enterprise':
-        return <EnterpriseSection />;
+        return IS_ENTERPRISE_BUILD ? <EnterpriseSection /> : <GeneralSection />;
       default:
         return <GeneralSection />;
     }
