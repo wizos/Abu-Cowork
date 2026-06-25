@@ -39,7 +39,7 @@ beforeAll(async () => {
   await import('./discoveredCapabilitiesStore');
   await import('./todosStore');
   await import('./inboxStore');
-});
+}, 30_000); // 16 store imports trigger on-the-fly transforms; a cold cache (CI) can exceed the default 10s hook timeout
 
 describe('Store version compliance', () => {
   it('all persisted stores should have version in their stored data', () => {
@@ -53,7 +53,7 @@ describe('Store version compliance', () => {
   });
 
   it('registry should cover all abu-* keys in localStorage', () => {
-    const registeredKeys = new Set(PERSISTED_STORES.map((s) => s.key));
+    const registeredKeys = new Set<string>(PERSISTED_STORES.map((s) => s.key));
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key?.startsWith('abu-')) {
