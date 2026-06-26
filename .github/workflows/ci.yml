@@ -13,6 +13,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # Fail fast if closed-source enterprise modules leaked into this public
+      # repo (open-core boundary). Runs before npm so a build/test pass can't
+      # mask it. See CLAUDE.md "Enterprise 代码隔离 — 防泄露红线（open-core）".
+      - name: Enterprise leak guard (open-core)
+        run: bash scripts/enterprise-leak-guard.sh
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
