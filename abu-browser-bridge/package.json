@@ -9,7 +9,13 @@
     "type": "git",
     "url": "https://github.com/PM-Shawn/Abu-Cowork"
   },
-  "keywords": ["mcp", "browser", "automation", "chrome-extension", "abu"],
+  "keywords": [
+    "mcp",
+    "browser",
+    "automation",
+    "chrome-extension",
+    "abu"
+  ],
   "bin": {
     "abu-browser-bridge": "dist/index.js"
   },
@@ -24,7 +30,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
-    "ws": "^8.18.0"
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
