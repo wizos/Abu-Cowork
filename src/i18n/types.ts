@@ -1820,4 +1820,49 @@ export interface TranslationDict {
     rulesTruncated: string;
     rulesNotModifiable: string;
   };
+
+  // Enterprise Login
+  enterpriseLogin: {
+    bindTitle: string;
+    bindDescription: string;
+    serverUrlLabel: string;
+    serverUrlPlaceholder: string;
+    continueButton: string;
+    cancelButton: string;
+    backButton: string;
+    tabPassword: string;
+    tabMagicLink: string;
+    tabSso: string;
+    emailLabel: string;
+    emailPlaceholder: string;
+    passwordLabel: string;
+    passwordPlaceholder: string;
+    signInButton: string;
+    magicSendCodeButton: string;
+    magicCodeLabel: string;
+    magicCodePlaceholder: string;
+    magicVerifyButton: string;
+    magicSentHint: string;
+    ssoCodeHint: string;
+    ssoWaiting: string;
+    errInvalidCredentials: string;
+    errAccountPending: string;
+    errAccountSuspended: string;
+    errGeneric: string;
+    /** Rate-limited; interpolates {seconds} when Retry-After is available. */
+    errSlowDown: string;
+    /** Rate-limited fallback when no Retry-After header is present. */
+    errSlowDownGeneric: string;
+    /** Magic-link code has expired. */
+    errExpiredToken: string;
+    /** The chosen login method is not enabled on this server. */
+    errMethodNotEnabled: string;
+    /** New registrations are closed. */
+    errRegistrationClosed: string;
+    /** Email domain not in the allowlist. */
+    errDomainNotAllowed: string;
+    /** Malformed request (developer-facing but shown as generic client error). */
+    errInvalidRequest: string;
+    processing: string;
+  };
 }
