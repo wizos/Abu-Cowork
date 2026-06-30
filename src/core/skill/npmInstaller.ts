@@ -29,7 +29,7 @@ export interface NpmPackageInfo {
   tarballUrl: string;
 }
 
-interface TarEntry {
+export interface TarEntry {
   path: string;
   data: Uint8Array;
 }
@@ -221,7 +221,7 @@ async function fetchPackageMetadata(registry: string, packageName: string): Prom
 
 // ── Download & Extract ─────────────────────────────────────────────
 
-async function downloadTarball(url: string): Promise<Uint8Array> {
+export async function downloadTarball(url: string): Promise<Uint8Array> {
   let resp: Response;
   try {
     resp = await fetch(url, { method: 'GET' });
@@ -241,7 +241,7 @@ async function downloadTarball(url: string): Promise<Uint8Array> {
   return new Uint8Array(buffer);
 }
 
-function extractTarball(tgzBytes: Uint8Array): TarEntry[] {
+export function extractTarball(tgzBytes: Uint8Array): TarEntry[] {
   let tarBytes: Uint8Array;
   try {
     tarBytes = gunzipSync(tgzBytes);
@@ -306,7 +306,7 @@ function parseOctal(buf: Uint8Array, start: number, length: number): number {
 
 // ── Skill detection ────────────────────────────────────────────────
 
-interface SkillLocation {
+export interface SkillLocation {
   skillMdEntry: TarEntry;
   /** Prefix to strip from all entries belonging to this skill (e.g. "package/" or "package/skills/cooper/") */
   prefix: string;
@@ -321,7 +321,7 @@ interface SkillLocation {
  *   package/skills/cooper/SKILL.md        → prefix = "package/skills/cooper/"
  *   package/cooper/SKILL.md               → prefix = "package/cooper/"
  */
-function findSkillEntries(entries: TarEntry[]): SkillLocation[] {
+export function findSkillEntries(entries: TarEntry[]): SkillLocation[] {
   const results: SkillLocation[] = [];
 
   for (const entry of entries) {
@@ -337,7 +337,7 @@ function findSkillEntries(entries: TarEntry[]): SkillLocation[] {
   return results;
 }
 
-function stripPrefix(path: string, prefix: string): string {
+export function stripPrefix(path: string, prefix: string): string {
   if (prefix && path.startsWith(prefix)) {
     return path.slice(prefix.length);
   }

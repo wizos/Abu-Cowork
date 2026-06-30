@@ -182,8 +182,10 @@ exports[`Tool schema snapshot > all tool schemas match snapshot 1`] = `
     "paramNames": [
       "action",
       "env",
+      "headers",
       "name",
       "query",
+      "url",
     ],
     "requiredParams": [
       "action",
@@ -380,6 +382,7 @@ exports[`Tool schema snapshot > all tool schemas match snapshot 1`] = `
       "old_string",
       "replace_all",
       "scope",
+      "source",
       "trigger_reason",
     ],
     "requiredParams": [

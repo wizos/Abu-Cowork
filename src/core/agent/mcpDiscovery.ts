@@ -248,6 +248,78 @@ export function getRegistryEntry(name: string): MCPRegistryEntry | undefined {
 }
 
 /**
+ * Add a custom URL-based MCP server that is not in the built-in registry.
+ * Handles already-configured servers by reconnecting instead of duplicating.
+ */
+export async function addCustomMCPServer(
+  name: string,
+  url: string,
+  headers?: Record<string, string>
+): Promise<{ success: boolean; message: string; toolCount?: number }> {
+  if (!name || !url) {
+    return { success: false, message: 'name 和 url 均为必填项。' };
+  }
+
+  try {
+    new URL(url);
+  } catch {
+    return { success: false, message: `URL 格式无效: "${url}"` };
+  }
+
+  const store = useMCPStore.getState();
+
+  if (store.servers[name]) {
+    const existing = store.servers[name];
+    if (existing.status === 'connected') {
+      return {
+        success: true,
+        message: `${name} 已连接，有 ${existing.tools.length} 个工具可用。`,
+        toolCount: existing.tools.length,
+      };
+    }
+    await store.connectServer(name);
+    const updated = useMCPStore.getState().servers[name];
+    if (updated?.status === 'connected') {
+      return {
+        success: true,
+        message: `${name} 重新连接成功，有 ${updated.tools.length} 个工具。`,
+        toolCount: updated.tools.length,
+      };
+    }
+    return {
+      success: false,
+      message: `${name} 连接失败: ${updated?.error ?? '未知错误'}`,
+    };
+  }
+
+  store.addServer({
+    name,
+    url,
+    ...(headers && Object.keys(headers).length > 0 ? { headers } : {}),
+    enabled: true,
+  });
+
+  await store.connectServer(name);
+  const result = useMCPStore.getState().servers[name];
+
+  if (result?.status === 'connected') {
+    const toolList = result.tools.length > 0
+      ? `\n工具: ${result.tools.map((t) => t.name).join(', ')}`
+      : '';
+    return {
+      success: true,
+      message: `${name} 添加并连接成功，发现 ${result.tools.length} 个工具。${toolList}`,
+      toolCount: result.tools.length,
+    };
+  }
+
+  return {
+    success: false,
+    message: `${name} 添加后连接失败: ${result?.error ?? '未知错误'}。请确认 URL 可访问且服务已启动。`,
+  };
+}
+
+/**
  * Resolve the absolute path to a bundled resource directory.
  * Returns null if the resource doesn't exist (e.g. dev mode without build).
  */

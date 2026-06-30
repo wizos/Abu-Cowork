@@ -40,6 +40,22 @@ vi.mock('../../../utils/notifications', () => ({
   notifyDraftProposal: vi.fn().mockResolvedValue(undefined),
 }));
 
+// ── Mocks for install action dynamic imports ───────────────────────────
+vi.mock('@/core/skill/urlInstaller', () => ({
+  detectSourceType: vi.fn(),
+  installSkillFromUrl: vi.fn(),
+}));
+vi.mock('@/core/skill/installer', () => ({
+  installSkillFromFolder: vi.fn(),
+}));
+vi.mock('@/core/skill/npmInstaller', () => ({
+  installSkillFromNpm: vi.fn(),
+  NpmInstallError: class NpmInstallError extends Error {
+    code: string;
+    constructor(code: string, message: string) { super(message); this.code = code; }
+  },
+}));
+
 // Import the mocked versions so tests can assert on them
 import { atomicWrite, atomicWriteWithBackup, restoreFromBackup } from '../../../utils/atomicFs';
 
@@ -850,5 +866,115 @@ describe('skill_manage · remove_file', () => {
     );
     expect(result.success).toBe(false);
     expect(result.error).toMatch(/not found/i);
+  });
+});
+
+// ── install ──────────────────────────────────────────────────────────────
+
+describe('skill_manage · install', () => {
+  // Grab references to the mocked modules after they are hoisted.
+  // Dynamic import here uses the same module cache, so we get the same mocks.
+  let mockDetectSourceType: ReturnType<typeof vi.fn>;
+  let mockInstallSkillFromUrl: ReturnType<typeof vi.fn>;
+  let mockInstallSkillFromFolder: ReturnType<typeof vi.fn>;
+  let mockInstallSkillFromNpm: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    const urlMod = await import('../../skill/urlInstaller');
+    const folderMod = await import('../../skill/installer');
+    const npmMod = await import('../../skill/npmInstaller');
+    mockDetectSourceType = vi.mocked(urlMod.detectSourceType);
+    mockInstallSkillFromUrl = vi.mocked(urlMod.installSkillFromUrl);
+    mockInstallSkillFromFolder = vi.mocked(folderMod.installSkillFromFolder);
+    mockInstallSkillFromNpm = vi.mocked(npmMod.installSkillFromNpm);
+  });
+
+  it('returns error when source param is missing', async () => {
+    const result = JSON.parse(
+      (await skillManageTool.execute({ action: 'install' }, {})) as string,
+    );
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/source/);
+  });
+
+  it('routes folder source to installSkillFromFolder', async () => {
+    mockDetectSourceType.mockReturnValue('folder');
+    mockInstallSkillFromFolder.mockResolvedValue({ ok: true, name: 'my-skill', fileCount: 3 });
+
+    const result = JSON.parse(
+      (await skillManageTool.execute({ action: 'install', source: '/path/to/my-skill' }, {})) as string,
+    );
+
+    expect(mockInstallSkillFromFolder).toHaveBeenCalledWith('/path/to/my-skill');
+    expect(result.success).toBe(true);
+    expect(result.status).toBe('applied');
+    expect(result.message).toContain('my-skill');
+    expect(result.message).toContain('3');
+  });
+
+  it('routes npm source to installSkillFromNpm', async () => {
+    mockDetectSourceType.mockReturnValue('npm');
+    mockInstallSkillFromNpm.mockResolvedValue({ skillName: 'cooper', files: ['SKILL.md', 'README.md'], targetDir: '/home/.abu/skills/cooper', packageName: 'cooper', version: '1.0.0' });
+
+    const result = JSON.parse(
+      (await skillManageTool.execute({ action: 'install', source: 'cooper' }, {})) as string,
+    );
+
+    expect(mockInstallSkillFromNpm).toHaveBeenCalledWith('cooper');
+    expect(result.success).toBe(true);
+    expect(result.status).toBe('applied');
+    expect(result.message).toContain('cooper');
+    expect(result.message).toContain('2');
+  });
+
+  it('routes url/GitHub source to installSkillFromUrl', async () => {
+    mockDetectSourceType.mockReturnValue('url');
+    mockInstallSkillFromUrl.mockResolvedValue({ skillName: 'gh-skill', files: ['SKILL.md'], targetDir: '/home/.abu/skills/gh-skill' });
+
+    const result = JSON.parse(
+      (await skillManageTool.execute({ action: 'install', source: 'https://github.com/user/gh-skill' }, {})) as string,
+    );
+
+    expect(mockInstallSkillFromUrl).toHaveBeenCalledWith('https://github.com/user/gh-skill');
+    expect(result.success).toBe(true);
+    expect(result.status).toBe('applied');
+    expect(result.message).toContain('gh-skill');
+  });
+
+  it('returns error when folder install fails (ok=false)', async () => {
+    mockDetectSourceType.mockReturnValue('folder');
+    mockInstallSkillFromFolder.mockResolvedValue({ ok: false, message: '找不到 SKILL.md' });
+
+    const result = JSON.parse(
+      (await skillManageTool.execute({ action: 'install', source: '/bad/path' }, {})) as string,
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('找不到 SKILL.md');
+  });
+
+  it('wraps thrown errors from installer as failure', async () => {
+    mockDetectSourceType.mockReturnValue('npm');
+    mockInstallSkillFromNpm.mockRejectedValue(new Error('network timeout'));
+
+    const result = JSON.parse(
+      (await skillManageTool.execute({ action: 'install', source: 'bad-pkg' }, {})) as string,
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/安装失败.*network timeout/);
+  });
+
+  it('calls discovery refresh on success so skill appears in 我的技能', async () => {
+    mockDetectSourceType.mockReturnValue('url');
+    mockInstallSkillFromUrl.mockResolvedValue({ skillName: 'skill-x', files: [], targetDir: '/h' });
+
+    const { useDiscoveryStore } = await import('../../../stores/discoveryStore');
+    const stableRefresh = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(useDiscoveryStore, 'getState').mockReturnValue({ refresh: stableRefresh } as never);
+
+    await skillManageTool.execute({ action: 'install', source: 'https://example.com/skill.tgz' }, {});
+
+    expect(stableRefresh).toHaveBeenCalled();
   });
 });
