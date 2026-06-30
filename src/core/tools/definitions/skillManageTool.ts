@@ -78,7 +78,7 @@ const ALLOWED_SUBDIRS: ReadonlySet<string> = new Set([
   'assets',
 ]);
 
-type SkillAction = 'create' | 'patch' | 'write_file' | 'edit' | 'delete' | 'remove_file';
+type SkillAction = 'install' | 'create' | 'patch' | 'write_file' | 'edit' | 'delete' | 'remove_file';
 type SkillScope = 'workspace-auto' | 'user';
 
 // ── Path helpers ────────────────────────────────────────────────────────
@@ -352,6 +352,50 @@ async function scanOrRollback(
         description: f.description,
       })),
     },
+  };
+}
+
+// ── Action: install ─────────────────────────────────────────────────────
+
+async function installAction(input: Record<string, unknown>): Promise<ActionResult> {
+  const source = (input.source as string | undefined)?.trim();
+  if (!source) return { success: false, error: 'action=install 时必须提供 source 参数（npm 包名 / 本地路径 / URL / GitHub 链接）' };
+
+  const { detectSourceType, installSkillFromUrl } = await import('@/core/skill/urlInstaller');
+  const { installSkillFromFolder } = await import('@/core/skill/installer');
+  const { installSkillFromNpm } = await import('@/core/skill/npmInstaller');
+
+  const sourceType = detectSourceType(source);
+  let skillName: string;
+  let fileCount: number;
+
+  try {
+    if (sourceType === 'folder') {
+      const r = await installSkillFromFolder(source);
+      if (!r.ok) return { success: false, error: r.message };
+      skillName = r.name;
+      fileCount = r.fileCount;
+    } else if (sourceType === 'npm') {
+      const r = await installSkillFromNpm(source);
+      skillName = r.skillName;
+      fileCount = r.files.length;
+    } else {
+      const r = await installSkillFromUrl(source);
+      skillName = r.skillName;
+      fileCount = r.files.length;
+    }
+  } catch (e) {
+    return { success: false, error: `安装失败: ${e instanceof Error ? e.message : String(e)}` };
+  }
+
+  // Refresh discovery so the skill appears immediately in "我的技能"
+  const { useDiscoveryStore } = await import('../../../stores/discoveryStore');
+  await useDiscoveryStore.getState().refresh().catch(() => { /* best-effort */ });
+
+  return {
+    success: true,
+    status: 'applied',
+    message: `技能 "${skillName}" 安装成功（${fileCount} 个文件），已出现在"我的技能"中。`,
   };
 }
 
@@ -1091,7 +1135,8 @@ async function removeFileAction(input: Record<string, unknown>, context?: ToolEx
 export const skillManageTool: ToolDefinition = {
   name: TOOL_NAMES.SKILL_MANAGE,
   description:
-    '管理 skills（agent 的程序性记忆）。6 个 action：' +
+    '管理 skills（agent 的程序性记忆）。7 个 action：' +
+    '\n- **install**：从外部来源安装 skill（npm 包名 / 本地路径 / URL / GitHub 链接），装入用户"我的技能"' +
     '\n- **create**：新建 skill（必填 name + content + frontmatter.description）' +
     '\n- **patch**：原地改已有 skill，基于 fuzzy 查找替换（old_string → new_string）' +
     '\n- **edit**：整文件替换（比 patch 更可靠——大段改动时用 edit，不要硬塞给 patch）' +
@@ -1115,8 +1160,12 @@ export const skillManageTool: ToolDefinition = {
     properties: {
       action: {
         type: 'string',
-        enum: ['create', 'patch', 'write_file', 'edit', 'delete', 'remove_file'],
-        description: 'create / patch / write_file / edit / delete / remove_file',
+        enum: ['install', 'create', 'patch', 'write_file', 'edit', 'delete', 'remove_file'],
+        description: 'install / create / patch / write_file / edit / delete / remove_file',
+      },
+      source: {
+        type: 'string',
+        description: '[install] 安装来源：npm 包名（如 "cooper"）、本地路径（如 "/Downloads/my-skill"）、直链 URL（.tgz/.zip）、或 GitHub 链接（https://github.com/user/repo）',
       },
       name: {
         type: 'string',
@@ -1194,6 +1243,9 @@ export const skillManageTool: ToolDefinition = {
     let result: ActionResult;
     try {
       switch (action) {
+        case 'install':
+          result = await installAction(input);
+          break;
         case 'create':
           result = await createAction(input, context);
           break;
@@ -1215,7 +1267,7 @@ export const skillManageTool: ToolDefinition = {
         default:
           result = {
             success: false,
-            error: `unknown action "${action}". Supported: create, patch, write_file, edit, delete, remove_file.`,
+            error: `unknown action "${action}". Supported: install, create, patch, write_file, edit, delete, remove_file.`,
           };
       }
     } catch (e) {

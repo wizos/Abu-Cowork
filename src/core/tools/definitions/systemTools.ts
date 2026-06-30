@@ -1,7 +1,7 @@
 import { readText as clipboardReadText, writeText as clipboardWriteText } from '@tauri-apps/plugin-clipboard-manager';
 import { sendNotification, isPermissionGranted, requestPermission } from '@tauri-apps/plugin-notification';
 import type { ToolDefinition } from '../../../types';
-import { searchMCPRegistry, installMCPServer, getRegistryEntry, ensureMCPServer } from '../../agent/mcpDiscovery';
+import { searchMCPRegistry, installMCPServer, getRegistryEntry, ensureMCPServer, addCustomMCPServer } from '../../agent/mcpDiscovery';
 import { getSystemInfoData } from '../helpers/toolHelpers';
 import { TOOL_NAMES } from '../toolNames';
 
@@ -112,20 +112,25 @@ export const systemNotifyTool: ToolDefinition = {
  */
 export const manageMCPServerTool: ToolDefinition = {
   name: TOOL_NAMES.MANAGE_MCP_SERVER,
-  description: '搜索、安装或确保 MCP 工具服务可用。当执行任务时发现缺少某种工具能力（如操作 GitHub、Slack、数据库、浏览器等）时使用。注意：这不是通用软件安装工具，不要用于安装普通软件。',
+  description: '搜索、安装或确保 MCP 工具服务可用；也可通过 URL 直接添加私有/内网 MCP 服务。当执行任务时发现缺少某种工具能力（如操作 GitHub、Slack、数据库、浏览器等）时使用。注意：这不是通用软件安装工具，不要用于安装普通软件。',
   inputSchema: {
     type: 'object',
     properties: {
       action: {
         type: 'string',
-        enum: ['search', 'install', 'ensure'],
-        description: '操作类型：search（搜索可用服务）、install（安装服务，需用户确认）、ensure（确保服务可用，自动安装无需确认）',
+        enum: ['search', 'install', 'ensure', 'add_custom'],
+        description: '操作类型：search（搜索可用服务）、install（安装服务，需用户确认）、ensure（确保服务可用，自动安装无需确认）、add_custom（通过 URL 添加自定义服务，无需注册表）',
       },
       query: { type: 'string', description: '搜索关键词（action=search 时必填），如 "github"、"slack"、"database"' },
-      name: { type: 'string', description: 'MCP Server 名称（action=install 时必填，来自 search 结果）' },
+      name: { type: 'string', description: 'MCP Server 名称（action=install/ensure/add_custom 时必填）' },
       env: {
         type: 'object',
         description: '环境变量键值对（action=install 时可选，如 API Key 等）',
+      },
+      url: { type: 'string', description: 'MCP 服务 URL（action=add_custom 时必填），如 "http://10.0.0.1:8080/mcp"' },
+      headers: {
+        type: 'object',
+        description: 'HTTP 请求头（action=add_custom 时可选），如 {"Authorization": "Bearer token"}',
       },
     },
     required: ['action'],
@@ -182,7 +187,22 @@ export const manageMCPServerTool: ToolDefinition = {
       }
     }
 
-    return `Error: 未知操作 "${action}"。可用操作: search, install, ensure`;
+    if (action === 'add_custom') {
+      const name = input.name as string;
+      const url = input.url as string;
+      if (!name) return 'Error: action=add_custom 时必须提供 name 参数';
+      if (!url) return 'Error: action=add_custom 时必须提供 url 参数';
+      const headers = input.headers as Record<string, string> | undefined;
+
+      try {
+        const result = await addCustomMCPServer(name, url, headers);
+        return result.message;
+      } catch (err) {
+        return `添加自定义 MCP 服务失败: ${err instanceof Error ? err.message : String(err)}`;
+      }
+    }
+
+    return `Error: 未知操作 "${action}"。可用操作: search, install, ensure, add_custom`;
   },
   isConcurrencySafe: false,
 };
