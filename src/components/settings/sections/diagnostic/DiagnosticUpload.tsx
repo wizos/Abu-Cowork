@@ -92,13 +92,6 @@ export default function DiagnosticUpload({ onExportSuccess, description, onDescr
 
   return (
     <section>
-      <h3 className="text-[14px] font-medium text-[var(--abu-text-primary)] mb-1">
-        {t.diagnostic.exportTitle}
-      </h3>
-      <p className="text-[12px] text-[var(--abu-text-tertiary)] mb-4">
-        {t.diagnostic.exportDesc}
-      </p>
-
       {/* Disclosure 1: bundle contents */}
       <button
         type="button"
