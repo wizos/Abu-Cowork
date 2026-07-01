@@ -1,8 +1,7 @@
-import { useState, useCallback } from 'react';
-import { MessageCircle, Copy, Check } from 'lucide-react';
+import { useState } from 'react';
+import { MessageCircle } from 'lucide-react';
 import wechatQr from '@/assets/wechat-qr.png';
 import { useI18n } from '@/i18n';
-import { getDeviceId } from '@/utils/deviceId';
 import type { ProduceResult } from '@/core/diagnostic/bundle';
 import DiagnosticUpload from './diagnostic/DiagnosticUpload';
 import ExportSuccessCard from './diagnostic/ExportSuccessCard';
@@ -11,15 +10,6 @@ export default function FeedbackSection() {
   const { t } = useI18n();
   const [description, setDescription] = useState('');
   const [exportSuccess, setExportSuccess] = useState<ProduceResult | null>(null);
-  const [idCopied, setIdCopied] = useState(false);
-  const deviceId = getDeviceId();
-
-  const handleCopyDeviceId = useCallback(() => {
-    void navigator.clipboard.writeText(deviceId).then(() => {
-      setIdCopied(true);
-      setTimeout(() => setIdCopied(false), 2000);
-    });
-  }, [deviceId]);
 
   return (
     <div className="space-y-6">
@@ -55,23 +45,6 @@ export default function FeedbackSection() {
         <p className="text-[12px] font-medium text-[var(--abu-text-secondary)]">{t.about.wechatSectionTitle}</p>
         <img src={wechatQr} alt="WeChat QR" className="w-36 h-36 rounded-xl shadow-sm" />
         <p className="text-[11px] text-[var(--abu-text-tertiary)]">{t.about.feedbackDesc}</p>
-      </div>
-
-      {/* Device ID */}
-      <div className="flex items-center justify-between pt-2 border-t border-[var(--abu-border)]">
-        <span className="text-xs text-[var(--abu-text-muted)]">{t.about.deviceId}</span>
-        <button
-          type="button"
-          onClick={handleCopyDeviceId}
-          className="flex items-center gap-1.5 text-xs font-mono text-[var(--abu-text-muted)] hover:text-[var(--abu-text-secondary)] transition-colors"
-          title={deviceId}
-        >
-          <span>{deviceId.slice(0, 8)}</span>
-          {idCopied
-            ? <Check className="h-3 w-3 text-green-500" />
-            : <Copy className="h-3 w-3" />
-          }
-        </button>
       </div>
     </div>
   );
