@@ -5,11 +5,18 @@ import { useDiagnosticStore, getOverallStatus } from '@/stores/diagnosticStore'
 
 const CONSOLE_URL = import.meta.env.VITE_CONSOLE_URL as string | undefined
 
-export async function uploadDiagnosticBundle(bytes: Uint8Array, filename: string): Promise<void> {
+export async function uploadDiagnosticBundle(
+  bytes: Uint8Array,
+  filename: string,
+  description?: string,
+): Promise<void> {
   if (!CONSOLE_URL) throw new Error('no_console_url')
 
   const formData = new FormData()
   formData.append('file', new Blob([bytes.buffer as ArrayBuffer], { type: 'application/zip' }), filename)
+  if (description?.trim()) {
+    formData.append('description', description.trim())
+  }
   formData.append('deviceId', getDeviceId())
   formData.append('appVersion', APP_VERSION)
   formData.append('platform', getPlatform() ?? 'unknown')
