@@ -34,32 +34,27 @@ export default function FeedbackSection() {
         </div>
       </div>
 
-      {/* Two-column: upload form (left) + WeChat QR (right) */}
-      <div className="grid grid-cols-[1fr_auto] gap-10 items-start">
-        {/* Left: upload + success card */}
-        <div className="space-y-4 min-w-0">
-          <DiagnosticUpload
-            onExportSuccess={setExportSuccess}
-            description={description}
-            onDescriptionChange={setDescription}
-          />
-          {exportSuccess && (
-            <ExportSuccessCard
-              path={exportSuccess.path}
-              sizeBytes={exportSuccess.sizeBytes}
-              scrubbedTextCount={exportSuccess.scrubbedTextCount}
-              fileList={exportSuccess.fileList}
-              onDismiss={() => setExportSuccess(null)}
-            />
-          )}
-        </div>
+      {/* Upload form */}
+      <DiagnosticUpload
+        onExportSuccess={setExportSuccess}
+        description={description}
+        onDescriptionChange={setDescription}
+      />
+      {exportSuccess && (
+        <ExportSuccessCard
+          path={exportSuccess.path}
+          sizeBytes={exportSuccess.sizeBytes}
+          scrubbedTextCount={exportSuccess.scrubbedTextCount}
+          fileList={exportSuccess.fileList}
+          onDismiss={() => setExportSuccess(null)}
+        />
+      )}
 
-        {/* Right: WeChat QR */}
-        <div className="flex flex-col items-center text-center gap-2 pt-1">
-          <p className="text-[12px] font-medium text-[var(--abu-text-secondary)]">{t.about.wechatSectionTitle}</p>
-          <img src={wechatQr} alt="WeChat QR" className="w-36 h-36 rounded-xl shadow-sm" />
-          <p className="text-[11px] text-[var(--abu-text-tertiary)] max-w-[130px] leading-relaxed">{t.about.feedbackDesc}</p>
-        </div>
+      {/* WeChat QR */}
+      <div className="pt-2 border-t border-[var(--abu-border)] flex flex-col items-center text-center gap-2">
+        <p className="text-[12px] font-medium text-[var(--abu-text-secondary)]">{t.about.wechatSectionTitle}</p>
+        <img src={wechatQr} alt="WeChat QR" className="w-36 h-36 rounded-xl shadow-sm" />
+        <p className="text-[11px] text-[var(--abu-text-tertiary)]">{t.about.feedbackDesc}</p>
       </div>
 
       {/* Device ID */}
