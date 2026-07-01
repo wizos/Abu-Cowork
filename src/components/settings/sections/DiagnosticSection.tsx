@@ -3,13 +3,11 @@ import { Bot, FolderLock, Plug, Sparkles, Globe, AppWindow, Activity, Copy, Chec
 import { useI18n } from '@/i18n';
 import { getDeviceId } from '@/utils/deviceId';
 import { useDiagnosticStore } from '@/stores/diagnosticStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { ALL_CATEGORIES } from '@/core/diagnostic/runner';
 import type { CheckCategory, CheckResult } from '@/core/diagnostic/types';
-import type { ProduceResult } from '@/core/diagnostic/bundle';
 import DiagnosticBanner from './diagnostic/DiagnosticBanner';
 import DiagnosticCategory from './diagnostic/DiagnosticCategory';
-import ExportPanel from './diagnostic/ExportPanel';
-import ExportSuccessCard from './diagnostic/ExportSuccessCard';
 
 const CATEGORY_ICON = {
   'ai-services': Bot,
@@ -26,8 +24,8 @@ export default function DiagnosticSection() {
   const lastCheckedAt = useDiagnosticStore((s) => s.lastCheckedAt);
   const isChecking = useDiagnosticStore((s) => s.isChecking);
   const runAll = useDiagnosticStore((s) => s.runAll);
+  const setActiveSystemTab = useSettingsStore((s) => s.setActiveSystemTab);
 
-  const [exportSuccess, setExportSuccess] = useState<ProduceResult | null>(null);
   const [idCopied, setIdCopied] = useState(false);
   const deviceId = getDeviceId();
 
@@ -102,19 +100,16 @@ export default function DiagnosticSection() {
         ))}
       </div>
 
-      {/* Export success card (shown after a successful export) */}
-      {exportSuccess && (
-        <ExportSuccessCard
-          path={exportSuccess.path}
-          sizeBytes={exportSuccess.sizeBytes}
-          scrubbedTextCount={exportSuccess.scrubbedTextCount}
-          fileList={exportSuccess.fileList}
-          onDismiss={() => setExportSuccess(null)}
-        />
-      )}
-
-      {/* Export panel */}
-      <ExportPanel onExportSuccess={setExportSuccess} />
+      {/* Feedback navigation prompt */}
+      <div className="pt-2 border-t border-[var(--abu-border)]">
+        <button
+          type="button"
+          onClick={() => setActiveSystemTab('feedback')}
+          className="text-[12px] text-[var(--abu-text-muted)] hover:text-[var(--abu-clay)] transition-colors"
+        >
+          有问题？在反馈页附上诊断包 →
+        </button>
+      </div>
 
       {/* Device ID — shown here so users can find it when reporting issues */}
       <div className="flex items-center justify-between pt-2 border-t border-[var(--abu-border)]">
