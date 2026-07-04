@@ -39,11 +39,11 @@ Tell Abu what you need — it reads files, runs commands, writes docs, and build
 
 ## What's New
 
-- **v0.16** — **Usage stats redesign**: heatmap + custom tooltip, per-model/skill token breakdown; **Settings as full-screen views**: Settings, Automation, and Toolbox are now standalone pages; diagnostic bundle export fully shipped (v0.16.1); AI service health-check errors now surfaced transparently (v0.16.2)
-- **v0.15** — **Soul personality system**: 3 proactivity presets (Quiet / Buddy / Butler) + custom `SOUL.md` for tone, address, and reply style; **Content safety scan**: scans agents / skills / memory for prompt injection and dangerous instructions (120+ patterns)
-- **v0.13** — **Self-Evolving Skills**, **Projects** (multi-conversation aggregation), **Notification Center**, **Persistent Todos**, **Diagnostic Panel** one-click self-check
+**Latest release [v0.25.0](https://github.com/PM-Shawn/Abu-Cowork/releases/latest)** — Labs · desktop pet interaction upgrade · light / dark / system theme switching.
 
-> Full changelog: [Releases](https://github.com/PM-Shawn/Abu-Cowork/releases).
+Recent highlights: **Labs** experiment framework (currently hosting: Desktop Pet), **Desktop Pet** interaction upgrade + activity tray, **theme switching** (light / dark / system), **per-conversation settings** (pinned model + permission mode per conversation), **interactive question cards** (when Abu needs you to decide, it pops an option card above the composer — single or multi-select), **Plan Mode** (high-risk tasks show a step-by-step plan and wait for your approval before proceeding), **model capability badges + token usage stats** (backed by models.dev-maintained capability tables).
+
+> Full changelog per release: see [Releases](https://github.com/PM-Shawn/Abu-Cowork/releases).
 
 ## Preview
 
@@ -79,7 +79,7 @@ Tell Abu what you need — it reads files, runs commands, writes docs, and build
 <td align="center"><b>Diagnostic Panel</b><br/>One-click self-check across AI / MCP / skills / network + bundle export<br/><br/><img src="website/assets/screenshot-diagnostic.png" width="100%" /></td>
 </tr>
 <tr>
-<td align="center" colspan="2"><b>Content Safety Scan</b><br/>Three permission modes (Standard / Auto / Strict) + scan agents / skills / memory for prompt injection & dangerous instructions<br/><br/><img src="website/assets/screenshot-security-scan.png" width="60%" /></td>
+<td align="center" colspan="2"><b>Content Safety Scan</b><br/>Three permission modes (Request Approval / Smart Review / Full Autonomy) + scan agents / skills / memory for prompt injection & dangerous instructions<br/><br/><img src="website/assets/screenshot-security-scan.png" width="60%" /></td>
 </tr>
 </table>
 
@@ -88,12 +88,17 @@ Tell Abu what you need — it reads files, runs commands, writes docs, and build
 ### Core Capabilities
 
 - **Autonomous Agent** — More than chat: plans, invokes tools, reads/writes files, executes commands, and completes complex tasks end-to-end
+- **Plan Mode** — For high-risk steps (delete / overwrite / send / install), Abu first presents a step-by-step plan and waits for you to click "Confirm & run"; only read-only ops run while awaiting approval
+- **Interactive questions** — When Abu needs you to decide (pick an approach, provide a parameter), it pops an option card above the composer; single or multi-select, with an "Other" free-text row
+- **Per-conversation settings** — Permission mode (Request Approval / Smart Review / Full Autonomy) and model can be switched per conversation without bleeding across chats
 - **Soul Personality System** — Three proactivity presets (Quiet / Buddy / Butler) decide when Abu speaks up; customize tone, address, reply style, and boundaries via `SOUL.md`
 - **Self-Evolving Skills** — After you run a multi-step complex flow, Abu proactively offers "want to crystallize this into a skill?" — one click drafts it, you review, you accept. Next time, just name the skill; no need to re-explain
 - **Smart Notification System** — Menubar unread count / sidebar badge / system notification auto-routed; notices queued to inbox while you're in fullscreen / DnD, surfaced via badges once you're back; audit trail kept for 180 days
 - **Projects** — Promote a workspace into a Project: conversations in the same direction auto-aggregate; each project gets its own default model, skill set, and MCP connectors
 - **Multi-Agent Parallel Execution** — Run up to 5 background agents simultaneously, each executing tasks independently with real-time progress tracking
-- **Desktop Pet** — Transparent circular floater pinned to your desktop, follows you across Spaces, summon a quick chat without stealing focus
+- **Desktop Pet** (Labs) — Transparent floating window; left-click opens main window, right-click menu, drag-to-edge dock; **activity tray** shows Abu's live status (working / awaiting approval / done) and lets you reply inline while it waits
+- **Theme switching** — Light / dark / system, via Settings → Appearance
+- **Labs** — In-progress features, off by default, opt-in, may change or be removed (currently hosting: Desktop Pet)
 - **Conversation Sharing** — Export any conversation to JSON in one click; API keys and local paths are auto-redacted before sharing
 - **28 Built-in Skills** — PDF/PPTX/DOCX/Excel generation, frontend design, canvas design, algorithmic art, Mermaid/SVG/infographics, Web Artifacts, Chrome automation (Abu-Browser), deep research, Agent self-reflection (reflect), workflow automation, and more — one-click install, fully customizable
 - **MCP Protocol** — Connect to databases, search engines, GitHub, and other external services via Model Context Protocol
@@ -152,7 +157,7 @@ Turn Abu into your team bot — just @Abu in your chat:
 
 ### Security & Privacy
 
-- **Three Permission Modes** — Standard (confirm dangerous ops + new-directory writes) / Auto (only confirm automated tasks; writes still confirmed) / Strict (every tool call requires confirmation)
+- **Three Permission Modes** — **Request Approval** (free read/write inside workspace; out-of-bounds writes and dangerous commands need confirmation; default) / **Smart Review** (out-of-bounds ops go to an AI reviewer: allow low-risk, block high-risk, ask only when unsure) / **Full Autonomy** (everything runs automatically except hard system red-lines); global default in Settings → Sandbox, also switchable per conversation via the chip above the composer
 - **Content Safety Scan** — Scans agent-authored skills / memory entries to catch dangerous instructions, prompt injection, hardware commands, and 120+ other risk patterns
 - **OS Sandbox** — macOS Seatbelt (`sandbox-exec`) / Windows PowerShell ConstrainedLanguage isolates shell command file access
 - **Network Isolation** — Local proxy + domain whitelist + private-network toggle to control every outbound request

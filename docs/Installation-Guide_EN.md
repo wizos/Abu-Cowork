@@ -40,17 +40,13 @@ Press Enter, then double-click Abu to open it.
 
 ### 3. Alternative Method
 
-If the command above doesn't work, try:
+If the command above doesn't work, allow Abu via System Settings:
 
-```bash
-sudo spctl --master-disable
-```
+1. Double-click Abu to open it — do **not** click "Move to Trash" on the warning dialog
+2. Open **System Settings → Privacy & Security**, scroll to the bottom — you'll see a "was blocked" notice for Abu
+3. Click **"Open Anyway"** and confirm once more
 
-This temporarily disables Gatekeeper. After installation, re-enable it:
-
-```bash
-sudo spctl --master-enable
-```
+> **macOS 15 (Sequoia) and later**: Apple removed the `sudo spctl --master-disable` command. Use the System Settings → Privacy & Security → "Open Anyway" flow above instead. On older macOS, you can still temporarily disable Gatekeeper with `sudo spctl --master-disable`; remember to re-enable it afterward with `sudo spctl --master-enable`.
 
 ---
 

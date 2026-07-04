@@ -26,6 +26,8 @@ This guide covers all Abu features and how to use them effectively.
 - [Sandbox & Security](#sandbox--security)
 - [Notification System](#notification-system-v0130)
 - [Behavior Awareness](#behavior-awareness)
+- [Appearance & Theme](#appearance--theme)
+- [Labs](#labs)
 - [Common Use Cases](#common-use-cases)
 - [FAQ](#faq)
 
@@ -56,7 +58,7 @@ Download the installer for your platform from [GitHub Releases](https://github.c
 
 > If Abu is installed elsewhere, replace the path accordingly. You can also type `xattr -cr ` and drag Abu.app into the Terminal window to auto-fill the path.
 
-> If the command above doesn't work, try `sudo spctl --master-disable` to temporarily disable Gatekeeper, then re-enable it with `sudo spctl --master-enable` after installation.
+> If the command above doesn't work, go to **System Settings → Privacy & Security**, scroll to the bottom and click **"Open Anyway"**. Note: macOS 15 (Sequoia) and later removed `sudo spctl --master-disable`.
 
 #### Windows
 
@@ -102,6 +104,41 @@ Abu asks for your confirmation before sensitive operations:
 - **Path access** — Requests authorization for sensitive directories
 
 You can **Allow**, **Deny**, or set **Always Allow** for specific operations.
+
+### Permission Modes (three levels, switchable per conversation)
+
+How much Abu asks before acting is controlled by the **permission mode**. The global default is in **Settings → Sandbox**; the permission-mode chip above the composer lets you switch the current conversation without touching the global default:
+
+| Mode | Behavior |
+|------|----------|
+| **Request Approval** (default) | Free read/write inside workspace; out-of-bounds writes and dangerous commands need your confirmation |
+| **Smart Review** | Out-of-bounds ops go to an AI reviewer: low-risk is allowed, high-risk is blocked, only ambiguous cases ask you (may occasionally be wrong — use when you can tolerate the odd correction) |
+| **Full Autonomy** | Everything runs automatically except hard system red-lines (`rm -rf /`, sensitive directories, etc.) — use only when you fully trust the current task |
+
+> Tip: new conversations inherit the global default; switching within a conversation is temporary and does not write back to settings.
+
+### Plan Mode (high-risk tasks need approval)
+
+When a task involves high-risk steps like **delete / move / overwrite / send / install / push**, Abu first draws up a **step-by-step execution plan**, shown in chat as an "Execution Plan · N steps" card (amber "awaiting approval" marker) with a confirmation card above the composer:
+
+- **Approve** — requires you to **explicitly click "Confirm & run"** (simply selecting an option does not fire it, to prevent accidental approval); Abu then starts executing
+- **Reject, re-plan** — sends it back so Abu can propose an alternative
+
+While the plan is awaiting approval, Abu **can only perform read-only operations** (read files, search, fetch web content); writes and commands are locked until you approve. Auto-cancels after 10 minutes with no response.
+
+### Interactive Questions
+
+At decision forks (choosing an approach, providing a parameter, confirming a detail), Abu pops a **question card** above the composer instead of burying the question in a long paragraph:
+
+- Up to **4 questions** per card, **2–4 options** each
+- **Single-select** (radio — auto-advances to the next question / submits) or **multi-select** (checkbox — manual "Next / Submit")
+- Every question has an **"Other…"** row for a free-text custom answer, and a **"Skip"** option
+- Keyboard: ↑↓ to select, Enter to confirm, ←→ to page, Esc to cancel
+- After you answer, your choices remain as a read-only card in chat; auto-cancels after 10 minutes with no response
+
+### Per-Conversation Model Pin
+
+When you pick a model in the composer's **model selector**, that choice is also **pinned to the current conversation**: the conversation continues using that model, and a later global model switch won't bleed in. On first run, the current global model is automatically pinned to the conversation. New conversations inherit the global / project-level default.
 
 ### Conversation Management
 
@@ -320,7 +357,7 @@ Skills are pre-defined capability modules that make Abu more professional in spe
 3. Click **"Install"** to enable a skill
 4. Describe your need in conversation — Abu auto-selects the right skill
 
-### Built-in Skills (27 total)
+### Built-in Skills (28 total)
 
 > Skills live at `builtin-skills/<skill-name>/SKILL.md`. Each skill is its own directory and can be edited directly.
 
@@ -385,6 +422,12 @@ Skills are pre-defined capability modules that make Abu more professional in spe
 | **Skill Creator** | `skill-creator` | Create, modify, and test custom skills |
 | **Project Init** | `init` | Analyze project structure and generate config files like `.abu/ABU.md` |
 | **Create Agent** | `create-agent` | Build custom agents with specific tools and memory |
+
+#### Agent Reflection
+
+| Skill | ID | Description |
+|-------|------|-------------|
+| **Reflect** | `reflect` | After finishing a task, Abu reviews and reflects to distill lessons and spot improvements |
 
 ### Self-Evolving Skills (v0.13.0+)
 
@@ -1218,6 +1261,56 @@ Behavior Awareness lets Abu understand your work patterns so it can give context
 
 ---
 
+## Appearance & Theme
+
+Switch the UI theme in **Settings → Appearance**:
+
+| Option | Description |
+|--------|-------------|
+| **Light** | Always use the light theme |
+| **Dark** | Always use the dark theme (default) |
+| **System** | Follows your OS dark/light setting, switching live |
+
+UI language (Simplified Chinese / English) is also switched in Settings, including a "Follow System" option.
+
+---
+
+## Labs
+
+**Labs** collects features still in active development: **off by default, opt-in**, may change or be removed at any time. Entry: **Settings → Experiments**; each experiment is a card (title + description + "where to find it" hint + toggle). Shows a placeholder when no experiments are active.
+
+> Experiments may be unstable and their behavior may change between versions. Once stable, they graduate to full features.
+
+### Desktop Pet
+
+The current experiment in Labs is **Desktop Pet** — a floating Abu that stays on your desktop and is always ready to chat.
+
+**Two-step enable** (two levels are intentional to prevent accidentally pinning a floating window):
+
+1. **Settings → Experiments** — turn on "Desktop Pet" → a "Desktop Pet" settings page appears in the sidebar
+2. **Settings → Desktop Pet** — toggle it on → the pet window appears on your desktop
+
+**Interactions:**
+
+| Action | Effect |
+|--------|--------|
+| **Left-click** | Open Abu main window |
+| **Right-click** | Menu (view status / open main window / close pet) |
+| **Drag** | Move; drag to a screen edge to **dock and hide** (only a sliver remains visible); position is remembered |
+
+**Activity tray**: When Abu is doing work, a status bubble floats beside the pet showing the current conversation title + latest reply line, color-coded by state:
+
+| State | Color | Meaning |
+|-------|-------|---------|
+| Working | Blue | Abu is executing a task |
+| Awaiting input | Orange | Needs your authorization or a reply — **you can reply inline right in the bubble** (press Enter to send) |
+| Done | Green | Task complete (auto-dismisses after ~6 s) |
+| Problem | Red | An error occurred |
+
+No need to switch back to the main window — a quick glance at the pet tells you where Abu is at and whether it needs a hand.
+
+---
+
 ## Common Use Cases
 
 ### Office Productivity
@@ -1352,7 +1445,15 @@ No. Behavior Awareness only records window titles (e.g. app names), not screen c
 
 ### Q: What languages are supported?
 
-Abu's UI supports **Simplified Chinese** and **English**. Switch in Settings, or set to "Follow System" for automatic detection.
+Abu's UI supports **Simplified Chinese** and **English**. Switch in Settings, or set to "Follow System" for automatic detection. Theme (light / dark / system) is also switched in Settings → Appearance — see [Appearance & Theme](#appearance--theme).
+
+### Q: Will Abu ask before doing something dangerous?
+
+Yes — and the extent of confirmation is controlled by the **permission mode**. Under the default "Request Approval" mode, Abu reads and writes freely inside your workspace but asks before any out-of-bounds write or dangerous command. Beyond that, when a task involves high-risk steps like delete / overwrite / send / install, Abu enters **Plan Mode**: it shows a step-by-step plan first, and only proceeds after you explicitly click "Confirm & run" on the card — read-only ops run in the meantime. See [Chat & Agent → Permission Modes / Plan Mode](#permission-modes-three-levels-switchable-per-conversation).
+
+### Q: How do I enable the desktop pet?
+
+The desktop pet is a **Labs** experiment — it needs two steps to enable: first go to **Settings → Experiments** and turn on "Desktop Pet", then go to **Settings → Desktop Pet** and toggle it on. See [Labs → Desktop Pet](#desktop-pet).
 
 ### Q: Will Abu remember flows I've taught it?
 
