@@ -55,6 +55,10 @@ export default function UserQuestionDock({ conversationId, messageId, toolCallId
 
   const questions = useMemo(() => payload?.questions ?? [], [payload]);
   const total = questions.length;
+  // Two-step confirm mode (plan approval): single-select clicks only select;
+  // submission requires the explicit confirm button. Guards destructive
+  // approvals against click-through.
+  const confirmMode = !!payload?.confirm;
 
   const [page, setPage] = useState(0);
   const [questionStates, setQuestionStates] = useState<QuestionState[]>(() =>
@@ -214,6 +218,11 @@ export default function UserQuestionDock({ conversationId, messageId, toolCallId
       }
       return;
     }
+    // If a native button has focus (e.g. the Tab-focused confirm footer
+    // button), return without preventDefault so its native click fires —
+    // otherwise Enter would be hijacked into toggleOption on the hovered row,
+    // which could silently flip a rejection into an approval.
+    if (e.target instanceof HTMLButtonElement) return;
     if (!q) return;
 
     switch (e.key) {
@@ -238,8 +247,16 @@ export default function UserQuestionDock({ conversationId, messageId, toolCallId
         const optionCount = q.options.length;
         if (highlight < optionCount) {
           const label = q.options[highlight].label;
-          if (q.multiSelect) toggleOption(label, true);
-          else selectAndAdvance(label);
+          if (q.multiSelect) {
+            toggleOption(label, true);
+          } else if (confirmMode) {
+            // Confirm mode: first Enter selects; a second Enter on the
+            // already-selected option submits (still an explicit two-step).
+            if (state.selected.has(label) && canSubmit) handleSubmit();
+            else toggleOption(label, false);
+          } else {
+            selectAndAdvance(label);
+          }
         } else if (highlight === optionCount) {
           toggleOther(q.multiSelect);
         } else {
@@ -269,7 +286,7 @@ export default function UserQuestionDock({ conversationId, messageId, toolCallId
     >
       {/* Header: question + pager */}
       <div className="px-3 py-2 border-b border-[var(--abu-border-subtle)] flex items-start gap-2">
-        <MessageSquare className="h-3.5 w-3.5 text-[var(--abu-clay)] shrink-0 mt-0.5" />
+        {!confirmMode && <MessageSquare className="h-3.5 w-3.5 text-[var(--abu-clay)] shrink-0 mt-0.5" />}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="inline-block px-1.5 py-0.5 rounded bg-[var(--abu-bg-base)] border border-[var(--abu-border-subtle)] text-[11px] text-[var(--abu-text-tertiary)] font-medium">
@@ -322,7 +339,11 @@ export default function UserQuestionDock({ conversationId, messageId, toolCallId
             <button
               key={oIdx}
               type="button"
-              onClick={() => (q.multiSelect ? toggleOption(opt.label, true) : selectAndAdvance(opt.label))}
+              onClick={() => {
+                if (q.multiSelect) toggleOption(opt.label, true);
+                else if (confirmMode) toggleOption(opt.label, false);
+                else selectAndAdvance(opt.label);
+              }}
               onMouseEnter={() => setHighlight(oIdx)}
               className={cn(
                 'w-full text-left px-2 py-1.5 rounded-lg text-[13px] transition-colors flex items-start gap-2',
@@ -441,7 +462,7 @@ export default function UserQuestionDock({ conversationId, messageId, toolCallId
             title={!canSubmit ? t.userQuestion.submitDisabledHint : undefined}
             className="text-xs shrink-0"
           >
-            {t.userQuestion.submitButton}
+            {confirmMode ? t.userQuestion.confirmButton : t.userQuestion.submitButton}
           </Button>
         ) : (
           <Button

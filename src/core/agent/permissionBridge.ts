@@ -5,7 +5,8 @@
  * Loop context is stored per-loopId in a Map to support concurrent agents.
  */
 import type { ConfirmationInfo, FilePermissionCallback } from '../tools/registry';
-import type { UserQuestionPayload, UserQuestionResult } from '../../types';
+import type { Message, UserQuestionPayload, UserQuestionResult } from '../../types';
+import { TOOL_NAMES } from '../tools/toolNames';
 import { usePermissionStore } from '../../stores/permissionStore';
 import type { PermissionDuration } from '../../stores/permissionStore';
 import { authorizeWorkspace } from '../tools/pathSafety';
@@ -56,6 +57,19 @@ export function clearLoopContext(loopId: string): void {
 export function getCurrentLoopContext(): LoopContext | null {
   if (loopContexts.size === 0) return null;
   return loopContexts.values().next().value ?? null;
+}
+
+/**
+ * The live loop context owning a conversation, or null. Unlike
+ * getCurrentLoopContext() (first map entry — wrong with concurrent
+ * conversations), this resolves by conversationId and is safe for tagging
+ * mid-task user input with the loop that will actually consume it.
+ */
+export function getLoopContextForConversation(conversationId: string): LoopContext | null {
+  for (const ctx of loopContexts.values()) {
+    if (ctx.conversationId === conversationId) return ctx;
+  }
+  return null;
 }
 
 /**
@@ -394,6 +408,27 @@ export interface PendingUserQuestion {
   conversationId: string;
   payload: UserQuestionPayload;
   resolve: (r: UserQuestionResult | null) => void;
+}
+
+/** Tools whose calls can own a pending user question: ask_user_question asks
+ * directly; report_plan asks for plan approval via the same bridge. */
+const QUESTION_OWNER_TOOL_NAMES: readonly string[] = [
+  TOOL_NAMES.ASK_USER_QUESTION,
+  TOOL_NAMES.REPORT_PLAN,
+];
+
+/**
+ * Locate the message owning a pending user question (id = toolCallId).
+ * Matching by id alone is not enough — tool call ids are provider-generated
+ * and a stale queue entry must not attach to an unrelated tool call.
+ */
+export function findQuestionOwningMessage(
+  messages: readonly Message[],
+  pendingId: string,
+): Message | undefined {
+  return messages.find((m) =>
+    m.toolCalls?.some((tc) => tc.id === pendingId && QUESTION_OWNER_TOOL_NAMES.includes(tc.name)),
+  );
 }
 
 /** Queue — supports multiple conversations; isConcurrencySafe:false keeps it serial per conv */

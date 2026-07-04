@@ -1707,6 +1707,23 @@ export interface TranslationDict {
     needsAuthorization: string;
   };
 
+  // Mid-task queued-message staging strip above the composer
+  queueStrip: {
+    /** Tooltip on a staged pill */
+    queuedHint: string;
+    /** aria-label / tooltip of the cancel button */
+    cancel: string;
+  };
+
+  // report_plan — inline plan card in the chat flow
+  planCard: {
+    title: string;
+    /** Shown while the plan approval dock is waiting for the user */
+    awaiting: string;
+    /** Unit for the collapsed step count, e.g. "3 步" */
+    stepsUnit: string;
+  };
+
   // ask_user_question — interactive choice card
   userQuestion: {
     cardTitle: string;
@@ -1715,6 +1732,8 @@ export interface TranslationDict {
     otherOptionLabel: string;
     otherInputPlaceholder: string;
     submitButton: string;
+    /** Confirm-mode submit label (plan approval two-step) */
+    confirmButton: string;
     answeredLabel: string;
     submitDisabledHint: string;
     cancelledLabel: string;

@@ -17,6 +17,7 @@ vi.mock('@/i18n', () => ({
         otherOptionLabel: '其他…',
         otherInputPlaceholder: '请输入自定义内容',
         submitButton: '提交',
+        confirmButton: '确认执行',
         submitDisabledHint: '请为每道题选择或填写答案',
         pager: '{current} / {total}',
         skip: '跳过',
@@ -66,6 +67,18 @@ const TWO_Q_PAYLOAD: UserQuestionPayload = {
   questions: [
     { header: 'Q1', question: '第一题？', multiSelect: false, options: [{ label: 'A' }, { label: 'B' }] },
     { header: 'Q2', question: '第二题？', multiSelect: false, options: [{ label: 'C' }, { label: 'D' }] },
+  ],
+};
+
+const CONFIRM_PAYLOAD: UserQuestionPayload = {
+  confirm: true,
+  questions: [
+    {
+      header: '计划审批',
+      question: '是否批准执行此计划？',
+      multiSelect: false,
+      options: [{ label: '批准执行' }, { label: '拒绝，重新规划' }],
+    },
   ],
 };
 
@@ -127,6 +140,43 @@ describe('UserQuestionDock', () => {
     resolveSpy.mockRestore();
   });
 
+  // Regression (review): plan approval reused the single-select shortcut, so a
+  // stray click on "批准执行" executed a destructive plan instantly. Confirm
+  // mode requires an explicit second click on the confirm button.
+  it('confirm mode: clicking an option only selects, never auto-submits', async () => {
+    const user = userEvent.setup();
+    const resolveSpy = vi.spyOn(bridge, 'resolveUserQuestion');
+    renderDock(CONFIRM_PAYLOAD, 'tc-confirm');
+
+    await user.click(screen.getByText('批准执行').closest('button')!);
+
+    expect(resolveSpy).not.toHaveBeenCalled();
+    expect(mockSetAnswers).not.toHaveBeenCalled();
+    resolveSpy.mockRestore();
+  });
+
+  it('confirm mode: submits only via the explicit confirm button', async () => {
+    const user = userEvent.setup();
+    const resolveSpy = vi.spyOn(bridge, 'resolveUserQuestion');
+    renderDock(CONFIRM_PAYLOAD, 'tc-confirm-2');
+
+    const confirmBtn = screen.getByText('确认执行').closest('button')!;
+    expect(confirmBtn).toBeDisabled(); // nothing selected yet
+    await user.click(screen.getByText('批准执行').closest('button')!);
+    expect(confirmBtn).not.toBeDisabled();
+    await user.click(confirmBtn);
+
+    expect(resolveSpy).toHaveBeenCalledWith(
+      'tc-confirm-2',
+      expect.objectContaining({
+        answers: expect.arrayContaining([
+          expect.objectContaining({ header: '计划审批', selected: ['批准执行'] }),
+        ]),
+      }),
+    );
+    resolveSpy.mockRestore();
+  });
+
   it('multi-select keeps the dock open and Submit becomes enabled after a choice', async () => {
     const user = userEvent.setup();
     renderDock(MULTI_PAYLOAD, 'tc-multi');
@@ -176,6 +226,62 @@ describe('UserQuestionDock', () => {
 
     await user.click(screen.getByLabelText('关闭'));
     expect(resolveSpy).toHaveBeenCalledWith('tc-cancel', null);
+    resolveSpy.mockRestore();
+  });
+
+  it('confirm mode: keyboard ArrowDown→Enter to select then Enter again to submit', async () => {
+    const user = userEvent.setup();
+    const resolveSpy = vi.spyOn(bridge, 'resolveUserQuestion');
+    renderDock(CONFIRM_PAYLOAD, 'tc-kbd');
+
+    // Focus the container (it has tabIndex=-1)
+    const container = document.querySelector('[tabindex="-1"]') as HTMLElement;
+    container.focus();
+
+    // ArrowDown: highlight moves from 0 (批准执行) to 1 (拒绝，重新规划)
+    await user.keyboard('{ArrowDown}');
+    // First Enter: 拒绝，重新规划 not yet selected → select it
+    await user.keyboard('{Enter}');
+    // Second Enter: 拒绝，重新规划 is now selected + canSubmit=true → submit
+    await user.keyboard('{Enter}');
+
+    expect(resolveSpy).toHaveBeenCalledWith(
+      'tc-kbd',
+      expect.objectContaining({
+        answers: expect.arrayContaining([
+          expect.objectContaining({ selected: ['拒绝，重新规划'] }),
+        ]),
+      }),
+    );
+    resolveSpy.mockRestore();
+  });
+
+  it('confirm mode: Enter on Tab-focused confirm button triggers submit without flipping selection', async () => {
+    const user = userEvent.setup();
+    const resolveSpy = vi.spyOn(bridge, 'resolveUserQuestion');
+    renderDock(CONFIRM_PAYLOAD, 'tc-kbd-btn');
+
+    // Select '批准执行' via click → confirm button becomes enabled
+    await user.click(screen.getByText('批准执行').closest('button')!);
+    expect(resolveSpy).not.toHaveBeenCalled(); // confirm mode: click only selects
+
+    // Focus the confirm button directly
+    const confirmBtn = screen.getByText('确认执行').closest('button')!;
+    confirmBtn.focus();
+    expect(document.activeElement).toBe(confirmBtn);
+
+    // Press Enter — F2(a) guard fires: HTMLButtonElement → container returns early
+    // Button's native click fires → handleSubmit → '批准执行' is still selected
+    await user.keyboard('{Enter}');
+
+    expect(resolveSpy).toHaveBeenCalledWith(
+      'tc-kbd-btn',
+      expect.objectContaining({
+        answers: expect.arrayContaining([
+          expect.objectContaining({ selected: ['批准执行'] }),
+        ]),
+      }),
+    );
     resolveSpy.mockRestore();
   });
 });

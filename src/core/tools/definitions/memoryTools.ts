@@ -1,4 +1,5 @@
 import type { ToolDefinition, UserQuestionPayload, UserQuestionResult } from '../../../types';
+import { useTaskExecutionStore } from '../../../stores/taskExecutionStore';
 import { getPlanMode, setPlanMode } from '../../agent/planMode';
 import { requestUserQuestion } from '../../agent/permissionBridge';
 import { useChatStore } from '../../../stores/chatStore';
@@ -17,6 +18,9 @@ export const PLAN_REJECT_LABEL = '拒绝，重新规划';
 export function buildPlanApprovalPayload(steps: string[]): UserQuestionPayload {
   const stepList = steps.map((s, i) => `${i + 1}. ${s}`).join('\n');
   return {
+    // Destructive approval: require the explicit confirm button — a single
+    // stray click must not launch the plan.
+    confirm: true,
     questions: [
       {
         header: '计划审批',
@@ -53,12 +57,53 @@ export const PLAN_RISK_KEYWORDS: readonly string[] = [
   'uninstall', 'format', 'reset', 'discard', 'erase', 'send', 'upload', 'push', 'install',
 ];
 
+/**
+ * Noun compounds that contain a risky verb as a substring but describe a data
+ * object, not an action ("查看安装包" is read-only). A keyword occurrence fully
+ * contained inside one of these spans is ignored; any occurrence outside them
+ * still triggers. Deliberately excludes executables (安装程序 / installer):
+ * "运行安装程序" DOES execute an installer, and the gate leans inclusive —
+ * a borderline approval prompt is cheaper than an unreviewed destructive run.
+ */
+export const PLAN_RISK_NOUN_EXCEPTIONS: readonly string[] = [
+  '安装包', '安装目录', '安装文件',
+  'installation package',
+];
+
+/** All [start, end) spans where an exception noun occurs in `text`. */
+function exceptionSpans(text: string): Array<[number, number]> {
+  const spans: Array<[number, number]> = [];
+  for (const noun of PLAN_RISK_NOUN_EXCEPTIONS) {
+    const n = noun.toLowerCase();
+    let idx = text.indexOf(n);
+    while (idx !== -1) {
+      spans.push([idx, idx + n.length]);
+      idx = text.indexOf(n, idx + 1);
+    }
+  }
+  return spans;
+}
+
 /** True if any plan step mentions a high-risk operation (heuristic — see PLAN_RISK_KEYWORDS). */
 export function planHasRiskySteps(steps: string[]): boolean {
   if (!Array.isArray(steps)) return false;
   return steps.some((s) => {
     const text = String(s).toLowerCase();
-    return PLAN_RISK_KEYWORDS.some((kw) => text.includes(kw.toLowerCase()));
+    const spans = exceptionSpans(text);
+    return PLAN_RISK_KEYWORDS.some((kw) => {
+      const k = kw.toLowerCase();
+      let idx = text.indexOf(k);
+      while (idx !== -1) {
+        const end = idx + k.length;
+        // Span-containment instead of substring-stripping: stripping corrupted
+        // neighbors ("uninstaller" minus "installer" left "un ", losing the
+        // "uninstall" match). An occurrence merely overlapping a span still counts.
+        const contained = spans.some(([s0, e0]) => idx >= s0 && end <= e0);
+        if (!contained) return true;
+        idx = text.indexOf(k, idx + 1);
+      }
+      return false;
+    });
   });
 }
 
@@ -80,6 +125,23 @@ export const reportPlanTool: ToolDefinition = {
     const steps = input.steps as string[];
     const hasSteps = Array.isArray(steps) && steps.length > 0;
 
+    // Land the plan on the loop's execution so the progress panel shows it.
+    // Called only for plans the user can act on — approved or approval-free.
+    // A rejected/timed-out plan must NOT reach the panel (the user just said
+    // no to exactly these steps).
+    const landPlannedSteps = () => {
+      const loopId = context?.loopId;
+      if (!loopId || !hasSteps) return;
+      const store = useTaskExecutionStore.getState();
+      const exec = store.getExecutionByLoopId(loopId);
+      if (!exec) return;
+      store.setPlannedSteps(exec.id, steps.map((description, i) => ({
+        index: i + 1,
+        description,
+        status: 'pending' as const,
+      })));
+    };
+
     // Plan approval (B1, auto-trigger): when a plan contains high-risk steps
     // (move/delete/overwrite/send/install…), require user approval BEFORE writes
     // are unlocked — no manual toggle needed; safe/read-only plans pass straight
@@ -95,17 +157,22 @@ export const reportPlanTool: ToolDefinition = {
       const result = await requestUserQuestion(context.toolCallId, convId, buildPlanApprovalPayload(steps));
       if (interpretPlanApproval(result)) {
         setPlanMode(convId, 'approved');
+        landPlannedSteps();
         return '用户已批准计划，现在可以开始执行。';
       }
       if (result === null) {
         return '计划审批超时或已取消，处于计划模式（只读）。可修改后重新提交计划。';
       }
-      return '用户未批准当前计划，请根据反馈修改后重新调用 report_plan。当前为计划模式（只读）。';
+      // A bare rejection carries no feedback — instructing the model to
+      // "revise and resubmit" made it re-pop an identical approval card with
+      // no words in between. Make it talk to the user first.
+      return '用户未批准当前计划。请先向用户询问顾虑和期望的调整，在得到明确反馈之前不要重新提交相同的计划。当前为计划模式（只读）。';
     }
 
     if (!hasSteps) {
       return '已记录执行计划';
     }
+    landPlannedSteps();
     return `已记录执行计划：${steps.length}个步骤`;
   },
   isConcurrencySafe: false,

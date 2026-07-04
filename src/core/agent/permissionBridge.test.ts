@@ -13,8 +13,13 @@ import {
   drainUserQuestionsForConversation,
   getPendingUserQuestions,
   subscribeUserQuestion,
+  findQuestionOwningMessage,
+  setLoopContext,
+  clearLoopContext,
+  getLoopContextForConversation,
+  type LoopContext,
 } from './permissionBridge';
-import type { UserQuestionPayload, UserQuestionResult } from '../../types';
+import type { Message, UserQuestionPayload, UserQuestionResult } from '../../types';
 
 const MINIMAL_PAYLOAD: UserQuestionPayload = {
   questions: [
@@ -120,6 +125,68 @@ describe('permissionBridge — UserQuestion queue', () => {
       const result = await promise;
       expect(result).toBeNull();
       vi.useRealTimers();
+    });
+  });
+
+  describe('getLoopContextForConversation', () => {
+    const makeCtx = (loopId: string, conversationId: string): LoopContext => ({
+      commandConfirmCallback: async () => true,
+      filePermissionCallback: async () => true,
+      signal: new AbortController().signal,
+      eventRouter: {} as LoopContext['eventRouter'],
+      loopId,
+      conversationId,
+      toolCallToStepId: new Map(),
+    });
+
+    it('resolves the loop owning the given conversation, not the first map entry', () => {
+      // Regression (review): getCurrentLoopContext() returns the FIRST entry of
+      // the global map — with two concurrent conversations, an enqueued user
+      // message got tagged with the OTHER conversation's loopId.
+      setLoopContext('loop-a', makeCtx('loop-a', 'conv-a'));
+      setLoopContext('loop-b', makeCtx('loop-b', 'conv-b'));
+      try {
+        expect(getLoopContextForConversation('conv-b')?.loopId).toBe('loop-b');
+        expect(getLoopContextForConversation('conv-a')?.loopId).toBe('loop-a');
+        expect(getLoopContextForConversation('conv-none')).toBeNull();
+      } finally {
+        clearLoopContext('loop-a');
+        clearLoopContext('loop-b');
+      }
+    });
+  });
+
+  describe('findQuestionOwningMessage', () => {
+    const makeMsg = (id: string, toolCalls: Array<{ id: string; name: string }>): Message => ({
+      id,
+      role: 'assistant',
+      content: '',
+      timestamp: 0,
+      toolCalls: toolCalls.map((tc) => ({ ...tc, input: {} })),
+    });
+
+    it('finds the message owning an ask_user_question tool call', () => {
+      const msgs = [makeMsg('m1', [{ id: 'tc-a', name: 'ask_user_question' }])];
+      expect(findQuestionOwningMessage(msgs, 'tc-a')?.id).toBe('m1');
+    });
+
+    it('finds the message owning a report_plan tool call (plan approval)', () => {
+      // Regression: plan approval questions are keyed to a report_plan tool
+      // call — the dock must locate them too, or the approval card never shows.
+      const msgs = [
+        makeMsg('m1', [{ id: 'tc-other', name: 'run_command' }]),
+        makeMsg('m2', [{ id: 'tc-plan', name: 'report_plan' }]),
+      ];
+      expect(findQuestionOwningMessage(msgs, 'tc-plan')?.id).toBe('m2');
+    });
+
+    it('does not match a same-id tool call of an unrelated tool', () => {
+      const msgs = [makeMsg('m1', [{ id: 'tc-x', name: 'run_command' }])];
+      expect(findQuestionOwningMessage(msgs, 'tc-x')).toBeUndefined();
+    });
+
+    it('returns undefined when no message owns the id', () => {
+      expect(findQuestionOwningMessage([], 'tc-none')).toBeUndefined();
     });
   });
 });

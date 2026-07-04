@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { updateMemoryTool, reportPlanTool, buildPlanApprovalPayload, interpretPlanApproval, planHasRiskySteps, PLAN_APPROVE_LABEL, PLAN_REJECT_LABEL } from './memoryTools';
+import { useTaskExecutionStore } from '../../../stores/taskExecutionStore';
 
 // ──────────────────────────────────────────────────────────────────────────
 // Mocks: lazy-imported in updateMemoryTool.execute, so vi.mock the real paths
@@ -290,11 +291,44 @@ describe('reportPlanTool — plan-mode approval (B1)', () => {
       expect(planHasRiskySteps([])).toBe(false);
       expect(planHasRiskySteps(undefined as unknown as string[])).toBe(false);
     });
+    it('does not flag noun compounds that merely contain a risky verb', () => {
+      // Regression: "查看本地安装包" (inspect a local installer package) is
+      // read-only but substring-matched 安装 and blocked a whole session.
+      expect(planHasRiskySteps(['查看本地安装包里的目录结构'])).toBe(false);
+      expect(planHasRiskySteps(['检查安装目录下有哪些文件'])).toBe(false);
+      expect(planHasRiskySteps(['review the installation package layout'])).toBe(false);
+    });
+    it('still flags real install actions alongside noun mentions', () => {
+      expect(planHasRiskySteps(['解压安装包并安装到系统'])).toBe(true);
+      expect(planHasRiskySteps(['install nginx on the server'])).toBe(true);
+    });
+    it('noun exceptions must not swallow overlapping risky keywords (review regression)', () => {
+      // Stripping exception substrings corrupted neighbors: "uninstaller"
+      // lost its "installer" chunk and the remaining "un " no longer matched
+      // the "uninstall" keyword — a destructive step slipped past the gate.
+      expect(planHasRiskySteps(['run the uninstaller to wipe old data'])).toBe(true);
+    });
+    it('acting on an executable installer stays gated (executables are not exceptions)', () => {
+      expect(planHasRiskySteps(['下载并运行安装程序'])).toBe(true);
+      expect(planHasRiskySteps(['run the installer silently'])).toBe(true);
+    });
   });
 
   describe('execute gating', () => {
-    const ctx = { conversationId: 'c1', toolCallId: 't1' };
+    const ctx = { conversationId: 'c1', toolCallId: 't1', loopId: 'loop-1' };
     const input = { steps: ['步骤一', '步骤二'] };
+
+    function seedExecution() {
+      useTaskExecutionStore.setState({
+        executions: {
+          'exec-1': {
+            id: 'exec-1', conversationId: 'c1', loopId: 'loop-1',
+            status: 'running', startTime: 1, plannedSteps: [], planParsed: false, steps: [],
+          } as unknown as import('@/types/execution').TaskExecution,
+        },
+        loopIdIndex: { 'loop-1': 'exec-1' },
+      });
+    }
 
     it('does not request approval for a safe plan when mode is off', async () => {
       mockGetPlanMode.mockReturnValue('off');
@@ -329,6 +363,43 @@ describe('reportPlanTool — plan-mode approval (B1)', () => {
       const result = await reportPlanTool.execute(input, ctx);
       expect(mockSetPlanMode).not.toHaveBeenCalledWith('c1', 'approved');
       expect(result).toContain('未批准');
+    });
+
+    it('rejection tells the model to ASK the user before resubmitting (no silent re-prompt loop)', async () => {
+      // Regression: the old text said "请根据反馈修改后重新调用 report_plan" —
+      // but a rejection carries no feedback, so the model instantly re-submitted
+      // an identical plan and the approval card re-popped with no words between.
+      mockGetPlanMode.mockReturnValue('planning');
+      mockRequestUserQuestion.mockResolvedValue({ answers: [{ header: '计划审批', question: 'q', selected: [PLAN_REJECT_LABEL] }] });
+      const result = await reportPlanTool.execute(input, ctx);
+      expect(result).toContain('询问');
+      expect(result).toContain('不要');
+    });
+
+    it('approved plan lands plannedSteps on the loop execution (panel shows it)', async () => {
+      seedExecution();
+      mockGetPlanMode.mockReturnValue('planning');
+      mockRequestUserQuestion.mockResolvedValue({ answers: [{ header: '计划审批', question: 'q', selected: [PLAN_APPROVE_LABEL] }] });
+      await reportPlanTool.execute(input, ctx);
+      const exec = useTaskExecutionStore.getState().executions['exec-1'];
+      expect(exec.plannedSteps.map((s) => s.description)).toEqual(['步骤一', '步骤二']);
+    });
+
+    it('rejected plan does NOT land plannedSteps (panel must not show a rejected plan)', async () => {
+      seedExecution();
+      mockGetPlanMode.mockReturnValue('planning');
+      mockRequestUserQuestion.mockResolvedValue({ answers: [{ header: '计划审批', question: 'q', selected: [PLAN_REJECT_LABEL] }] });
+      await reportPlanTool.execute(input, ctx);
+      const exec = useTaskExecutionStore.getState().executions['exec-1'];
+      expect(exec.plannedSteps).toHaveLength(0);
+    });
+
+    it('safe plan (no approval needed) lands plannedSteps immediately', async () => {
+      seedExecution();
+      mockGetPlanMode.mockReturnValue('off');
+      await reportPlanTool.execute(input, ctx);
+      const exec = useTaskExecutionStore.getState().executions['exec-1'];
+      expect(exec.plannedSteps.map((s) => s.description)).toEqual(['步骤一', '步骤二']);
     });
 
     it('null result (timeout): stays read-only, does not approve', async () => {

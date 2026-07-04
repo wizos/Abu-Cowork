@@ -11,7 +11,6 @@ import { uint8ArrayToBase64 } from '@/utils/base64';
 import { getBaseName, IMAGE_MIME_MAP } from '@/utils/pathUtils';
 import { isImageFile } from '@/components/chat/FileAttachment';
 import { enqueueUserInput } from '@/core/agent/userInputQueue';
-import { getCurrentLoopContext } from '@/core/agent/permissionBridge';
 import { useChatStore, useActiveConversation } from '@/stores/chatStore';
 import ContextIndicator from '@/components/chat/ContextIndicator';
 import { useDiscoveryStore } from '@/stores/discoveryStore';
@@ -21,7 +20,7 @@ import { usePermissionStore } from '@/stores/permissionStore';
 import type { PermissionDuration } from '@/stores/permissionStore';
 import { useI18n } from '@/i18n';
 import { Button } from '@/components/ui/button';
-import { cn, generateId } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import type { ImageAttachment } from '@/types';
 import { generateAttachmentId, readFileAsBase64, SUPPORTED_IMAGE_TYPES } from '@/utils/imageUtils';
 import PermissionDialog from '@/components/common/PermissionDialog';
@@ -527,19 +526,11 @@ export default function ChatInput({ variant, onSend, disabled, scenarioPlacehold
       message = bodyParts;
     }
 
-    // Mid-task input: if agent is running, enqueue the message instead of starting a new loop
+    // Mid-task input: if agent is running, stage the message in the queue
+    // strip above the composer (cancellable) instead of starting a new loop.
+    // It becomes a transcript bubble only when the loop drains it.
     if (isRunning && activeConv?.id && message) {
       enqueueUserInput(activeConv.id, message);
-      // Also add as a user message to the UI immediately, with the current loopId
-      // so it groups correctly with the ongoing assistant response
-      const currentLoopId = getCurrentLoopContext()?.loopId;
-      useChatStore.getState().addMessage(activeConv.id, {
-        id: generateId(),
-        role: 'user',
-        content: message,
-        timestamp: Date.now(),
-        loopId: currentLoopId,
-      });
       resetInput();
       return;
     }

@@ -150,17 +150,20 @@ vi.mock('../core/agent/retry', () => ({
 
 vi.mock('../core/agent/permissionBridge', () => ({
   clearLoopContext: vi.fn(),
+  getLoopContextForConversation: vi.fn().mockReturnValue(null),
   requestCommandConfirmation: vi.fn().mockResolvedValue(true),
   requestFilePermission: vi.fn().mockResolvedValue(true),
   drainConfirmationQueue: vi.fn().mockReturnValue([]),
   drainFilePermissionQueue: vi.fn().mockReturnValue([]),
   drainWorkspaceRequest: vi.fn().mockReturnValue(null),
+  drainUserQuestions: vi.fn(),
 }));
 
 vi.mock('../core/agent/userInputQueue', () => ({
   drainQueuedInputs: vi.fn().mockReturnValue([]),
   clearInputQueue: vi.fn(),
   hasQueuedInputs: vi.fn().mockReturnValue(false),
+  enqueueUserInput: vi.fn(),
 }));
 
 vi.mock('../core/agent/executionSnapshot', () => ({
@@ -285,7 +288,7 @@ vi.mock('../../utils/platform', () => ({
 }));
 
 // Now import the module under test
-import { runAgentLoop, escalateMaxOutputTokens } from '../core/agent/agentLoop';
+import { runAgentLoop, escalateMaxOutputTokens, persistExecutionSnapshot } from '../core/agent/agentLoop';
 import type { StreamEvent, Message } from '../types';
 // Mocked module reference — used to override token estimator per-test
 import * as tokenEstimatorModule from '../core/context/tokenEstimator';
@@ -461,6 +464,129 @@ describe('Agent Pipeline Integration', () => {
       expect(result.reason).toBe('aborted');
     });
 
+    it('drops the untouched assistant placeholder when the turn aborts before any output', async () => {
+      // Regression: every turn writes an empty assistant placeholder before
+      // streaming. An abort that fires before any text/thinking/tool call
+      // used to leave it behind (empty, or holding only the stop marker),
+      // rendering as a blank assistant bubble.
+      const convId = useChatStore.getState().createConversation();
+      mockClaudeChat.mockImplementation(async () => {
+        const err = new Error('Aborted');
+        err.name = 'AbortError';
+        throw err;
+      });
+
+      const result = await runAgentLoop(convId, 'aborted before output');
+
+      expect(result.reason).toBe('aborted');
+      const conv = useChatStore.getState().conversations[convId];
+      const ghosts = conv.messages.filter((m) => {
+        if (m.role !== 'assistant') return false;
+        const raw = typeof m.content === 'string' ? m.content : '';
+        const text = raw.replace('*[已停止]*', '').trim();
+        return text.length === 0 && !(m.toolCalls?.length) && !m.thinking;
+      });
+      expect(ghosts).toHaveLength(0);
+    });
+
+    it('second runAgentLoop on a running conversation enqueues instead of racing', async () => {
+      // Regression: the entry sequence clearAbortController→getAbortController
+      // replaces the map entry WITHOUT aborting the previous loop, so a rapid
+      // double-send (before React flips isRunning) spawned two concurrent
+      // loops on one conversation — the earlier one unstoppable.
+      const { enqueueUserInput } = await import('../core/agent/userInputQueue');
+      const convId = useChatStore.getState().createConversation();
+      let release!: () => void;
+      const gate = new Promise<void>((r) => { release = r; });
+      let streamCalls = 0;
+      mockClaudeChat.mockImplementation(
+        async (_m: unknown, _o: unknown, onEvent: (e: StreamEvent) => void) => {
+          streamCalls++;
+          await gate; // keep the first loop in flight
+          onEvent({ type: 'text', text: 'done' });
+          onEvent({ type: 'done', stopReason: 'end_turn' });
+        },
+      );
+
+      const first = runAgentLoop(convId, 'first message');
+      await new Promise((r) => setTimeout(r, 20)); // let the first loop reach the LLM call
+
+      const second = await runAgentLoop(convId, 'second message');
+
+      expect(second.reason).toBe('enqueued');
+      expect(vi.mocked(enqueueUserInput)).toHaveBeenCalledWith(convId, 'second message');
+      // Codex-style staging: the queued message must NOT appear in the
+      // transcript yet — it surfaces only when the running loop drains it.
+      const msgs = useChatStore.getState().conversations[convId].messages;
+      expect(msgs.some((m) => m.role === 'user' && m.content === 'second message')).toBe(false);
+
+      release();
+      await first;
+      expect(streamCalls).toBe(1); // no concurrent second stream
+    });
+
+    it('report_plan tool_use event does NOT pre-land plannedSteps (approval decides)', async () => {
+      // Regression: plannedSteps used to be written at tool_use time — before
+      // approval — so a REJECTED plan still showed up in the progress panel.
+      // They now land inside the tool's execute() only for approved/safe plans.
+      const convId = useChatStore.getState().createConversation();
+      mockClaudeChat.mockImplementation(
+        async (_m: unknown, _o: unknown, onEvent: (e: StreamEvent) => void) => {
+          onEvent({ type: 'tool_use', id: 't-plan', name: 'report_plan', input: { steps: ['删除文件'] } });
+          onEvent({ type: 'done', stopReason: 'end_turn' });
+        },
+      );
+
+      await runAgentLoop(convId, 'plan only');
+
+      const execs = Object.values(useTaskExecutionStore.getState().executions)
+        .filter((e) => e.conversationId === convId);
+      expect(execs.every((e) => e.plannedSteps.length === 0)).toBe(true);
+    });
+
+    it('drained queued messages surface as user bubbles at consumption time', async () => {
+      const { drainQueuedInputs } = await import('../core/agent/userInputQueue');
+      const convId = useChatStore.getState().createConversation();
+      vi.mocked(drainQueuedInputs).mockReturnValueOnce([
+        { id: 'q1', text: '数完说你好', timestamp: 123 },
+      ]);
+      mockClaudeChat.mockImplementation(
+        async (_m: unknown, _o: unknown, onEvent: (e: StreamEvent) => void) => {
+          onEvent({ type: 'text', text: '好的' });
+          onEvent({ type: 'done', stopReason: 'end_turn' });
+        },
+      );
+
+      await runAgentLoop(convId, '从1数到3');
+
+      const conv = useChatStore.getState().conversations[convId];
+      const queuedMsg = conv.messages.find((m) => m.role === 'user' && m.content === '数完说你好');
+      expect(queuedMsg).toBeDefined();
+      expect(queuedMsg?.isSystem).toBeFalsy();
+    });
+
+    it('keeps an aborted turn that already streamed partial text', async () => {
+      // The ghost cleanup must not eat turns with real progress.
+      const convId = useChatStore.getState().createConversation();
+      mockClaudeChat.mockImplementation(
+        async (_m: unknown, _o: unknown, onEvent: (e: StreamEvent) => void) => {
+          onEvent({ type: 'text', text: '正在分析问题…' });
+          const err = new Error('Aborted');
+          err.name = 'AbortError';
+          throw err;
+        },
+      );
+
+      const result = await runAgentLoop(convId, 'partial text then abort');
+
+      expect(result.reason).toBe('aborted');
+      const conv = useChatStore.getState().conversations[convId];
+      const partial = conv.messages.find(
+        (m) => m.role === 'assistant' && typeof m.content === 'string' && m.content.includes('正在分析问题'),
+      );
+      expect(partial).toBeDefined();
+    });
+
     it('runs skill cleanup when the turn cap is hit (review finding [3])', async () => {
       // The max_turns break used to skip the terminal cleanup that every other exit
       // path runs. Now that the cap is always finite this path is routine, so a skill
@@ -511,6 +637,97 @@ describe('Agent Pipeline Integration', () => {
 
       expect(result.reason).toBe('no_progress');
       expect(calls).toBe(6);
+    });
+
+    it('surfaces staged queue messages as user bubbles when the loop aborts (F5)', async () => {
+      // Regression: the abort path called clearInputQueue directly, silently
+      // destroying messages the user staged mid-loop. They must land in the
+      // transcript instead — the aborted loop can't answer them, but the text
+      // has to stay visible.
+      const { drainQueuedInputs } = await import('../core/agent/userInputQueue');
+      // Drain is called at the top of each loop iteration AND (now) in the
+      // abort path: 1st call = loop top (empty), 2nd call = abort drain (item).
+      vi.mocked(drainQueuedInputs)
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([{ id: 'q9', text: '别丢了我', timestamp: 1 }]);
+      const convId = useChatStore.getState().createConversation();
+      mockClaudeChat.mockImplementation(async () => {
+        const err = new Error('Aborted');
+        err.name = 'AbortError';
+        throw err;
+      });
+
+      const result = await runAgentLoop(convId, 'abort with staged input');
+
+      expect(result.reason).toBe('aborted');
+      const conv = useChatStore.getState().conversations[convId];
+      const staged = conv.messages.find((m) => m.role === 'user' && m.content === '别丢了我');
+      expect(staged).toBeDefined();
+    });
+
+    it('image-only send during a running loop starts a normal loop instead of staging (F6)', async () => {
+      // Regression: the concurrency guard staged EVERY interactive send into
+      // the text-only queue — an image-only send was swallowed entirely.
+      // Image/empty sends must fall through to a normal loop start.
+      const { enqueueUserInput } = await import('../core/agent/userInputQueue');
+      const convId = useChatStore.getState().createConversation();
+      let release!: () => void;
+      const gate = new Promise<void>((r) => { release = r; });
+      let streamCalls = 0;
+      mockClaudeChat.mockImplementation(
+        async (_m: unknown, _o: unknown, onEvent: (e: StreamEvent) => void) => {
+          streamCalls++;
+          if (streamCalls === 1) await gate; // keep the first loop in flight
+          onEvent({ type: 'text', text: 'done' });
+          onEvent({ type: 'done', stopReason: 'end_turn' });
+        },
+      );
+
+      const first = runAgentLoop(convId, 'first message');
+      await new Promise((r) => setTimeout(r, 20)); // let the first loop reach the LLM call
+
+      const second = await runAgentLoop(convId, '', {
+        images: [{ id: 'img-1', data: 'aGk=', mediaType: 'image/png' }],
+      });
+
+      expect(second.reason).not.toBe('enqueued');
+      expect(vi.mocked(enqueueUserInput)).not.toHaveBeenCalled();
+
+      release();
+      await first;
+    });
+  });
+
+  describe('persistExecutionSnapshot', () => {
+    it('stores plannedSteps on the loop\'s last assistant message and evicts the execution (F3)', () => {
+      // Regression: eviction destroyed plannedSteps with the execution, so the
+      // progress panel collapsed to the placeholder after every finished loop.
+      // Note steps=[] — plannedSteps alone must still be persisted.
+      const convId = useChatStore.getState().createConversation();
+      useChatStore.getState().addMessage(convId, {
+        id: 'a-plan', role: 'assistant', content: '计划完成', timestamp: 1, loopId: 'loop-f3',
+      });
+      useTaskExecutionStore.setState({
+        executions: {
+          'exec-f3': {
+            id: 'exec-f3',
+            conversationId: convId,
+            loopId: 'loop-f3',
+            status: 'completed',
+            startTime: 1,
+            plannedSteps: [{ index: 1, description: '步骤一', status: 'completed' }],
+            planParsed: true,
+            steps: [],
+          },
+        },
+        loopIdIndex: { 'loop-f3': 'exec-f3' },
+      });
+
+      persistExecutionSnapshot(convId, 'loop-f3');
+
+      const msg = useChatStore.getState().conversations[convId].messages.find((m) => m.id === 'a-plan');
+      expect(msg?.plannedSteps).toEqual([{ index: 1, description: '步骤一', status: 'completed' }]);
+      expect(useTaskExecutionStore.getState().executions['exec-f3']).toBeUndefined();
     });
   });
 

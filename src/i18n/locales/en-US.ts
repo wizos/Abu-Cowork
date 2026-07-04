@@ -1668,6 +1668,17 @@ const enUS: TranslationDict = {
     needsAuthorization: 'User authorization required to access',
   },
 
+  queueStrip: {
+    queuedHint: 'Queued · read next turn',
+    cancel: 'Cancel queued message',
+  },
+
+  planCard: {
+    title: 'Plan',
+    awaiting: 'Waiting for your confirmation',
+    stepsUnit: 'steps',
+  },
+
   userQuestion: {
     cardTitle: 'Please choose',
     singleSelectHint: 'Single choice',
@@ -1675,6 +1686,7 @@ const enUS: TranslationDict = {
     otherOptionLabel: 'Other…',
     otherInputPlaceholder: 'Enter custom answer',
     submitButton: 'Submit',
+    confirmButton: 'Confirm & run',
     answeredLabel: 'Answered',
     submitDisabledHint: 'Please answer all questions before submitting',
     cancelledLabel: 'Cancelled',
