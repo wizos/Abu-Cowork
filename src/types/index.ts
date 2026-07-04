@@ -115,6 +115,10 @@ export interface UserQuestion {
 
 export interface UserQuestionPayload {
   questions: UserQuestion[];     // 1-4 questions
+  /** Two-step confirm mode (e.g. plan approval): clicking a single-select
+   * option only selects it — submission requires the explicit confirm button.
+   * Guards destructive approvals against click-through. */
+  confirm?: boolean;
 }
 
 /** Single-question answer: selected labels, or custom free text (Other…) */
@@ -235,6 +239,8 @@ export interface Message {
   toolCallsForContext?: ToolCallForContext[];
   // Persisted execution steps snapshot (for post-restart rich display)
   executionSteps?: import('./execution').ExecutionStepSnapshot[];
+  // Persisted planned steps snapshot (for post-restart plan display in TaskProgressPanel)
+  plannedSteps?: import('./execution').PlannedStep[];
   // System-injected messages (e.g. max_tokens recovery) — hidden from chat UI
   isSystem?: boolean;
 }

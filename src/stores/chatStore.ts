@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type { Message, Conversation, AgentStatus, TokenUsage, ConversationStatus, ToolCallForContext, ToolResultContent, ToolCall, NoticeCardAction, UserQuestionResult } from '../types';
-import type { ExecutionStepSnapshot } from '../types/execution';
+import type { ExecutionStepSnapshot, PlannedStep } from '../types/execution';
 import { useWorkspaceStore } from './workspaceStore';
 import { useProjectStore } from './projectStore';
 import { useTaskExecutionStore } from './taskExecutionStore';
@@ -293,9 +293,12 @@ interface ChatActions {
   updateMessageUsage: (convId: string, usage: TokenUsage, msgId?: string) => void;
   appendToolCallContext: (convId: string, loopId: string, context: ToolCallForContext) => void;
   setExecutionStepsSnapshot: (convId: string, loopId: string, steps: ExecutionStepSnapshot[]) => void;
+  setPlannedStepsSnapshot: (convId: string, loopId: string, steps: PlannedStep[]) => void;
 
   // Streaming control
   getAbortController: (convId: string) => AbortController;
+  /** True when a live agent loop holds a controller for this conversation. */
+  hasAbortController: (convId: string) => boolean;
   cancelStreaming: (convId: string) => void;
   clearAbortController: (convId: string) => void;
 
@@ -993,6 +996,30 @@ export const useChatStore = create<ChatStore>()(
         }
       },
 
+      setPlannedStepsSnapshot: (convId, loopId, steps) => {
+        let targetMsgId: string | undefined;
+        set((state) => {
+          const conv = state.conversations[convId];
+          if (!conv) return;
+          for (let i = conv.messages.length - 1; i >= 0; i--) {
+            const m = conv.messages[i];
+            if (m.role === 'assistant' && m.loopId === loopId) {
+              m.plannedSteps = steps;
+              targetMsgId = m.id;
+              break;
+            }
+          }
+        });
+        if (targetMsgId) {
+          const msg = get().conversations[convId]?.messages.find((m) => m.id === targetMsgId);
+          if (msg) {
+            import('../core/session/conversationStorage').then(({ replaceMessageById }) => {
+              replaceMessageById(convId, msg).catch(() => {});
+            }).catch(() => {});
+          }
+        }
+      },
+
       // Streaming control
       getAbortController: (convId) => {
         let controller = abortControllers.get(convId);
@@ -1003,7 +1030,14 @@ export const useChatStore = create<ChatStore>()(
         return controller;
       },
 
+      hasAbortController: (convId) => abortControllers.has(convId),
+
       cancelStreaming: (convId) => {
+        // Land any RAF-buffered stream tokens first, so the stop marker below
+        // is appended AFTER the streamed text (and both get persisted). The
+        // stop button reaches here before the aborted loop's own flush runs.
+        flushTokenBuffer(convId);
+
         const controller = abortControllers.get(convId);
         if (controller) {
           controller.abort();
@@ -1016,15 +1050,25 @@ export const useChatStore = create<ChatStore>()(
           invoke('window_show').catch(() => {});
         }).catch(() => {});
 
+        let cancelledMsgId: string | null = null;
         set((state) => {
           const messages = state.conversations[convId]?.messages;
           if (messages?.length) {
             const lastMsg = messages[messages.length - 1];
+            // Persist only when the stop actually mutated the message (marker
+            // appended / thinkingDuration finalized / tool calls cancelled).
+            // A pure isStreaming flip on an empty placeholder must NOT write:
+            // the agentLoop abort path deletes that ghost afterwards, and
+            // persisting a marker-only row would resurrect it on reload.
+            let mutated = false;
             if (lastMsg.isStreaming) {
               lastMsg.isStreaming = false;
-              // Append cancellation notice
-              if (typeof lastMsg.content === 'string') {
+              // Append cancellation notice — only when real streamed content
+              // exists, so an untouched placeholder never becomes a
+              // "*[已停止]*"-only bubble.
+              if (typeof lastMsg.content === 'string' && lastMsg.content.trim().length > 0) {
                 lastMsg.content += '\n\n*[已停止]*';
+                mutated = true;
               }
             }
             // If cancel happened mid-thinking, finalize thinkingDuration so the
@@ -1037,6 +1081,7 @@ export const useChatStore = create<ChatStore>()(
               lastMsg.thinkingDuration = start
                 ? Math.max(1, Math.round((Date.now() - start) / 1000))
                 : 1;
+              mutated = true;
             }
             // Mark any executing tool calls as cancelled
             if (lastMsg.toolCalls) {
@@ -1044,14 +1089,29 @@ export const useChatStore = create<ChatStore>()(
                 if (tc.isExecuting) {
                   tc.isExecuting = false;
                   tc.result = '[已取消]';
+                  mutated = true;
                 }
               });
             }
+            if (mutated) cancelledMsgId = lastMsg.id;
           }
           state.agentStatus = 'idle';
           state.currentTool = null;
           state.thinkingStartTime = null;
         });
+
+        // Persist the stop mutation (marker + cancelled tool calls) — without
+        // this the live view shows "已停止" while reload shows the pre-stop
+        // JSONL snapshot (often a blank bubble).
+        if (cancelledMsgId) {
+          const finalMsg = useChatStore.getState().conversations[convId]
+            ?.messages.find((m) => m.id === cancelledMsgId);
+          if (finalMsg) {
+            import('../core/session/conversationStorage').then(({ replaceMessageById }) => {
+              replaceMessageById(convId, finalMsg).catch(() => {});
+            }).catch(() => {});
+          }
+        }
       },
 
       clearAbortController: (convId) => {

@@ -1669,6 +1669,17 @@ const zhCN: TranslationDict = {
     needsAuthorization: '需要用户授权才能访问',
   },
 
+  queueStrip: {
+    queuedHint: '已排队 · 阿布会在下轮读取',
+    cancel: '取消排队',
+  },
+
+  planCard: {
+    title: '执行计划',
+    awaiting: '等待你确认',
+    stepsUnit: '步',
+  },
+
   userQuestion: {
     cardTitle: '请选择',
     singleSelectHint: '单选',
@@ -1676,6 +1687,7 @@ const zhCN: TranslationDict = {
     otherOptionLabel: '其他…',
     otherInputPlaceholder: '请输入自定义内容',
     submitButton: '提交',
+    confirmButton: '确认执行',
     answeredLabel: '已作答',
     submitDisabledHint: '请为每道题选择或填写答案',
     cancelledLabel: '已取消',

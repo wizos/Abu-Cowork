@@ -7,7 +7,7 @@
  */
 
 /** Queued user input entry */
-interface QueuedInput {
+export interface QueuedInput {
   id: string;
   text: string;
   timestamp: number;
@@ -15,8 +15,12 @@ interface QueuedInput {
   isSystem?: boolean;
 }
 
-// Per-conversation input queues
+// Per-conversation input queues. Arrays are replaced (never mutated) on every
+// change so getQueuedInputs() snapshots stay referentially stable for
+// useSyncExternalStore.
 const inputQueues = new Map<string, QueuedInput[]>();
+
+const EMPTY_QUEUE: readonly QueuedInput[] = [];
 
 // Listeners for queue state changes
 const listeners = new Set<() => void>();
@@ -33,13 +37,36 @@ export function enqueueUserInput(conversationId: string, text: string, isSystem?
   if (!text.trim()) return;
 
   const queue = inputQueues.get(conversationId) ?? [];
-  queue.push({
-    id: `qi-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-    text: text.trim(),
-    timestamp: Date.now(),
-    isSystem,
-  });
-  inputQueues.set(conversationId, queue);
+  inputQueues.set(conversationId, [
+    ...queue,
+    {
+      id: `qi-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      text: text.trim(),
+      timestamp: Date.now(),
+      isSystem,
+    },
+  ]);
+  notifyListeners();
+}
+
+/**
+ * Snapshot of the staged inputs for a conversation (for useSyncExternalStore).
+ * Referentially stable between mutations; a shared empty array when none.
+ */
+export function getQueuedInputs(conversationId: string): readonly QueuedInput[] {
+  return inputQueues.get(conversationId) ?? EMPTY_QUEUE;
+}
+
+/**
+ * Cancel one staged input before the loop consumes it (the × on a queued pill).
+ */
+export function removeQueuedInput(conversationId: string, id: string): void {
+  const queue = inputQueues.get(conversationId);
+  if (!queue) return;
+  const next = queue.filter((qi) => qi.id !== id);
+  if (next.length === queue.length) return;
+  if (next.length === 0) inputQueues.delete(conversationId);
+  else inputQueues.set(conversationId, next);
   notifyListeners();
 }
 

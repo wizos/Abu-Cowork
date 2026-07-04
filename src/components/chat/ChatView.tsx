@@ -3,8 +3,7 @@ import { useChatStore, useActiveConversation } from '@/stores/chatStore';
 import type { Message, ImageAttachment } from '@/types';
 import { useAutoScroll } from '@/hooks/useAutoScroll';
 import { runAgentLoop } from '@/core/agent/agentLoop';
-import { getPendingCommandConfirmation, resolveCommandConfirmation, subscribeToCommandConfirmation, getPendingFilePermission, resolveFilePermission, subscribeToFilePermission, getPendingWorkspaceRequest, resolveWorkspaceRequest, subscribeToWorkspaceRequest, getPendingUserQuestions, subscribeUserQuestion } from '@/core/agent/permissionBridge';
-import { TOOL_NAMES } from '@/core/tools/toolNames';
+import { getPendingCommandConfirmation, resolveCommandConfirmation, subscribeToCommandConfirmation, getPendingFilePermission, resolveFilePermission, subscribeToFilePermission, getPendingWorkspaceRequest, resolveWorkspaceRequest, subscribeToWorkspaceRequest, getPendingUserQuestions, subscribeUserQuestion, findQuestionOwningMessage } from '@/core/agent/permissionBridge';
 import { useSettingsStore, getActiveApiKey, providerRequiresApiKey } from '@/stores/settingsStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import type { PermissionDuration } from '@/stores/permissionStore';
@@ -13,6 +12,7 @@ import { useI18n } from '@/i18n';
 import MessageGroup from './MessageGroup';
 import ChatInput from './ChatInput';
 import UserQuestionDock from './UserQuestionDock';
+import QueuedMessagesStrip from './QueuedMessagesStrip';
 import ScenarioGuide from './ScenarioGuide';
 import { agentRegistry } from '@/core/agent/registry';
 import PermissionDialog from '@/components/common/PermissionDialog';
@@ -460,9 +460,7 @@ export default function ChatView() {
           {(() => {
             const pending = pendingUserQuestions.find((pq) => pq.conversationId === activeConvId);
             if (!pending) return null;
-            const owningMsg = messages.find((m) =>
-              m.toolCalls?.some((tc) => tc.id === pending.id && tc.name === TOOL_NAMES.ASK_USER_QUESTION),
-            );
+            const owningMsg = findQuestionOwningMessage(messages, pending.id);
             if (!owningMsg) return null;
             return (
               <UserQuestionDock
@@ -474,6 +472,9 @@ export default function ChatView() {
               />
             );
           })()}
+          {/* Staged mid-task messages — cancellable pills at the composer's
+              top-right edge; they enter the transcript when the loop drains them */}
+          <QueuedMessagesStrip conversationId={activeConv.id} />
           <ChatInput variant="chat" onSend={handleSend} />
           <div className="flex items-center justify-center gap-3 mt-1.5">
             <UsageChip conversationId={activeConv.id} />

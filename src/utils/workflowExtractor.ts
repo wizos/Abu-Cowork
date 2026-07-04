@@ -1,4 +1,4 @@
-import type { ToolCall, AgentStatus } from '@/types';
+import type { Message, ToolCall, AgentStatus } from '@/types';
 import { TOOL_NAMES } from '@/core/tools/toolNames';
 import { normalizeSeparators, joinPath, getBaseName } from '@/utils/pathUtils';
 import { parseArgs } from '@/utils/argsParser';
@@ -935,4 +935,32 @@ export function extractFileOutputs(
   }
 
   return files;
+}
+
+/** Non-blank plan steps of a report_plan tool call. Shared by PlanStepsCard
+ * and findLatestPlanCall so "has a plan card" and "card renders something"
+ * can never disagree. */
+export function parsePlanSteps(call: ToolCall): string[] {
+  const raw = call.input?.steps;
+  if (!Array.isArray(raw)) return [];
+  return (raw as unknown[]).map(String).filter((s) => s.trim().length > 0);
+}
+
+/** Latest report_plan call WITH renderable steps across a group's assistant
+ * messages — re-plans supersede earlier ones, mirroring
+ * taskExecutionStore.plannedSteps. Used by the inline PlanStepsCard
+ * (report_plan is hidden from the generic tool list). Degenerate calls
+ * (empty / whitespace-only steps) are skipped: counting one as content would
+ * suppress the streaming indicator while rendering nothing. */
+export function findLatestPlanCall(messages: readonly Message[]): ToolCall | undefined {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const calls = messages[i].toolCalls;
+    if (!calls) continue;
+    for (let j = calls.length - 1; j >= 0; j--) {
+      if (calls[j].name === TOOL_NAMES.REPORT_PLAN && parsePlanSteps(calls[j]).length > 0) {
+        return calls[j];
+      }
+    }
+  }
+  return undefined;
 }

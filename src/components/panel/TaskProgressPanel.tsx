@@ -23,24 +23,50 @@ export default function TaskProgressPanel() {
   const [expanded, setExpanded] = useState(true);
   // Get execution scoped to the current active conversation
   const activeConversationId = useChatStore((s) => s.activeConversationId);
-  // Use a stable selector: read the latest execution ID for this conversation
+  // Stable selector: the latest execution WITH planned steps for this
+  // conversation. Binding to the plain latest execution blanked the panel as
+  // soon as a follow-up turn ran without report_plan — the plan display is
+  // the panel's whole job, so it sticks to the most recent one (falling back
+  // to the latest execution so the placeholder still shows for fresh convs).
   const latestExecId = useTaskExecutionStore((s) => {
     if (!activeConversationId) return null;
     let latestId: string | null = null;
     let latestTime = 0;
+    let latestPlannedId: string | null = null;
+    let latestPlannedTime = 0;
     for (const id in s.executions) {
       const exec = s.executions[id];
-      if (exec.conversationId === activeConversationId && exec.startTime > latestTime) {
+      if (exec.conversationId !== activeConversationId) continue;
+      if (exec.startTime > latestTime) {
         latestTime = exec.startTime;
         latestId = id;
       }
+      if (exec.plannedSteps.length > 0 && exec.startTime > latestPlannedTime) {
+        latestPlannedTime = exec.startTime;
+        latestPlannedId = id;
+      }
     }
-    return latestId;
+    return latestPlannedId ?? latestId;
   });
   // Read plannedSteps from that specific execution (stable reference when empty)
-  const plannedSteps = useTaskExecutionStore((s) =>
+  const inMemoryPlannedSteps = useTaskExecutionStore((s) =>
     latestExecId ? (s.executions[latestExecId]?.plannedSteps ?? EMPTY_STEPS) : EMPTY_STEPS
   );
+  // Fallback: after a loop ends, persistExecutionSnapshot evicts the execution
+  // and stores plannedSteps on the loop's last assistant message — scan the
+  // active conversation from the end for the latest snapshot so the plan
+  // stays visible instead of collapsing back to the placeholder.
+  const messagePlannedSteps = useChatStore((s) => {
+    if (!activeConversationId) return EMPTY_STEPS;
+    const messages = s.conversations[activeConversationId]?.messages;
+    if (!messages) return EMPTY_STEPS;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const steps = messages[i].plannedSteps;
+      if (steps && steps.length > 0) return steps;
+    }
+    return EMPTY_STEPS;
+  });
+  const plannedSteps = inMemoryPlannedSteps.length > 0 ? inMemoryPlannedSteps : messagePlannedSteps;
   const hasPlannedSteps = plannedSteps.length > 0;
   const { t } = useI18n();
 

@@ -30,7 +30,7 @@ import { runSubagentLoop, extractParentConversationSummary } from './subagentLoo
 import type { SubagentProgressEvent } from './subagentLoop';
 import { createSubagentController } from './subagentAbort';
 import { allToolsUnparseable, MAX_NO_PROGRESS_TURNS, resolveMaxTurns } from './loopGuards';
-import { drainQueuedInputs, clearInputQueue } from './userInputQueue';
+import { drainQueuedInputs, clearInputQueue, enqueueUserInput } from './userInputQueue';
 import { snapshotExecutionSteps } from './executionSnapshot';
 import { emitHook } from './lifecycleHooks';
 import { getI18n, format } from '../../i18n';
@@ -157,10 +157,17 @@ import { clearPlanMode } from './planMode';
 export function persistExecutionSnapshot(conversationId: string, loopId: string): void {
   const store = useTaskExecutionStore.getState();
   const exec = store.getExecutionByLoopId(loopId);
-  if (!exec || exec.steps.length === 0) return;
+  // Return early only when there is truly nothing to persist.
+  if (!exec || (exec.steps.length === 0 && exec.plannedSteps.length === 0)) return;
 
-  // Save the latest snapshot, then evict from memory.
-  useChatStore.getState().setExecutionStepsSnapshot(conversationId, loopId, snapshotExecutionSteps(exec.steps));
+  // Persist execution steps snapshot if any.
+  if (exec.steps.length > 0) {
+    useChatStore.getState().setExecutionStepsSnapshot(conversationId, loopId, snapshotExecutionSteps(exec.steps));
+  }
+  // Persist planned steps so TaskProgressPanel survives loop eviction.
+  if (exec.plannedSteps.length > 0) {
+    useChatStore.getState().setPlannedStepsSnapshot(conversationId, loopId, exec.plannedSteps);
+  }
   store.evictExecution(exec.id);
 }
 
@@ -472,7 +479,10 @@ export type AgentLoopExitReason =
   | 'aborted'
   | 'error'
   | 'max_turns'
-  | 'no_progress';
+  | 'no_progress'
+  /** No loop ran: the conversation already had a live loop, so the message was
+   *  queued into it (see the concurrency guard at the top of runAgentLoop). */
+  | 'enqueued';
 
 /** Terminated by a safety guard rather than finishing the task — the result may
  *  be incomplete. Lets scheduler / trigger surface a meaningful status instead
@@ -586,6 +596,34 @@ export function shouldContinueTruncatedToolCalls(
 
 
 export async function runAgentLoop(conversationId: string, userMessage: string, options?: AgentLoopOptions): Promise<AgentLoopResult> {
+  // ── Concurrency guard: one live loop per conversation ────────────────────
+  // The entry sequence below (clearAbortController → getAbortController)
+  // replaces the controller WITHOUT aborting the previous loop, so a second
+  // runAgentLoop on a running conversation would race it unstoppably (the UI's
+  // isRunning check is React state and can lag a rapid double-send). Route the
+  // message into the running loop's input queue instead — same behavior as
+  // ChatInput's mid-task path. Interactive desktop only: headless callers
+  // (scheduler / trigger / IM) manage their own conversations. Only stage when
+  // there is stageable text and no images — the queue is text-only, and
+  // silently losing an image is worse than the rare double-loop race, so
+  // image/empty sends fall through to a normal loop start.
+  {
+    const runningConv = useChatStore.getState().conversations[conversationId];
+    if (
+      runningConv?.status === 'running'
+      && useChatStore.getState().hasAbortController(conversationId)
+      && isInteractiveDesktop(options, runningConv)
+      && userMessage.trim().length > 0
+      && !(options?.images?.length)
+    ) {
+      // Codex-style staging: the message lives in the cancellable queue strip
+      // above the composer and becomes a transcript bubble only when the
+      // running loop drains it (see the drainQueuedInputs block below).
+      enqueueUserInput(conversationId, userMessage);
+      return { reason: 'enqueued' };
+    }
+  }
+
   // New turn starts clean: drop any stale plan-mode lock from a prior/abandoned plan (see planMode.ts).
   clearPlanMode(conversationId);
 
@@ -984,21 +1022,20 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       });
     }).catch(() => {});
 
-    // Check for mid-task user input (already added to UI by ChatInput)
-    // Regular messages are already in the conversation store — just drain.
-    // System messages (e.g. background agent results) need to be added to chatStore here.
+    // Check for mid-task user input. Queued messages are staged OUTSIDE the
+    // transcript (cancellable strip above the composer) and become chat
+    // messages only here, at consumption time — tagged with THIS loop's id so
+    // they group with the turn that actually reads them.
     const queuedInputs = drainQueuedInputs(conversationId);
     for (const qi of queuedInputs) {
-      if (qi.isSystem) {
-        useChatStore.getState().addMessage(conversationId, {
-          id: generateId(),
-          role: 'user',
-          content: qi.text,
-          timestamp: qi.timestamp,
-          loopId,
-          isSystem: true,
-        });
-      }
+      useChatStore.getState().addMessage(conversationId, {
+        id: generateId(),
+        role: 'user',
+        content: qi.text,
+        timestamp: qi.timestamp,
+        loopId,
+        ...(qi.isSystem ? { isSystem: true } : {}),
+      });
     }
 
     // Emit turnStart hook
@@ -1397,18 +1434,11 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
                 }
               }
 
-              // Special handling for report_plan - save to store, hide from UI
+              // Special handling for report_plan — hide from the generic tool
+              // list. plannedSteps land on the execution inside the tool's own
+              // execute() (memoryTools), AFTER approval resolves: a rejected
+              // plan must never reach the progress panel.
               if (event.name === TOOL_NAMES.REPORT_PLAN) {
-                const steps = (event.input as { steps?: string[] }).steps;
-                if (steps && steps.length > 0) {
-                  // Convert to PlannedStep format and save
-                  const plannedSteps = steps.map((desc, i) => ({
-                    index: i + 1,
-                    description: desc,
-                    status: 'pending' as const,
-                  }));
-                  taskExecutionStore.setPlannedSteps(execution.id, plannedSteps);
-                }
                 // Add to tool calls but mark as hidden
                 collectedToolCalls.push({
                   id: event.id,
@@ -1949,6 +1979,10 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       if (isUserAbort) {
         logger.warn('Agent loop aborted', { conversationId, loopId });
 
+        // Flush partial streamed text into the message first — on this path the
+        // RAF-batched token buffer may still hold everything streamed so far.
+        flushTokenBuffer(conversationId, assistantMsgId);
+
         // Backfill missing tool results for interrupted tool calls.
         // Without this, orphaned tool_use blocks cause API 400 errors on the next turn.
         for (const tc of collectedToolCalls) {
@@ -1968,11 +2002,42 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
 
         // Clear loop context and any pending confirmation/permission dialogs
         clearLoopContext(loopId);
+        // Surface staged (non-system) queue messages as transcript user bubbles
+        // before clearing — the aborted loop can't answer them, but the text
+        // must remain visible instead of being silently destroyed.
+        for (const qi of drainQueuedInputs(conversationId)) {
+          if (qi.isSystem) continue;
+          useChatStore.getState().addMessage(conversationId, {
+            id: generateId(),
+            role: 'user',
+            content: qi.text,
+            timestamp: qi.timestamp,
+            loopId,
+          });
+        }
         clearInputQueue(conversationId);
         drainConfirmationQueue();
         drainFilePermissionQueue();
         drainWorkspaceRequest();
         drainUserQuestions();
+
+        // Drop the untouched placeholder BEFORE cancelStreaming: an abort that
+        // arrived before any text/thinking/tool call would otherwise persist as
+        // a blank assistant bubble (live now, and after reload via the JSONL
+        // copy written at creation — sanitizeLoadedMessages drops that one).
+        const placeholder = useChatStore.getState().conversations[conversationId]
+          ?.messages.find((m) => m.id === assistantMsgId);
+        if (placeholder) {
+          const placeholderText = typeof placeholder.content === 'string'
+            ? placeholder.content
+            : placeholder.content.filter((c) => c.type === 'text')
+                .map((c) => (c as { type: 'text'; text: string }).text).join('');
+          const isGhost = placeholderText.trim().length === 0
+            && !(placeholder.toolCalls?.length)
+            && !(placeholder.toolCallsForContext?.length)
+            && !placeholder.thinking;
+          if (isGhost) chatStore.deleteMessage(conversationId, assistantMsgId);
+        }
 
         chatStore.cancelStreaming(conversationId);
         chatStore.clearAbortController(conversationId);

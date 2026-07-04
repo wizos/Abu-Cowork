@@ -1,4 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { exists, readTextFile } from '@tauri-apps/plugin-fs';
+import { invoke } from '@tauri-apps/api/core';
 import { useChatStore, flushTokenBuffer } from './chatStore';
 import type { Conversation } from '../types';
 
@@ -435,6 +437,103 @@ describe('chatStore', () => {
       expect(msgs.find((m) => m.id === 'assistant-1')?.isStreaming).toBe(false);
       // user-2 should be untouched (it never had isStreaming, must stay falsy not true)
       expect(msgs.find((m) => m.id === 'user-2')?.isStreaming).toBeFalsy();
+    });
+  });
+
+  // ── cancelStreaming ──
+  describe('cancelStreaming persistence', () => {
+    // Simulate just enough fs for conversationStorage.replaceMessageById:
+    // the JSONL exists, holds the pre-stop row, and atomic_write_text
+    // captures the rewrite. Asserting at the fs layer exercises the real
+    // storage module (the store reaches it via a dynamic import that
+    // module-level vi.mock cannot intercept).
+    let written: string[];
+
+    beforeEach(() => {
+      written = [];
+      vi.mocked(exists).mockResolvedValue(true);
+      vi.mocked(readTextFile).mockImplementation(async () =>
+        JSON.stringify({ id: 'a1', role: 'assistant', content: '部分输出', timestamp: 1 }) + '\n');
+      vi.mocked(invoke).mockImplementation(async (cmd: string, args?: unknown) => {
+        const a = args as { path?: string; content?: string } | undefined;
+        if (cmd === 'atomic_write_text' && a?.path?.endsWith('messages.jsonl')) {
+          written.push(a.content ?? '');
+        }
+        return undefined;
+      });
+    });
+
+    afterEach(() => {
+      vi.mocked(exists).mockReset();
+      vi.mocked(readTextFile).mockReset();
+      vi.mocked(invoke).mockReset();
+    });
+
+    it('persists the stop-marker mutation to disk so reload matches the live view', async () => {
+      // Regression: cancelStreaming appended "*[已停止]*" and cancelled tool
+      // calls in memory only — the JSONL row on disk kept the pre-stop
+      // snapshot, so the same turn reloaded as a blank/stale bubble.
+      const id = useChatStore.getState().createConversation();
+      useChatStore.getState().addMessage(id, {
+        id: 'a1', role: 'assistant', content: '部分输出', timestamp: Date.now(), isStreaming: true,
+      });
+
+      useChatStore.getState().cancelStreaming(id);
+
+      const live = useChatStore.getState().conversations[id].messages[0];
+      expect(live.content).toContain('已停止');
+      await vi.waitFor(() => {
+        expect(written.some((c) => c.includes('已停止'))).toBe(true);
+      });
+    });
+
+    it('flushes buffered stream tokens before appending the stop marker', async () => {
+      // Regression (review): the stop button calls cancelStreaming directly,
+      // BEFORE the aborted loop flushes the RAF token buffer — so buffered
+      // text landed after the marker in memory and never reached disk.
+      const id = useChatStore.getState().createConversation();
+      useChatStore.getState().addMessage(id, {
+        id: 'a1', role: 'assistant', content: '前段', timestamp: Date.now(), isStreaming: true,
+      });
+      useChatStore.getState().appendToLastMessage(id, '后段', 'a1'); // sits in the RAF buffer
+
+      useChatStore.getState().cancelStreaming(id);
+
+      const live = useChatStore.getState().conversations[id].messages[0];
+      expect(live.content).toBe('前段后段\n\n*[已停止]*');
+      await vi.waitFor(() => {
+        expect(written.some((c) => c.includes('后段') && c.includes('已停止'))).toBe(true);
+      });
+    });
+
+    it('does not rewrite the message row when nothing was streaming', async () => {
+      const id = useChatStore.getState().createConversation();
+      useChatStore.getState().addMessage(id, {
+        id: 'u1', role: 'user', content: 'hi', timestamp: Date.now(),
+      });
+
+      useChatStore.getState().cancelStreaming(id);
+
+      await new Promise((r) => setTimeout(r, 30));
+      expect(written.some((c) => c.includes('已停止'))).toBe(false);
+    });
+
+    it('skips the marker and writes nothing for an EMPTY streaming placeholder', async () => {
+      // Regression: stopping before any output appended "*[已停止]*" to the
+      // untouched placeholder — a marker-only bubble the agentLoop abort path
+      // then had to hunt down. Empty content = pure isStreaming flip, no write.
+      const id = useChatStore.getState().createConversation();
+      useChatStore.getState().addMessage(id, {
+        id: 'a1', role: 'assistant', content: '', timestamp: Date.now(), isStreaming: true,
+      });
+
+      useChatStore.getState().cancelStreaming(id);
+
+      const live = useChatStore.getState().conversations[id].messages[0];
+      expect(live.content).toBe('');
+      expect(live.isStreaming).toBe(false);
+      await new Promise((r) => setTimeout(r, 30));
+      expect(written.some((c) => c.includes('已停止'))).toBe(false);
     });
   });
 

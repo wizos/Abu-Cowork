@@ -7,6 +7,7 @@ import type { WorkflowStep } from '@/utils/workflowExtractor';
 import MessageBubble from './MessageBubble';
 import SkillProposalCard from './SkillProposalCard';
 import UserQuestionCard from './UserQuestionCard';
+import PlanStepsCard from './PlanStepsCard';
 import TaskBlock from './TaskBlock';
 import BatchProgress from './BatchProgress';
 import MarkdownRenderer from './MarkdownRenderer';
@@ -17,7 +18,7 @@ import { usePreviewStore } from '@/stores/previewStore';
 import { useI18n } from '@/i18n';
 import { MessageErrorBoundary } from '@/components/common/ErrorBoundary';
 import { useTaskExecutionStore } from '@/stores/taskExecutionStore';
-import { extractWorkflowSteps, extractFileOutputs, extractFilePathsFromText } from '@/utils/workflowExtractor';
+import { extractWorkflowSteps, extractFileOutputs, extractFilePathsFromText, findLatestPlanCall } from '@/utils/workflowExtractor';
 import { parseSearchResults, stripSourcesBlock, parseSourcesFromText } from '@/utils/searchParser';
 import { snapshotToExecutionSteps } from '@/core/agent/executionSnapshot';
 import { runAgentLoop } from '@/core/agent/agentLoop';
@@ -107,7 +108,8 @@ function stripMarkdownImages(text: string): string {
 
 type RenderSegment =
   | { kind: 'text'; text: string; message: Message; isLastTurn: boolean }
-  | { kind: 'steps'; executionSteps: ExecutionStep[]; legacySteps: WorkflowStep[]; isLastGroup: boolean; stepsMsgs: Message[] };
+  | { kind: 'steps'; executionSteps: ExecutionStep[]; legacySteps: WorkflowStep[]; isLastGroup: boolean; stepsMsgs: Message[] }
+  | { kind: 'user'; message: Message };
 
 /**
  * Build render segments from assistant messages and their steps.
@@ -116,12 +118,18 @@ type RenderSegment =
  * are merged into a single 'steps' segment so they render as one TaskBlock.
  *
  * Order: text → merged steps → text → merged steps → ...
+ *
+ * Exported for unit testing (pure, no React).
  */
-function buildRenderSegments(
-  assistantMsgs: Message[],
+// eslint-disable-next-line react-refresh/only-export-components
+export function buildRenderSegments(
+  messages: Message[],
   allExecSteps: ExecutionStep[],
   allLegacySteps: WorkflowStep[],
 ): RenderSegment[] {
+  // Filter assistant messages for step-slicing and isLastTurn computation.
+  // Leading/trailing user messages are handled separately below.
+  const assistantMsgs = messages.filter((m) => m.role === 'assistant');
   if (assistantMsgs.length === 0) return [];
 
   // Separate thinking steps from tool steps
@@ -137,14 +145,42 @@ function buildRenderSegments(
 
   let execOffset = 0;
   let legacyOffset = 0;
+  let passedFirstAssistant = false;
+  let assistantIdx = 0;
 
-  for (let idx = 0; idx < assistantMsgs.length; idx++) {
-    const msg = assistantMsgs[idx];
-    const isLastTurn = idx === assistantMsgs.length - 1;
+  for (const msg of messages) {
+    if (msg.role === 'user') {
+      if (!passedFirstAssistant) {
+        // Leading user messages render via the standalone userMsg bubble at the top — skip.
+        continue;
+      }
+      // Mid-loop user message: flush any pending steps first, then emit a user segment.
+      if (pendingExecSteps.length > 0 || pendingLegacySteps.length > 0) {
+        segments.push({
+          kind: 'steps',
+          executionSteps: pendingExecSteps,
+          legacySteps: pendingLegacySteps,
+          isLastGroup: false,
+          stepsMsgs: pendingStepsMsgs,
+        });
+        pendingExecSteps = [];
+        pendingLegacySteps = [];
+        pendingStepsMsgs = [];
+      }
+      segments.push({ kind: 'user', message: msg });
+      continue;
+    }
+
+    if (msg.role !== 'assistant') continue;
+
+    passedFirstAssistant = true;
+    const isLastTurn = assistantIdx === assistantMsgs.length - 1;
+    assistantIdx++;
+
     const text = getTextContent(msg.content);
     const visibleToolCount = (msg.toolCalls || []).filter((tc) => !tc.hidden).length;
 
-    // Slice this turn's steps
+    // Slice this turn's steps — only assistant messages consume step slices.
     const turnExecSteps = toolExecSteps.slice(execOffset, execOffset + visibleToolCount);
     execOffset += visibleToolCount;
     const turnLegacySteps = toolLegacySteps.slice(legacyOffset, legacyOffset + visibleToolCount);
@@ -439,12 +475,17 @@ export default function MessageGroup({ messages, isLastGroup: isLastGroupProp = 
 
   // Build render segments: text and merged step groups
   const segments = useMemo(
-    () => buildRenderSegments(assistantMsgs, activeExecSteps, workflowSteps),
-    [assistantMsgs, activeExecSteps, workflowSteps]
+    () => buildRenderSegments(messages, activeExecSteps, workflowSteps),
+    [messages, activeExecSteps, workflowSteps]
   );
 
+  // Latest reported plan for this group — report_plan tool calls are hidden
+  // from the generic tool list, so without this card a plan-only turn renders
+  // as a blank bubble.
+  const planCall = useMemo(() => findLatestPlanCall(assistantMsgs), [assistantMsgs]);
+
   // Check if we have any content (for thinking indicator fallback)
-  const hasAnyContent = segments.length > 0;
+  const hasAnyContent = segments.length > 0 || !!planCall;
 
   return (
     <div ref={groupRef} className="message-group space-y-4 w-full">
@@ -475,8 +516,23 @@ export default function MessageGroup({ messages, isLastGroup: isLastGroupProp = 
               </div>
             )}
 
+            {/* Inline plan card — latest report_plan of this group */}
+            {planCall && (
+              <MessageErrorBoundary>
+                <PlanStepsCard toolCall={planCall} />
+              </MessageErrorBoundary>
+            )}
+
             {/* Render segments: text blocks and merged step groups */}
             {segments.map((seg, segIdx) => {
+              if (seg.kind === 'user') {
+                return (
+                  <MessageErrorBoundary key={`user-mid-${seg.message.id}`}>
+                    <MessageBubble message={seg.message} />
+                  </MessageErrorBoundary>
+                );
+              }
+
               if (seg.kind === 'text') {
                 const mdImages = extractMarkdownImages(seg.text);
                 let cleanedText = mdImages.length > 0 ? stripMarkdownImages(seg.text) : seg.text;
