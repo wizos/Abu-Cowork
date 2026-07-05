@@ -82,11 +82,22 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
-          gh release create "${{ github.ref_name }}" \
-            --repo "${{ github.repository }}" \
-            --title "Abu ${{ github.ref_name }}" \
-            --notes "See the assets below for download links." \
-            || true
+          TAG="${{ github.ref_name }}"
+          VER="${TAG#v}"
+          # Release body = this version's section from CHANGELOG.md (fallback to
+          # a placeholder if the entry is missing). Title = the bare tag, no
+          # "Abu" prefix.
+          NOTES=$(awk -v ver="## v${VER} " 'index($0, ver)==1{f=1;next} /^## v/{if(f)exit} f' CHANGELOG.md)
+          if [ -z "$(printf '%s' "$NOTES" | tr -d '[:space:]')" ]; then
+            NOTES="See the assets below for download links."
+          fi
+          printf '%s\n' "$NOTES" > /tmp/release-notes.md
+          gh release create "$TAG" --repo "${{ github.repository }}" \
+            --title "$TAG" --notes-file /tmp/release-notes.md || true
+          # Idempotent re-runs: ensure title/notes are applied even if the
+          # release already existed.
+          gh release edit "$TAG" --repo "${{ github.repository }}" \
+            --title "$TAG" --notes-file /tmp/release-notes.md || true
 
       - name: Upload release assets
         env:
