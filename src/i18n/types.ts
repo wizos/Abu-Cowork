@@ -317,8 +317,9 @@ export interface TranslationDict {
     maxTurnsReached: string;
     // Agent loop no-progress guard (model stuck emitting unparseable tool calls)
     noProgressStopped: string;
-    // Work-process fold label (Codex-style turn collapse)
-    workProcess: string;
+    // Work-process fold label (Codex-style turn collapse). {duration} = e.g. "1m 4s"
+    workedFor: string;
+    stoppedAfter: string;
     // Usage chip
     usageChipInput: string;
     usageChipOutput: string;

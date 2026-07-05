@@ -15,7 +15,7 @@ import FileAttachment, { ImagePreviewCard, ImageThumbnail, isImageFile } from '.
 import SourcesSection from './SourcesSection';
 import { useChatStore, useActiveConversation } from '@/stores/chatStore';
 import { usePreviewStore } from '@/stores/previewStore';
-import { useI18n } from '@/i18n';
+import { useI18n, format } from '@/i18n';
 import { MessageErrorBoundary } from '@/components/common/ErrorBoundary';
 import { useTaskExecutionStore } from '@/stores/taskExecutionStore';
 import { extractWorkflowSteps, extractFileOutputs, extractFilePathsFromText, parsePlanSteps } from '@/utils/workflowExtractor';
@@ -81,6 +81,15 @@ function SkillPatchSummaryRow({ skillName, calls }: { skillName: string; calls: 
       )}
     </div>
   );
+}
+
+// Codex-style compact duration for the work-process fold label: "1m 4s" / "39s".
+function formatWorkDuration(ms: number): string {
+  const totalSec = Math.max(0, Math.round(ms / 1000));
+  if (totalSec < 60) return `${totalSec}s`;
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}m ${s}s`;
 }
 
 // Helper to get text content from Message
@@ -496,6 +505,15 @@ export default function MessageGroup({ messages, isLastGroup: isLastGroupProp = 
   // fold all intermediate segments (thinking/plan/steps) behind a single row.
   const workFoldEnd = useMemo(() => computeWorkProcessFold(segments, isGroupDone), [segments, isGroupDone]);
   const [workExpanded, setWorkExpanded] = useState(false);
+  // Fold header label: Codex-style duration + completed/aborted variant. Prefer
+  // the execution's start/end timing; fall back to message timestamps when the
+  // execution has been evicted (older groups). Aborted = execution cancelled.
+  const workStart = execution?.startTime ?? assistantMsgs[0]?.timestamp ?? userMsg?.timestamp;
+  const workEnd = execution?.endTime ?? lastAssistantMsg?.timestamp;
+  const workDurationMs = workStart != null && workEnd != null ? workEnd - workStart : 0;
+  const workLabel = execution?.status === 'cancelled'
+    ? format(t.chat.stoppedAfter, { duration: formatWorkDuration(workDurationMs) })
+    : format(t.chat.workedFor, { duration: formatWorkDuration(workDurationMs) });
 
   // Per-segment render callback — extracted from the map so it can be reused
   // against two slices (folded + tail) without duplicating logic. Closes over
@@ -672,8 +690,7 @@ export default function MessageGroup({ messages, isLastGroup: isLastGroupProp = 
                   onClick={() => setWorkExpanded((v) => !v)}
                   className="flex items-center gap-1 text-[13px] text-[var(--abu-text-muted)] hover:text-[var(--abu-text-muted)] transition-colors mb-2"
                 >
-                  <span>{t.chat.workProcess}</span>
-                  <span className="text-[var(--abu-text-muted)]">· {workFoldEnd} {t.planCard.stepsUnit}</span>
+                  <span>{workLabel}</span>
                   <ChevronDown
                     className={cn('h-3.5 w-3.5 transition-transform', !workExpanded && '-rotate-90')}
                   />
