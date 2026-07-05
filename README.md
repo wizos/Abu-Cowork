@@ -55,6 +55,21 @@
 <td align="center" width="50%"><b>任务执行</b><br/>自主规划步骤，调用工具完成复杂任务<br/><br/><img src="website/assets/screenshot-execution.png" width="100%" /></td>
 </tr>
 <tr>
+<td align="center"><b>计划模式</b><br/>高风险任务先出计划，你点「确认执行」才动手<br/><br/><img src="website/assets/screenshot-plan-mode.png" width="100%" /></td>
+<td align="center"><b>交互式提问</b><br/>需要你拍板时弹出选项卡片，单选 / 多选<br/><br/><img src="website/assets/screenshot-ask-question.png" width="100%" /></td>
+</tr>
+<tr>
+<td align="center"><b>多 Agent 并行</b><br/>最多 5 个后台 Agent 同时干活，进度实时可见<br/><br/><img src="website/assets/screenshot-multi-agent.png" width="100%" /></td>
+<td align="center"><b>桌宠 · 活动通知条</b><br/>桌面浮窗常驻，活动条实时显示阿布状态<br/><br/><img src="website/assets/screenshot-pet.png" width="100%" /></td>
+</tr>
+<tr>
+<td align="center"><b>主题切换 · 暗色</b><br/>深色为默认设计方向<br/><br/><img src="website/assets/screenshot-theme.png" width="100%" /></td>
+<td align="center"><b>主题切换 · 亮色</b><br/>亮色 / 暗色 / 跟随系统一键切换<br/><br/><img src="website/assets/screenshot-theme-light.png" width="100%" /></td>
+</tr>
+<tr>
+<td align="center" colspan="2"><b>实验室（Labs）</b><br/>打磨中的新功能，默认关闭、按需开启（当前收录：桌宠）<br/><br/><img src="website/assets/screenshot-labs.png" width="60%" /></td>
+</tr>
+<tr>
 <td align="center"><b>权限控制</b><br/>文件访问需用户授权，安全可控<br/><br/><img src="website/assets/screenshot-permission.png" width="100%" /></td>
 <td align="center"><b>IM 频道对话</b><br/>在飞书/钉钉中 @阿布 即可交互<br/><br/><img src="website/assets/screenshot-im-chat.png" width="100%" /></td>
 </tr>

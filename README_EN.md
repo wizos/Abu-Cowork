@@ -55,6 +55,21 @@ Recent highlights: **Labs** experiment framework (currently hosting: Desktop Pet
 <td align="center" width="50%"><b>Task Execution</b><br/>Autonomous planning & tool invocation for complex tasks<br/><br/><img src="website/assets/screenshot-execution.png" width="100%" /></td>
 </tr>
 <tr>
+<td align="center"><b>Plan Mode</b><br/>High-risk tasks show a plan first — runs only after you confirm<br/><br/><img src="website/assets/screenshot-plan-mode.png" width="100%" /></td>
+<td align="center"><b>Interactive Questions</b><br/>Abu pops an option card when it needs you to decide (single / multi-select)<br/><br/><img src="website/assets/screenshot-ask-question.png" width="100%" /></td>
+</tr>
+<tr>
+<td align="center"><b>Multi-Agent Parallel</b><br/>Up to 5 background agents working at once, progress in real time<br/><br/><img src="website/assets/screenshot-multi-agent.png" width="100%" /></td>
+<td align="center"><b>Desktop Pet · Activity Tray</b><br/>A floating pet on your desktop, its tray showing Abu's live status<br/><br/><img src="website/assets/screenshot-pet.png" width="100%" /></td>
+</tr>
+<tr>
+<td align="center"><b>Theme · Dark</b><br/>Dark is the default design direction<br/><br/><img src="website/assets/screenshot-theme.png" width="100%" /></td>
+<td align="center"><b>Theme · Light</b><br/>Switch between light / dark / follow-system<br/><br/><img src="website/assets/screenshot-theme-light.png" width="100%" /></td>
+</tr>
+<tr>
+<td align="center" colspan="2"><b>Labs</b><br/>In-progress features, off by default, opt-in (currently hosting: Desktop Pet)<br/><br/><img src="website/assets/screenshot-labs.png" width="60%" /></td>
+</tr>
+<tr>
 <td align="center"><b>Permission Control</b><br/>File access requires user authorization<br/><br/><img src="website/assets/screenshot-permission.png" width="100%" /></td>
 <td align="center"><b>IM Channel Chat</b><br/>@Abu in Lark/DingTalk to interact<br/><br/><img src="website/assets/screenshot-im-chat.png" width="100%" /></td>
 </tr>
