@@ -40,17 +40,13 @@ xattr -cr /Applications/Abu.app
 
 ### 3. 备选方法
 
-如果上述命令无效，可以尝试：
+如果上述命令无效，从 **系统设置** 放行：
 
-```bash
-sudo spctl --master-disable
-```
+1. 双击打开 Abu，在弹出的拦截提示上先不要点「移到废纸篓」
+2. 打开 **系统设置 → 隐私与安全性**，滚到底部会看到「已阻止使用 "Abu"」的提示
+3. 点 **「仍要打开」**（Open Anyway），再确认一次即可
 
-这会临时关闭 Gatekeeper。安装完成后建议重新启用：
-
-```bash
-sudo spctl --master-enable
-```
+> **macOS 15 (Sequoia) 及以上**：Apple 已移除 `sudo spctl --master-disable` 命令，请使用上面的「系统设置 → 隐私与安全性 → 仍要打开」流程。旧版 macOS 若仍需临时关闭 Gatekeeper，可用 `sudo spctl --master-disable`，安装后用 `sudo spctl --master-enable` 重新启用。
 
 ---
 
