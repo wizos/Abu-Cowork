@@ -1760,6 +1760,8 @@ const zhCN: TranslationDict = {
     convertToProject: '转为项目',
     moveToProject: '移入项目',
     removeFromProject: '移出项目',
+    showMore: '还有 {count} 个',
+    showLess: '收起',
     emptyState: '创建你的第一个项目',
     selectFolder: '选择文件夹',
     next: '下一步',

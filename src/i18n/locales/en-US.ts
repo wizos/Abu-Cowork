@@ -1759,6 +1759,8 @@ const enUS: TranslationDict = {
     convertToProject: 'Convert to Project',
     moveToProject: 'Move to project',
     removeFromProject: 'Remove from project',
+    showMore: '+{count} more',
+    showLess: 'Show less',
     emptyState: 'Create your first project',
     selectFolder: 'Select Folder',
     next: 'Next',
