@@ -60,6 +60,9 @@ export default function ProjectItem({ project, conversations, expanded, onNewTas
   // Archive confirmation dialog
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  // Whether to show every conversation under this project, or just the first
+  // MAX_VISIBLE_CONVERSATIONS. Toggled by the "+N more" / "show less" button.
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     if (!contextMenu && !convMenu) return;
@@ -82,8 +85,8 @@ export default function ProjectItem({ project, conversations, expanded, onNewTas
     setViewMode('chat');
   };
 
-  const visibleConvs = conversations.slice(0, MAX_VISIBLE_CONVERSATIONS);
   const hasMore = conversations.length > MAX_VISIBLE_CONVERSATIONS;
+  const visibleConvs = showAll ? conversations : conversations.slice(0, MAX_VISIBLE_CONVERSATIONS);
 
   return (
     <div>
@@ -178,10 +181,12 @@ export default function ProjectItem({ project, conversations, expanded, onNewTas
 
           {hasMore && (
             <button
-              onClick={() => toggleExpanded(project.id)}
+              onClick={() => setShowAll((v) => !v)}
               className="w-full pl-8 pr-2 py-0.5 text-[11px] text-[var(--abu-text-muted)] hover:text-[var(--abu-text-tertiary)] text-left"
             >
-              +{conversations.length - MAX_VISIBLE_CONVERSATIONS} more
+              {showAll
+                ? t.project.showLess
+                : format(t.project.showMore, { count: conversations.length - MAX_VISIBLE_CONVERSATIONS })}
             </button>
           )}
 

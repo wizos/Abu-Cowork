@@ -1820,6 +1820,10 @@ export interface TranslationDict {
     convertToProject: string;
     moveToProject: string;
     removeFromProject: string;
+    /** "+N more" expander shown when a project has more than 5 conversations */
+    showMore: string;
+    /** Collapse the expanded conversation list back to the first few */
+    showLess: string;
     emptyState: string;
     selectFolder: string;
     next: string;
