@@ -1917,11 +1917,15 @@ export interface TranslationDict {
     allowOnce: string;
   };
 
-  // Computer-use runtime status bar
+  // Computer-use runtime status bar + screen-border overlay windows
   computerUse: {
     controlling: string;
     /** Interpolates {step}, e.g. "· Step {step}". */
     step: string;
     stop: string;
+    /** Overlay status-bar step label, interpolates {step}, e.g. "Step {step}". */
+    overlayStep: string;
+    /** Overlay stop-button label. */
+    stopControl: string;
   };
 }

@@ -1850,6 +1850,8 @@ const enUS: TranslationDict = {
     controlling: 'Controlling computer',
     step: '· Step {step}',
     stop: 'Stop',
+    overlayStep: 'Step {step}',
+    stopControl: 'Stop control',
   },
 };
 

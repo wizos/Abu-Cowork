@@ -1851,6 +1851,8 @@ const zhCN: TranslationDict = {
     controlling: '正在操控电脑',
     step: '· 第 {step} 步',
     stop: '停止',
+    overlayStep: '第 {step} 步',
+    stopControl: '停止操控',
   },
 };
 
