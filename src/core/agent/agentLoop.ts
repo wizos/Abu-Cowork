@@ -42,6 +42,7 @@ import { formatTodosForPrompt } from './todoManager';
 import { isWindows } from '../../utils/platform';
 import { getBuiltinSearchConfig } from '../capabilities';
 import { resolveCapabilities, resolveEffectiveContextWindow, computeReasoningParams, type ModelCapabilities } from '../llm/modelCapabilities';
+import { applyDeclaredCapabilities } from '../llm/applyDeclaredCapabilities';
 import { TOOL_NAMES } from '../tools/toolNames';
 import { prefetchTools } from '../tools/toolPrefetch';
 import { classifyTools, buildDeferredToolsSummary } from '../tools/toolSearch';
@@ -736,7 +737,10 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
   // Tell tools whether this model can consume images. read_file uses it to
   // avoid emitting base64 image blocks to text-only models (which bloats
   // context and triggers a 400 on providers that only accept text content).
-  toolContext.supportsVision = resolveCapabilities(effectiveModelId).vision;
+  toolContext.supportsVision = applyDeclaredCapabilities(
+    resolveCapabilities(effectiveModelId),
+    getActiveProvider(settingsForModel)?.declaredCapabilities,
+  ).vision;
 
   // Pin the resolved model to the conversation on first run, so it survives
   // later global model switches (for display + future runs). Pins the
@@ -1117,6 +1121,11 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       const builtinWebSearch = activeProvider
         ? getBuiltinSearchConfig(activeProvider.id as LLMProvider, true)
         : undefined;
+      // When the provider explicitly declared supportsTools=false, suppress tool
+      // resolution entirely so the model never sees tool definitions in the system
+      // prompt and can't hallucinate tool calls. The adapter-level toolsGate rule
+      // also strips tools from the request body as belt-and-suspenders.
+      const noTools = activeProvider?.declaredCapabilities?.supportsTools === false;
       // Build prefetch context for conditional tool loading
       const conv = useChatStore.getState().conversations[conversationId];
       const activeSkillObjects = (conv?.activeSkills ?? [])
@@ -1128,7 +1137,9 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
         activeSkills: activeSkillObjects,
         turnCount,
       };
-      const { tools, deferredTools, inputValidators } = resolveTools(route, !!builtinWebSearch, options?.blockedTools, prefetchCtx);
+      const { tools: rawTools, deferredTools: rawDeferredTools, inputValidators } = resolveTools(route, !!builtinWebSearch, options?.blockedTools, prefetchCtx);
+      const tools = noTools ? [] : rawTools;
+      const deferredTools = noTools ? [] : rawDeferredTools;
       const toolTokens = estimateToolSchemaTokens(tools);
       const dynamicCapabilities = buildDynamicCapabilities(tools);
       const deferredToolsSummary = buildDeferredToolsSummary(deferredTools);
@@ -1148,7 +1159,10 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       // 400 response). Discovered values come from real API errors so they
       // override the registry — but they don't override the *user's* setting,
       // since the user may have a smaller budget on purpose.
-      const modelCaps = resolveCapabilities(effectiveModelId);
+      let modelCaps = resolveCapabilities(effectiveModelId);
+      // Override auto-detected caps with user-declared values (custom/local providers only).
+      // No-op when activeProvider has no declaredCapabilities (builtin providers).
+      modelCaps = applyDeclaredCapabilities(modelCaps, activeProvider?.declaredCapabilities);
       const discoveredCaps = activeProvider
         ? useDiscoveredCapsStore.getState().get(activeProvider.id, effectiveModelId)
         : undefined;
@@ -1169,13 +1183,16 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
         contextWindow: effectiveModelContext,
         // A model observed reasoning despite the registry saying otherwise → can't
         // bound it; treat as uncontrollable so it gets the full budget + reactive net.
+        // Exception: if the user explicitly declared supportsReasoning=false for this
+        // provider, respect that declaration and never flip thinking back on.
         ...(discoveredCaps?.isReasoningModel && modelCaps.thinking === false
+            && activeProvider?.declaredCapabilities?.supportsReasoning !== false
           ? { thinking: 'uncontrollable' as const }
           : {}),
       };
       const reasoningParams = computeReasoningParams(
         effectiveCaps,
-        freshSettings.maxOutputTokens ?? effectiveModelMaxOutput,
+        activeProvider?.declaredCapabilities?.maxOutputTokens ?? freshSettings.maxOutputTokens ?? effectiveModelMaxOutput,
       );
       let maxOutputTokens = reasoningParams.maxTokens;
       // Effective context window = min(model published cap, user setting, runtime-discovered).
@@ -1184,7 +1201,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       // because the project default settingsStore.contextWindowSize is 200k.
       const contextWindowSize = resolveEffectiveContextWindow(
         effectiveModelId,
-        freshSettings.contextWindowSize,
+        activeProvider?.declaredCapabilities?.maxInputTokens ?? freshSettings.contextWindowSize,
         discoveredCaps?.contextWindow,
       );
 
@@ -1368,6 +1385,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
         thinkingBudget: reasoningParams.thinkingBudget,
         reasoningEffort: reasoningParams.reasoningEffort,
         supportsVision: modelCaps.vision,
+        declaredCapabilities: activeProvider?.declaredCapabilities,
         builtinWebSearch,
         // When the adapter's max_tokens auto-retry succeeds, persist the
         // discovered limit so the next request uses it pre-emptively.
@@ -1766,7 +1784,8 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
         // Handle MCP tool changes — inject notification into conversation
         if (batchResult.mcpChanged) {
           const toolNames = new Set(tools.map(t => t.name));
-          const { tools: freshTools } = resolveTools(route, !!builtinWebSearch, options?.blockedTools);
+          const { tools: freshRawTools } = resolveTools(route, !!builtinWebSearch, options?.blockedTools);
+          const freshTools = noTools ? [] : freshRawTools;
           const freshNames = new Set(freshTools.map(t => t.name));
           const added = freshTools.filter(t => !toolNames.has(t.name));
           const removed = tools.filter(t => !freshNames.has(t.name));
@@ -1793,7 +1812,10 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
 
       // L4: learn that a statically-non-reasoning model actually reasons, so future
       // turns bound it (treated as 'uncontrollable' → full budget + reserved content).
-      if (collectedThinking && modelCaps.thinking === false && activeProvider) {
+      // Skip if the user explicitly declared supportsReasoning=false — their declaration
+      // takes precedence over runtime observation.
+      if (collectedThinking && modelCaps.thinking === false && activeProvider
+          && activeProvider.declaredCapabilities?.supportsReasoning !== false) {
         useDiscoveredCapsStore.getState().recordReasoningObserved(activeProvider.id, effectiveModelId);
       }
 

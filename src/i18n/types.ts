@@ -627,7 +627,6 @@ export interface TranslationDict {
     guideGoTo: string;
     apiKeyRequired: string;
     apiKeyOptional: string;
-    apiUrlNoChange: string;
     apiUrlPreview: string;
     fetchModels: string;
     fetchingModels: string;
@@ -666,6 +665,20 @@ export interface TranslationDict {
     models: string;
     modelsCount: string;
     capabilitiesLabel: string;
+    // Advanced config (custom/local providers)
+    advancedConfig: string;
+    capTools: string;
+    capImages: string;
+    capReasoning: string;
+    capRawUrl: string;
+    capRawUrlHint: string;
+    capEffort: string;
+    effortLow: string;
+    effortMedium: string;
+    effortHigh: string;
+    capMaxInput: string;
+    capMaxOutput: string;
+    capTokenDefault: string;
   };
 
   // Sandbox recovery
