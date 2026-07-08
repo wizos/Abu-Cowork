@@ -1578,6 +1578,7 @@ const zhCN: TranslationDict = {
     infoBarCapability: '能力',
     infoBarStarted: '开始',
     infoBarRounds: '轮对话',
+    infoBarGroup: '群组',
     infoBarEndSession: '结束会话',
     infoBarEndConfirm: '确定结束当前 IM 会话吗？',
     sessionResetConfirm: '好的，已开始新对话。',
@@ -1640,6 +1641,7 @@ const zhCN: TranslationDict = {
     deviceIdHint: '遇到问题时发给开发者，用于定位你的设备记录',
     copied: '已复制',
     disclaimerLink: '免责声明',
+    disclaimerFullSuffix: '（完整版）',
     licenseLinkLabel: 'Apache 2.0 许可证',
     disclaimerTitle: '免责声明',
     disclaimerClose: '收起',
@@ -1823,6 +1825,24 @@ const zhCN: TranslationDict = {
     heatmapWeekdays: ['一', '二', '三', '四', '五', '六', '日'],
     heatmapLegendLess: '少',
     heatmapLegendMore: '多',
+  },
+
+  enterprise: {
+    usingGateway: '使用企业 AI 网关',
+    gatewayDesc: '所有 LLM 调用通过企业网关，无需在此配置 API key。模型可用性由企业管理员决定。',
+    organization: '组织',
+    gateway: '网关',
+    status: '状态',
+    offline: '离线',
+    offlineBadge: '· 离线',
+    policyConfirmTitle: '企业策略要求二次确认',
+    allowOnce: '允许这次',
+  },
+
+  computerUse: {
+    controlling: '正在操控电脑',
+    step: '· 第 {step} 步',
+    stop: '停止',
   },
 };
 

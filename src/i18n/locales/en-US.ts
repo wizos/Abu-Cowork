@@ -1577,6 +1577,7 @@ const enUS: TranslationDict = {
     infoBarCapability: 'Capability',
     infoBarStarted: 'Started',
     infoBarRounds: 'rounds',
+    infoBarGroup: 'Group',
     infoBarEndSession: 'End Session',
     infoBarEndConfirm: 'End this IM session?',
     sessionResetConfirm: 'OK, started a new conversation.',
@@ -1639,6 +1640,7 @@ const enUS: TranslationDict = {
     deviceIdHint: 'Share with the developer when reporting issues',
     copied: 'Copied',
     disclaimerLink: 'Disclaimer',
+    disclaimerFullSuffix: ' (Full)',
     licenseLinkLabel: 'Apache 2.0 License',
     disclaimerTitle: 'Disclaimer',
     disclaimerClose: 'Collapse',
@@ -1822,6 +1824,24 @@ const enUS: TranslationDict = {
     heatmapWeekdays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     heatmapLegendLess: 'Less',
     heatmapLegendMore: 'More',
+  },
+
+  enterprise: {
+    usingGateway: 'Using enterprise AI gateway',
+    gatewayDesc: 'All LLM calls go through the enterprise gateway — no API key needed here. Model availability is decided by your enterprise admin.',
+    organization: 'Organization',
+    gateway: 'Gateway',
+    status: 'Status',
+    offline: 'Offline',
+    offlineBadge: '· Offline',
+    policyConfirmTitle: 'Enterprise policy requires confirmation',
+    allowOnce: 'Allow once',
+  },
+
+  computerUse: {
+    controlling: 'Controlling computer',
+    step: '· Step {step}',
+    stop: 'Stop',
   },
 };
 
