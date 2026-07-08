@@ -2,6 +2,24 @@
 
 All notable changes to Abu are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## v0.26.0 · 2026-07-08
+
+### Added
+
+- **Custom-model advanced configuration**: when adding a custom / local (Ollama) model, you can now declare its capabilities (tool calling, vision, reasoning, …) with checkboxes. Abu then sends only the request parameters that model actually supports, so unsupported fields no longer cause failed requests.
+- **Per-model token limits**: set input / output token caps per custom model, with quick presets.
+
+### Fixed
+
+- **Custom API address no longer mangled**: the chat endpoint URL is normalized idempotently — pasting a full URL (with or without `/v1`, `/chat/completions`, or a trailing slash) now resolves to the correct endpoint instead of a broken concatenation.
+- **gpt-5.5 + tools**: the `reasoning_effort` drop guard is now host-agnostic and respects a model's declared "no reasoning" capability, folded into the new request rule engine.
+- **About page disclaimer link**: now opens the disclaimer that matches your current language.
+
+### Improved
+
+- **Add-model dialog polish**: validate-connection moved to the footer, a denser layout keeps the token presets visible, advanced config is collapsible, redundant copy and number-input spinners are gone, and re-selecting an already-added model works.
+- **English-first repository docs**: README / SECURITY / DISCLAIMER / CHANGELOG and the language navigation now lead with English, with zh-CN companions.
+
 ## v0.25.5 · 2026-07-07
 
 ### Fixed
