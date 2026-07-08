@@ -1611,6 +1611,7 @@ export interface TranslationDict {
     infoBarCapability: string;
     infoBarStarted: string;
     infoBarRounds: string;
+    infoBarGroup: string;
     infoBarEndSession: string;
     infoBarEndConfirm: string;
     sessionResetConfirm: string;
@@ -1676,6 +1677,8 @@ export interface TranslationDict {
     deviceIdHint: string;
     copied: string;
     disclaimerLink: string;
+    /** Suffix appended after the disclaimer link label, e.g. " (Full)". */
+    disclaimerFullSuffix: string;
     licenseLinkLabel: string;
     disclaimerTitle: string;
     disclaimerClose: string;
@@ -1934,5 +1937,27 @@ export interface TranslationDict {
     /** Malformed request (developer-facing but shown as generic client error). */
     errInvalidRequest: string;
     processing: string;
+  };
+
+  // Enterprise runtime UI (gateway badge, policy confirm, status badge)
+  enterprise: {
+    usingGateway: string;
+    gatewayDesc: string;
+    organization: string;
+    gateway: string;
+    status: string;
+    offline: string;
+    /** Compact offline suffix shown in the status badge, e.g. "· Offline". */
+    offlineBadge: string;
+    policyConfirmTitle: string;
+    allowOnce: string;
+  };
+
+  // Computer-use runtime status bar
+  computerUse: {
+    controlling: string;
+    /** Interpolates {step}, e.g. "· Step {step}". */
+    step: string;
+    stop: string;
   };
 }

@@ -305,7 +305,7 @@ export default function AboutSection() {
             className="flex items-center gap-1 text-xs text-[var(--abu-clay)] hover:underline mt-1"
           >
             <ExternalLink className="h-3 w-3" />
-            {t.about.disclaimerLink}（完整版 / Full）
+            {t.about.disclaimerLink}{t.about.disclaimerFullSuffix}
           </button>
           <button
             onClick={() => setDisclaimerOpen(false)}
