@@ -2,6 +2,24 @@
 
 All notable changes to Abu are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## v0.27.0 · 2026-07-09
+
+### Added
+
+- **Better multi-model compatibility**: request parameters are now translated per provider through an expanded normalization pipeline, so more OpenAI-compatible / third-party models work out of the box without manual tweaking.
+- **Complete `finish_reason` handling + compatibility observability**: abnormal stream endings are handled safely, and compatibility events are surfaced as diagnostics instead of being silently swallowed.
+- **Advanced capabilities are now editable after adding a model**: the "advanced config" section (tool calling, vision, reasoning, per-model token limits) appears in a provider's edit form too — previously it only existed at add-time, so caps couldn't be changed later. It's also now available for Anthropic-format custom endpoints, which are often proxies fronting non-Claude models (fields that don't apply are hidden).
+
+### Fixed
+
+- **Mermaid diagrams and HTML widgets broke in packaged builds**: in the released (non-dev) app, Mermaid nodes rendered as black blocks and HTML widgets collapsed into unstyled vertical text, because the production Content-Security-Policy stripped runtime-injected inline styles. Both now render correctly.
+- **Advanced-settings checkboxes were un-checkable on macOS**: the capability checkboxes in the add/edit provider form couldn't be toggled on macOS.
+- **Safe tool-call flush on abnormal `finish_reason`**, plus a Gemini multi-call signature fix.
+
+### Improved
+
+- **English-first marketing site**: the landing page and docs now lead with English, with zh-CN companion pages alongside.
+
 ## v0.26.0 · 2026-07-08
 
 ### Added
