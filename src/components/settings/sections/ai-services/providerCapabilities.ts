@@ -2,14 +2,18 @@ import type { LLMProvider, ApiFormat } from '@/types';
 import type { DeclaredCapabilities } from '@/types/provider';
 
 /** Whether the "advanced config" (declared capabilities) section should show.
- *  Only custom providers using openai-compatible format, or local Ollama / LM Studio.
- *  Builtin cloud providers and anthropic-format custom providers → false. */
+ *  Any custom provider (openai-compatible OR anthropic format), or local
+ *  Ollama / LM Studio. Builtin cloud providers → false.
+ *  Anthropic-format custom endpoints are often proxies fronting non-Claude
+ *  models, so tools/vision/token-limit declarations are still meaningful;
+ *  the fields that don't apply (useRawUrl, reasoning-effort) are hidden by
+ *  AdvancedCapabilitiesFields based on apiFormat. */
 export function computeShowAdvanced(
   isCustom: boolean,
   provider: LLMProvider | undefined,
   apiFormat: ApiFormat | undefined,
 ): boolean {
-  return (isCustom && apiFormat === 'openai-compatible')
+  return (isCustom && (apiFormat === 'openai-compatible' || apiFormat === 'anthropic'))
     || provider === 'ollama' || provider === 'lmstudio';
 }
 

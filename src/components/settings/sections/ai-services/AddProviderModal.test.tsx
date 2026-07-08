@@ -23,8 +23,11 @@ describe('AddProviderModal — showAdvanced predicate', () => {
     expect(computeShowAdvanced(true, 'custom', 'openai-compatible')).toBe(true);
   });
 
-  it('hides advanced section for custom Anthropic-format provider', () => {
-    expect(computeShowAdvanced(true, 'custom', 'anthropic')).toBe(false);
+  it('shows advanced section for custom Anthropic-format provider', () => {
+    // Anthropic custom endpoints are often proxies fronting non-Claude models,
+    // so tools/vision/token-limit declarations still apply. Fields that don't
+    // (useRawUrl, reasoning-effort) are hidden in AdvancedCapabilitiesFields.
+    expect(computeShowAdvanced(true, 'custom', 'anthropic')).toBe(true);
   });
 
   it('shows advanced section for ollama', () => {
