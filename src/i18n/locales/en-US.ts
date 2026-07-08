@@ -1691,6 +1691,15 @@ const enUS: TranslationDict = {
     cancel: 'Cancel queued message',
   },
 
+  reference: {
+    commentToChat: 'Comment to Chat',
+    addToChat: 'Add to Chat',
+    commentPlaceholder: 'Enter your comment…',
+    limitWarning: '{count}',
+    quoteChipFallback: 'Quote',
+    maxReached: 'Up to {max} references',
+  },
+
   planCard: {
     title: 'Plan',
     awaiting: 'Waiting for your confirmation',

@@ -1735,6 +1735,17 @@ export interface TranslationDict {
     cancel: string;
   };
 
+  reference: {
+    commentToChat: string;
+    addToChat: string;
+    commentPlaceholder: string;
+    /** {count} 占位 */
+    limitWarning: string;
+    quoteChipFallback: string;
+    /** {max} 占位 */
+    maxReached: string;
+  };
+
   // report_plan — inline plan card in the chat flow
   planCard: {
     title: string;
