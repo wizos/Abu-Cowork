@@ -1694,6 +1694,15 @@ const zhCN: TranslationDict = {
     cancel: '取消排队',
   },
 
+  reference: {
+    commentToChat: '评论到对话',
+    addToChat: '添加到对话',
+    commentPlaceholder: '输入你的评论…',
+    limitWarning: '{count}',
+    quoteChipFallback: '引用',
+    maxReached: '最多添加 {max} 条引用',
+  },
+
   planCard: {
     title: '执行计划',
     awaiting: '等待你确认',
