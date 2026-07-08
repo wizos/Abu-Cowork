@@ -4,6 +4,7 @@ import { MessageSquarePlus, MessageSquare } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { isMacOS } from '@/utils/platform';
 import { CommentEditor } from './CommentEditor';
+import { computeToolbarPosition } from './toolbarPosition';
 
 interface Props {
   rect: DOMRect;
@@ -32,10 +33,18 @@ export function SelectionToolbar({ rect, onAdd, onComment, onDismiss }: Props) {
     return () => document.removeEventListener('keydown', onKey);
   }, [editing, onAdd]);
 
+  // Estimated size of the toolbar buttons row; used for edge-clamping without
+  // a ResizeObserver (acceptable V1 approximation — real size is within ~10 px).
+  const TOOLBAR_SIZE = { width: 300, height: 44 };
+  const { left, top } = computeToolbarPosition(
+    rect,
+    { width: window.innerWidth, height: window.innerHeight },
+    TOOLBAR_SIZE,
+  );
   const style: React.CSSProperties = {
     position: 'fixed',
-    left: Math.min(rect.right, window.innerWidth - 300),
-    top: rect.bottom + 6,
+    left,
+    top,
     zIndex: 50,
   };
 
