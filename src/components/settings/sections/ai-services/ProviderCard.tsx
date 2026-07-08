@@ -10,7 +10,10 @@ import { checkProviderHealth } from '@/core/llm/healthCheck';
 import { buildFullChatUrl } from '@/core/llm/urlUtils';
 import { fetchProviderModels } from '@/core/llm/modelFetcher';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
-import type { ProviderInstance, ModelInfo } from '@/types/provider';
+import { computeShowAdvanced } from './providerCapabilities';
+import AdvancedCapabilitiesFields from './AdvancedCapabilitiesFields';
+import type { LLMProvider } from '@/types';
+import type { ProviderInstance, ModelInfo, DeclaredCapabilities } from '@/types/provider';
 import { SECRET_KEYS } from '@/utils/secretStore';
 
 interface ProviderCardProps {
@@ -74,6 +77,7 @@ export default function ProviderCard({ provider, isActive }: ProviderCardProps) 
   const [formApiKey, setFormApiKey] = useState(provider.apiKey);
   const [formBaseUrl, setFormBaseUrl] = useState(provider.baseUrl);
   const [formModels, setFormModels] = useState<ModelInfo[]>(provider.models);
+  const [declared, setDeclared] = useState<DeclaredCapabilities>(provider.declaredCapabilities ?? {});
   const [newModelId, setNewModelId] = useState('');
   const [showStatus, setShowStatus] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -83,6 +87,10 @@ export default function ProviderCard({ provider, isActive }: ProviderCardProps) 
   const isOllama = isOllamaProvider(provider);
   const isLMStudio = isLMStudioProvider(provider);
   const isBuiltin = provider.source === 'builtin';
+  // Advanced config visibility must match AddProviderModal exactly so the add /
+  // edit forms never drift. providerKind pins ollama/lmstudio for the predicate.
+  const providerKind: LLMProvider | undefined = isOllama ? 'ollama' : isLMStudio ? 'lmstudio' : undefined;
+  const showAdvanced = computeShowAdvanced(provider.source === 'custom', providerKind, provider.apiFormat);
 
   const MODELS_COLLAPSED_COUNT = 5;
 
@@ -91,6 +99,7 @@ export default function ProviderCard({ provider, isActive }: ProviderCardProps) 
     setFormApiKey(provider.apiKey);
     setFormBaseUrl(provider.baseUrl);
     setFormModels([...provider.models]);
+    setDeclared(provider.declaredCapabilities ?? {});
     setNewModelId('');
     setShowApiKey(false);
     setModelsExpanded(false);
@@ -99,14 +108,18 @@ export default function ProviderCard({ provider, isActive }: ProviderCardProps) 
   }, [provider]);
 
   const handleSave = useCallback(() => {
-    updateProvider(provider.id, {
+    const patch: Partial<ProviderInstance> = {
       name: formName,
       apiKey: formApiKey,
       baseUrl: formBaseUrl,
       models: formModels,
-    });
+    };
+    // Only touch declaredCapabilities when the advanced section is actually shown;
+    // otherwise a hidden section must not clobber a provider's existing caps.
+    if (showAdvanced) patch.declaredCapabilities = declared;
+    updateProvider(provider.id, patch);
     setEditing(false);
-  }, [provider.id, formName, formApiKey, formBaseUrl, formModels, updateProvider]);
+  }, [provider.id, formName, formApiKey, formBaseUrl, formModels, showAdvanced, declared, updateProvider]);
 
   const selectModel = useSettingsStore((s) => s.selectModel);
 
@@ -337,6 +350,11 @@ export default function ProviderCard({ provider, isActive }: ProviderCardProps) 
             </button>
           </div>
         </div>
+
+        {/* Edit: Advanced capabilities (custom / local providers only) */}
+        {showAdvanced && (
+          <AdvancedCapabilitiesFields declared={declared} setDeclared={setDeclared} apiFormat={provider.apiFormat} />
+        )}
 
         {/* Edit: Actions */}
         <div className="flex justify-end gap-2 pt-2 border-t border-[var(--abu-border)]">
