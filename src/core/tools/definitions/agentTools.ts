@@ -463,7 +463,7 @@ export const requestWorkspaceTool: ToolDefinition = {
       },
       folder_hint: {
         type: 'string',
-        description: 'Folder name mentioned by the user, e.g. "Downloads", "Desktop", "Documents". The tool will automatically resolve it to a full path.',
+        description: 'Folder name mentioned by the user, e.g. "Downloads"/"下载", "Desktop"/"桌面", "Documents"/"文档". The tool will automatically resolve it to a full path.',
       },
     },
     required: ['reason'],

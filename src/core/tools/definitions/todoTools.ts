@@ -11,7 +11,7 @@ export const createTodoTool: ToolDefinition = {
     properties: {
       title: {
         type: 'string',
-        description: 'To-do title. One sentence, concise. Example: "Organize last week\'s three drafts and archive them".',
+        description: 'To-do title. One sentence, at most ~60 characters. Example: "Organize last week\'s three drafts and archive them".',
       },
       reason: {
         type: 'string',
