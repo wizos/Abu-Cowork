@@ -164,6 +164,121 @@ describe('OpenAICompatibleAdapter streaming finish_reason handling', () => {
     });
   });
 
+  describe("finish_reason='stop_sequence' (stop-word match)", () => {
+    it("treats stop_sequence like stop — emits done end_turn when no tool calls", async () => {
+      const events = await runChat([
+        { choices: [{ delta: { content: 'hello' } }] },
+        { choices: [{ delta: {}, finish_reason: 'stop_sequence' }] },
+      ]);
+      const done = events.find((e) => e.type === 'done');
+      expect(done).toBeDefined();
+      if (done?.type === 'done') {
+        expect(done.stopReason).toBe('end_turn');
+      }
+    });
+
+    it("treats stop_sequence like stop — emits done tool_use when text tool calls present", async () => {
+      const events = await runChat([
+        { choices: [{ delta: { content: '<tool_call>{"name":"read_file","arguments":{"path":"f.txt"}}</tool_call>' } }] },
+        { choices: [{ delta: {}, finish_reason: 'stop_sequence' }] },
+      ]);
+      const done = events.find((e) => e.type === 'done');
+      expect(done).toBeDefined();
+      if (done?.type === 'done') {
+        // text-based tool call was emitted → stopReason=tool_use
+        expect(done.stopReason).toBe('tool_use');
+      }
+    });
+  });
+
+  describe("finish_reason='content_filter' / 'refusal'", () => {
+    it("emits done end_turn on content_filter with no tool calls", async () => {
+      const events = await runChat([
+        { choices: [{ delta: { content: 'I cannot' } }] },
+        { choices: [{ delta: {}, finish_reason: 'content_filter' }] },
+      ]);
+      // Must NOT hang — a done event must always be emitted
+      const done = events.find((e) => e.type === 'done');
+      expect(done).toBeDefined();
+      if (done?.type === 'done') {
+        expect(done.stopReason).toBe('end_turn');
+      }
+    });
+
+    it("emits done end_turn on refusal with no tool calls", async () => {
+      const events = await runChat([
+        { choices: [{ delta: {}, finish_reason: 'refusal' }] },
+      ]);
+      const done = events.find((e) => e.type === 'done');
+      expect(done).toBeDefined();
+      if (done?.type === 'done') {
+        expect(done.stopReason).toBe('end_turn');
+      }
+    });
+  });
+
+  describe("finish_reason='error' (provider-side error in stream)", () => {
+    it("emits done end_turn without hanging", async () => {
+      const events = await runChat([
+        { choices: [{ delta: { content: 'partial' } }] },
+        { choices: [{ delta: {}, finish_reason: 'error' }] },
+      ]);
+      const done = events.find((e) => e.type === 'done');
+      expect(done).toBeDefined();
+      if (done?.type === 'done') {
+        expect(done.stopReason).toBe('end_turn');
+      }
+    });
+  });
+
+  describe('unknown finish_reason', () => {
+    it('emits tool_use + done tool_use when tool calls are buffered', async () => {
+      const events = await runChat([
+        {
+          choices: [{
+            delta: {
+              tool_calls: [{
+                index: 0,
+                id: 'tc_1',
+                function: { name: 'read_file', arguments: '{"path":"x.txt"}' },
+              }],
+            },
+          }],
+        },
+        { choices: [{ delta: {}, finish_reason: 'some_new_reason' }] },
+      ]);
+
+      // Must emit the tool call (not drop it silently)
+      const tu = events.find((e) => e.type === 'tool_use');
+      expect(tu).toBeDefined();
+      if (tu?.type === 'tool_use') {
+        expect(tu.name).toBe('read_file');
+        expect(tu.input).toEqual({ path: 'x.txt' });
+      }
+
+      // Must emit done (not hang)
+      const done = events.find((e) => e.type === 'done');
+      expect(done).toBeDefined();
+      if (done?.type === 'done') {
+        expect(done.stopReason).toBe('tool_use');
+      }
+    });
+
+    it('emits done end_turn when no tool calls are buffered', async () => {
+      const events = await runChat([
+        { choices: [{ delta: { content: 'some text' } }] },
+        { choices: [{ delta: {}, finish_reason: 'some_new_reason' }] },
+      ]);
+
+      // Must emit done (not hang)
+      const done = events.find((e) => e.type === 'done');
+      expect(done).toBeDefined();
+      if (done?.type === 'done') {
+        expect(done.stopReason).toBe('end_turn');
+      }
+    });
+  });
+
   describe("finish_reason='function_call' (legacy alias)", () => {
     it('treats function_call same as tool_calls', async () => {
       const events = await runChat([

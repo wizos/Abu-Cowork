@@ -8,6 +8,7 @@ import { createHeartbeat, anySignal, DEFAULT_STREAM_HANG_TIMEOUT_MS as STREAM_HA
 import { createLogger } from '../logging/logger';
 import { resolveOpenAIBaseUrl, buildFullChatUrl } from './urlUtils';
 import { applyModelRequestProcessors } from './modelRequestProcessors';
+import { observeCompatEvent } from '../observability/compatEvents';
 
 const logger = createLogger('openai-compatible');
 
@@ -765,8 +766,10 @@ export class OpenAICompatibleAdapter implements LLMAdapter {
               const hasToolCalls = toolCallBuffers.size > 0 || hasTextTC;
               onEvent({ type: 'done', stopReason: hasToolCalls ? 'tool_use' : 'end_turn' });
               doneEmitted = true;
-            } else if (choice.finish_reason === 'stop') {
-              // Emit text-based <tool_call> tool calls if any were buffered
+            } else if (choice.finish_reason === 'stop' || choice.finish_reason === 'stop_sequence') {
+              // Emit text-based <tool_call> tool calls if any were buffered.
+              // 'stop_sequence' is a stop-word match (some providers e.g. Together AI);
+              // treat identically to 'stop'.
               const hasTextTC = emitTextToolCalls();
               if (hasTextTC) {
                 onEvent({ type: 'done', stopReason: 'tool_use' });
@@ -812,12 +815,86 @@ export class OpenAICompatibleAdapter implements LLMAdapter {
                 onEvent({ type: 'done', stopReason: 'max_tokens' });
               }
               doneEmitted = true;
+            } else if (
+              choice.finish_reason === 'content_filter' ||
+              choice.finish_reason === 'refusal'
+            ) {
+              // Content was filtered or the model refused to respond. Flush any
+              // pending tool calls (best-effort) then close the stream cleanly.
+              // stopReason 'end_turn' is the closest existing value — no dedicated
+              // moderation reason exists in the current StreamEvent union.
+              for (const [, tc] of toolCallBuffers) {
+                const input = buildToolInput(tc, `finish_reason=${choice.finish_reason}`);
+                onEvent({ type: 'tool_use', id: tc.id, name: tc.name, input });
+              }
+              const hasTextTC = emitTextToolCalls();
+              const hasToolCalls = toolCallBuffers.size > 0 || hasTextTC;
+              logger.warn('content filtered or refused by provider', {
+                finish_reason: choice.finish_reason,
+              });
+              const requestHost = (() => { try { return new URL(fullUrl).host; } catch { return ''; } })();
+              observeCompatEvent({
+                kind: 'content_filtered',
+                modelId: options.model,
+                requestHost,
+                finishReason: choice.finish_reason as string,
+              });
+              onEvent({ type: 'done', stopReason: hasToolCalls ? 'tool_use' : 'end_turn' });
+              doneEmitted = true;
+            } else if (choice.finish_reason === 'error') {
+              // Provider sent finish_reason='error' inside the stream (rare but
+              // seen on some self-hosted endpoints). Surface via logger + observe,
+              // then emit a terminal done so the stream does not hang. We
+              // intentionally do NOT throw here — throwing from inside the SSE
+              // loop would be swallowed by the per-line try/catch above and leave
+              // doneEmitted=false, which would cause a duplicate done in the
+              // stream-end fallback. Conservative path: done + log.
+              logger.warn('provider signalled error via finish_reason', {
+                finish_reason: choice.finish_reason,
+                hasToolCalls: toolCallBuffers.size > 0,
+              });
+              const requestHost = (() => { try { return new URL(fullUrl).host; } catch { return ''; } })();
+              observeCompatEvent({
+                kind: 'error_finish_reason',
+                modelId: options.model,
+                requestHost,
+                finishReason: choice.finish_reason as string,
+              });
+              onEvent({ type: 'done', stopReason: 'end_turn' });
+              doneEmitted = true;
             } else if (choice.finish_reason) {
-              // Unknown finish_reason — log so we can diagnose new providers
+              // Unknown finish_reason — log so we can diagnose new providers.
+              // Best-effort: flush any buffered tool calls so callers receive them,
+              // then emit a terminal done to prevent the stream from hanging.
               logger.warn('unknown finish_reason', {
                 finish_reason: choice.finish_reason,
                 hasToolCalls: toolCallBuffers.size > 0,
               });
+              const requestHost = (() => { try { return new URL(fullUrl).host; } catch { return ''; } })();
+              if (toolCallBuffers.size > 0) {
+                observeCompatEvent({
+                  kind: 'dropped_tool_calls',
+                  modelId: options.model,
+                  requestHost,
+                  finishReason: choice.finish_reason as string,
+                  toolCallCount: toolCallBuffers.size,
+                });
+                for (const [, tc] of toolCallBuffers) {
+                  const input = buildToolInput(tc, `finish_reason=${choice.finish_reason}`);
+                  onEvent({ type: 'tool_use', id: tc.id, name: tc.name, input });
+                }
+              } else {
+                observeCompatEvent({
+                  kind: 'unknown_finish_reason',
+                  modelId: options.model,
+                  requestHost,
+                  finishReason: choice.finish_reason as string,
+                });
+              }
+              const hasTextTC = emitTextToolCalls();
+              const hasToolCalls = toolCallBuffers.size > 0 || hasTextTC;
+              onEvent({ type: 'done', stopReason: hasToolCalls ? 'tool_use' : 'end_turn' });
+              doneEmitted = true;
             }
           } catch {
             // Skip unparseable lines
