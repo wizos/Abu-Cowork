@@ -15,6 +15,8 @@ interface Options {
 
 export function useTextSelection({ containerRef, onSelect, debounceMs = 120 }: Options): void {
   const onSelectRef = useRef(onSelect);
+  // Sync ref during render to avoid stale closure — useEffect would leave a timing gap
+  // eslint-disable-next-line react-hooks/refs
   onSelectRef.current = onSelect;
 
   useEffect(() => {
