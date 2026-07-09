@@ -15,7 +15,7 @@
 // the live store state at the time of each telemetry call.
 import { useEnterpriseStore } from '@/stores/enterpriseStore'
 
-const CONSOLE_URL = import.meta.env.VITE_CONSOLE_URL as string | undefined
+const CONSOLE_URL = import.meta.env?.VITE_CONSOLE_URL as string | undefined
 
 export interface TelemetryTarget {
   baseUrl: string
