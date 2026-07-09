@@ -468,8 +468,12 @@ function TaskStepItem({ step, showConnector, hasLaterToolStep, locale, t }: {
   // Generate step label - for thinking steps, show duration; for waiting ask_user_question, show waiting text
   const stepLabel = useMemo(() => {
     if (isWaitingForAnswer) return t.userQuestion.waitingForAnswer;
-    if (isThinking && isCompleted && step.duration) {
-      return format(t.task.thoughtFor, { seconds: step.duration });
+    if (isThinking) {
+      // Thinking steps carry a baked '思考中...' label; localize at render time
+      // (mirrors the tool-label render-time approach) so it follows UI locale.
+      return (isCompleted && step.duration)
+        ? format(t.task.thoughtFor, { seconds: step.duration })
+        : t.chat.thinking;
     }
     return step.label;
   }, [step, isThinking, isCompleted, isWaitingForAnswer, t]);
