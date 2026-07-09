@@ -2228,6 +2228,43 @@ const zhCN: TranslationDict = {
       mcpNotInRegistry: '未在内置注册表中找到 "{name}"。请用 manage_mcp_server(action: "search") 搜索。',
       mcpNeedsConfig: '安装 {name} 需要配置: {hints}',
     },
+    projectRules: {
+      userRulesTruncated: '...(用户规则已截断)',
+      rulesTruncated: '...(规则已截断，请精简规则内容)',
+      userRulesHeader: '### 用户规则（~/.abu/ABU.md）',
+      projectRulesHeader: '### 项目规则（.abu/ABU.md）',
+      modularRulesHeader: '### 模块化规则（.abu/rules/）',
+      abuTemplate: `# 项目规则
+
+<!--
+  这是项目规则文件，由团队成员手动维护。
+  Abu 会在每次对话中加载这些规则并严格遵守。
+  建议提交到 git，与团队共享。
+
+  注意：.abu/MEMORY.md 是 AI 自动记忆，不要提交到 git。
+-->
+
+## 项目概述
+<!-- 简述项目名称、用途 -->
+
+## 技术栈
+<!-- 列出主要技术栈 -->
+
+## 编码规范
+<!-- 编码风格、命名约定等 -->
+
+## 构建与运行
+<!-- 常用命令 -->
+
+## 其他约定
+<!-- 团队特定的约定 -->
+`,
+      abuAlreadyExists: '`.abu/ABU.md` 已存在，请直接编辑或使用 /init 技能让 AI 帮助改进。',
+      abuTemplateCreated: '创建了 `.abu/ABU.md` 规则模板',
+      abuCreateFailed: '创建 ABU.md 失败: {error}',
+      rulesDirCreated: '创建了 `.abu/rules/` 目录',
+      rulesDirCreateFailed: '创建 rules 目录失败: {error}',
+    },
     web: {
       errNoApiKey: '未配置搜索 API Key。请在设置 → 网络搜索中配置搜索引擎的 API Key。',
       errNoSearxngUrl: '未配置 SearXNG 服务地址。请在设置 → 网络搜索中配置 SearXNG 实例地址。',

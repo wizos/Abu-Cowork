@@ -2492,6 +2492,31 @@ export interface TranslationDict {
       /** Install needs config. {name}, {hints} */
       mcpNeedsConfig: string;
     };
+    // projectRules.ts: rule-bundle headers/markers, ABU.md template, /init results
+    projectRules: {
+      /** User-rules truncation marker appended to the rules text (LLM reads it). */
+      userRulesTruncated: string;
+      /** Combined-rules truncation marker. */
+      rulesTruncated: string;
+      /** User-rules bundle header (### heading + source path). */
+      userRulesHeader: string;
+      /** Project-rules bundle header. */
+      projectRulesHeader: string;
+      /** Modular-rules bundle header. */
+      modularRulesHeader: string;
+      /** Full ABU.md starter template written by /init (user-editable file). */
+      abuTemplate: string;
+      /** ABU.md already exists. */
+      abuAlreadyExists: string;
+      /** Created ABU.md template. */
+      abuTemplateCreated: string;
+      /** Failed to create ABU.md. {error} */
+      abuCreateFailed: string;
+      /** Created rules directory. */
+      rulesDirCreated: string;
+      /** Failed to create rules directory. {error} */
+      rulesDirCreateFailed: string;
+    };
     // web_search / http_fetch
     web: {
       /** No API key configured (non-SearXNG). */

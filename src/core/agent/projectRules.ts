@@ -14,6 +14,7 @@ import { readTextFile, readDir, exists, mkdir } from '@tauri-apps/plugin-fs';
 import { homeDir } from '@tauri-apps/api/path';
 import { joinPath } from '../../utils/pathUtils';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
+import { getI18n, format } from '../../i18n';
 
 const MAX_USER_RULES_CHARS = 4000;
 const MAX_PROJECT_RULES_CHARS = 8000;
@@ -58,7 +59,7 @@ export async function loadUserRules(): Promise<string> {
   const rulesPath = joinPath(home, '.abu', 'ABU.md');
   const content = await safeReadTextFile(rulesPath);
   if (!content) return '';
-  return truncateAtParagraph(content, MAX_USER_RULES_CHARS, '...(用户规则已截断)');
+  return truncateAtParagraph(content, MAX_USER_RULES_CHARS, getI18n().toolResult.projectRules.userRulesTruncated);
 }
 
 /**
@@ -110,13 +111,14 @@ export async function loadModularRules(workspacePath: string): Promise<string> {
  * Total budget: MAX_USER_RULES_CHARS + MAX_PROJECT_RULES_CHARS
  */
 export async function loadAllRules(workspacePath: string | null): Promise<string> {
+  const t = getI18n().toolResult.projectRules;
   const parts: string[] = [];
 
   // 1. User-level rules
   try {
     const userRules = await loadUserRules();
     if (userRules.trim()) {
-      parts.push(`### 用户规则（~/.abu/ABU.md）\n${userRules.trim()}`);
+      parts.push(`${t.userRulesHeader}\n${userRules.trim()}`);
     }
   } catch (err) {
     console.warn('Failed to load user rules:', err);
@@ -127,7 +129,7 @@ export async function loadAllRules(workspacePath: string | null): Promise<string
     try {
       const projectRules = await loadProjectRules(workspacePath);
       if (projectRules.trim()) {
-        parts.push(`### 项目规则（.abu/ABU.md）\n${projectRules.trim()}`);
+        parts.push(`${t.projectRulesHeader}\n${projectRules.trim()}`);
       }
     } catch (err) {
       console.warn('Failed to load project rules:', err);
@@ -136,7 +138,7 @@ export async function loadAllRules(workspacePath: string | null): Promise<string
     try {
       const modularRules = await loadModularRules(workspacePath);
       if (modularRules.trim()) {
-        parts.push(`### 模块化规则（.abu/rules/）\n${modularRules.trim()}`);
+        parts.push(`${t.modularRulesHeader}\n${modularRules.trim()}`);
       }
     } catch (err) {
       console.warn('Failed to load modular rules:', err);
@@ -149,7 +151,7 @@ export async function loadAllRules(workspacePath: string | null): Promise<string
 
   // Enforce total budget
   const totalBudget = MAX_USER_RULES_CHARS + MAX_PROJECT_RULES_CHARS;
-  result = truncateAtParagraph(result, totalBudget, '...(规则已截断，请精简规则内容)');
+  result = truncateAtParagraph(result, totalBudget, t.rulesTruncated);
 
   return result;
 }
@@ -159,6 +161,7 @@ export async function loadAllRules(workspacePath: string | null): Promise<string
  * Returns a description of what was created.
  */
 export async function initWorkspaceRules(workspacePath: string): Promise<string> {
+  const t = getI18n().toolResult.projectRules;
   const abuDir = joinPath(workspacePath, '.abu');
   const rulesFile = joinPath(abuDir, 'ABU.md');
   const rulesDir = joinPath(abuDir, 'rules');
@@ -166,7 +169,7 @@ export async function initWorkspaceRules(workspacePath: string): Promise<string>
 
   // Check if ABU.md already exists
   if (await exists(rulesFile)) {
-    return '`.abu/ABU.md` 已存在，请直接编辑或使用 /init 技能让 AI 帮助改进。';
+    return t.abuAlreadyExists;
   }
 
   // Ensure .abu directory exists
@@ -178,48 +181,22 @@ export async function initWorkspaceRules(workspacePath: string): Promise<string>
     console.warn('Failed to create .abu directory:', err);
   }
 
-  // Create template ABU.md
-  const template = `# 项目规则
-
-<!--
-  这是项目规则文件，由团队成员手动维护。
-  Abu 会在每次对话中加载这些规则并严格遵守。
-  建议提交到 git，与团队共享。
-
-  注意：.abu/MEMORY.md 是 AI 自动记忆，不要提交到 git。
--->
-
-## 项目概述
-<!-- 简述项目名称、用途 -->
-
-## 技术栈
-<!-- 列出主要技术栈 -->
-
-## 编码规范
-<!-- 编码风格、命名约定等 -->
-
-## 构建与运行
-<!-- 常用命令 -->
-
-## 其他约定
-<!-- 团队特定的约定 -->
-`;
-
+  // Create template ABU.md (localized starter file the user then edits by hand)
   try {
-    await writeTextFile(rulesFile, template);
-    results.push('创建了 `.abu/ABU.md` 规则模板');
+    await writeTextFile(rulesFile, t.abuTemplate);
+    results.push(t.abuTemplateCreated);
   } catch (err) {
-    results.push(`创建 ABU.md 失败: ${err}`);
+    results.push(format(t.abuCreateFailed, { error: String(err) }));
   }
 
   // Create rules directory
   try {
     if (!(await exists(rulesDir))) {
       await mkdir(rulesDir, { recursive: true });
-      results.push('创建了 `.abu/rules/` 目录');
+      results.push(t.rulesDirCreated);
     }
   } catch (err) {
-    results.push(`创建 rules 目录失败: ${err}`);
+    results.push(format(t.rulesDirCreateFailed, { error: String(err) }));
   }
 
   return results.join('\n');

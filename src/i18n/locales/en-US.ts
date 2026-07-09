@@ -2227,6 +2227,43 @@ const enUS: TranslationDict = {
       mcpNotInRegistry: 'No "{name}" found in the built-in registry. Use manage_mcp_server(action: "search") to search.',
       mcpNeedsConfig: 'Installing {name} requires config: {hints}',
     },
+    projectRules: {
+      userRulesTruncated: '...(user rules truncated)',
+      rulesTruncated: '...(rules truncated — please trim the rule content)',
+      userRulesHeader: '### User Rules (~/.abu/ABU.md)',
+      projectRulesHeader: '### Project Rules (.abu/ABU.md)',
+      modularRulesHeader: '### Modular Rules (.abu/rules/)',
+      abuTemplate: `# Project Rules
+
+<!--
+  This is the project rules file, maintained manually by team members.
+  Abu loads these rules in every conversation and follows them strictly.
+  Recommended to commit to git and share with your team.
+
+  Note: .abu/MEMORY.md is AI auto-memory — do not commit it to git.
+-->
+
+## Project Overview
+<!-- Brief project name and purpose -->
+
+## Tech Stack
+<!-- List the main tech stack -->
+
+## Coding Standards
+<!-- Coding style, naming conventions, etc. -->
+
+## Build & Run
+<!-- Common commands -->
+
+## Other Conventions
+<!-- Team-specific conventions -->
+`,
+      abuAlreadyExists: '`.abu/ABU.md` already exists. Edit it directly, or use the /init skill to have the AI help improve it.',
+      abuTemplateCreated: 'Created the `.abu/ABU.md` rules template',
+      abuCreateFailed: 'Failed to create ABU.md: {error}',
+      rulesDirCreated: 'Created the `.abu/rules/` directory',
+      rulesDirCreateFailed: 'Failed to create rules directory: {error}',
+    },
     web: {
       errNoApiKey: 'No search API Key configured. Please go to Settings → Web Search to configure your search engine API Key.',
       errNoSearxngUrl: 'No SearXNG URL configured. Please go to Settings → Web Search to configure your SearXNG instance URL.',
