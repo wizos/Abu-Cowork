@@ -402,6 +402,74 @@ export interface TranslationDict {
     running: string;
     showMore: string;
     collapse: string;
+    /** Shown in tool-call detail when the task was aborted mid-execution */
+    cancelled: string;
+  };
+
+  // Notice menubar summaries (noticeMenubarStore.ts)
+  noticeMenubar: {
+    meetingPrep: string;
+    permissionRequest: string;
+    userInputNeeded: string;
+    agentError: string;
+    scheduleFired: string;
+    taskComplete: string;
+    skillProposalOffer: string;
+    skillDraftReady: string;
+    skillPatch: string;
+    stuckDetection: string;
+    imInbound: string;
+    contextResume: string;
+    deepFocusEnter: string;
+    deepFocusExit: string;
+  };
+
+  // OS / in-app notification titles (channels.ts)
+  noticeTitle: {
+    taskComplete: string;
+    agentError: string;
+    scheduleFired: string;
+    permissionRequest: string;
+    userInputNeeded: string;
+    meetingPrep: string;
+    skillProposalOffer: string;
+    skillDraftReady: string;
+    imInbound: string;
+    updateAvailable: string;
+  };
+
+  // Scratchpad entry titles (scratchpadStore.ts)
+  scratchpad: {
+    /** "Content extraction" (no file) */
+    extractionTitle: string;
+    /** "{file} - Content extraction" — use format() with {file} */
+    extractionTitleFile: string;
+    /** "Analysis" (no file) */
+    analysisTitle: string;
+    /** "{file} - Analysis" */
+    analysisTitleFile: string;
+    /** "Search: {query}" — use format() with {query} */
+    searchTitle: string;
+    /** "Search results" (no query) */
+    searchResultsTitle: string;
+    /** "Summary" (no file) */
+    summaryTitle: string;
+    /** "{file} - Summary" */
+    summaryTitleFile: string;
+    /** "Preview" (no file) */
+    previewTitle: string;
+    /** "{file} - Preview" */
+    previewTitleFile: string;
+    /** "Result" (fallback) */
+    resultTitle: string;
+  };
+
+  // Chat/conversation defaults (chatStore.ts, fileWatcher.ts)
+  chatDefaults: {
+    /** Default title for a new conversation shown in the sidebar */
+    newConversationTitle: string;
+    /** File-watcher conversation title: "[Watching] {file} - {time}" */
+    watcherConversationTitle: string;
   };
 
   // Batch Progress (run_agent_batch live UI)

@@ -410,6 +410,7 @@ const enUS: TranslationDict = {
     running: 'Running...',
     showMore: 'Show more',
     collapse: 'Collapse',
+    cancelled: '[Cancelled]',
   },
 
   batch: {
@@ -1881,6 +1882,55 @@ const enUS: TranslationDict = {
     stop: 'Stop',
     overlayStep: 'Step {step}',
     stopControl: 'Stop control',
+  },
+
+  noticeMenubar: {
+    meetingPrep: 'Meeting prep',
+    permissionRequest: 'Permission request',
+    userInputNeeded: 'Input needed',
+    agentError: 'Agent error',
+    scheduleFired: 'Scheduled task fired',
+    taskComplete: 'Task complete',
+    skillProposalOffer: 'Skill suggestion',
+    skillDraftReady: 'Skill draft ready',
+    skillPatch: 'Skill updated',
+    stuckDetection: 'Task stuck',
+    imInbound: 'New message',
+    contextResume: 'Context resumed',
+    deepFocusEnter: 'Deep focus started',
+    deepFocusExit: 'Deep focus ended',
+  },
+
+  noticeTitle: {
+    taskComplete: 'Abu is done!',
+    agentError: 'Something went wrong',
+    scheduleFired: 'Scheduled task triggered',
+    permissionRequest: 'Your confirmation needed',
+    userInputNeeded: 'Your input needed',
+    meetingPrep: 'Meeting prep ready',
+    skillProposalOffer: 'Abu wants to save a skill',
+    skillDraftReady: 'Skill draft ready',
+    imInbound: 'New message received',
+    updateAvailable: 'New version available',
+  },
+
+  scratchpad: {
+    extractionTitle: 'Content extraction',
+    extractionTitleFile: '{file} - Content extraction',
+    analysisTitle: 'Analysis',
+    analysisTitleFile: '{file} - Analysis',
+    searchTitle: 'Search: {query}',
+    searchResultsTitle: 'Search results',
+    summaryTitle: 'Summary',
+    summaryTitleFile: '{file} - Summary',
+    previewTitle: 'Preview',
+    previewTitleFile: '{file} - Preview',
+    resultTitle: 'Result',
+  },
+
+  chatDefaults: {
+    newConversationTitle: 'New task',
+    watcherConversationTitle: '[Watching] {file} - {time}',
   },
 };
 
