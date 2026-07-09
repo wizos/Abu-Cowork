@@ -189,17 +189,23 @@ Abu 是 Tauri 桌面端，每轮"改 → 重启 dev → 验证"的成本比 web 
   English.
 - **Transition status (prompt English-ization)**: P0 (output-language mechanism), P1 (tool
   `description` fields), P3 (UI-facing string i18n — tool result strings via the `toolResult`
-  namespace, and `commandSafety` reasons/labels), and **P2 (core agent behavior prompts)** are
-  done. P2 covered `skillsGuidance.ts`, `agentLoop.ts` (default-soul + capability),
-  `orchestrator.ts` (all system-prompt sections), the built-in agent `systemPrompt`s in
-  `registry.ts`, the `PRESET_AGENTS` in `agentTools.ts`/`orchestrationTools.ts`, and the
-  subagent system prompt in `subagentLoop.ts`. The orchestrator IM canned replies were
-  rewritten as behavior instructions (the reply's language is handled by the response-language
-  section, not a fixed string). Agent-picker metadata was already bilingual (per-field
-  `displayNames`/`descriptions`/`*I18n` maps). Still Chinese and left for the i18n pass (NOT
-  P2 — these are user-visible result/status/template strings): `mcpDiscovery.ts` catalog
-  descriptions + result messages + env hints, `projectRules.ts` ABU.md template + result
-  messages, and scattered subagent result/status fallback strings.
+  namespace, and `commandSafety` reasons/labels), **P2 (core agent behavior prompts)**, and
+  **P4 (remaining user-visible result/status/template strings)** are all done. P2 covered
+  `skillsGuidance.ts`, `agentLoop.ts` (default-soul + capability), `orchestrator.ts` (all
+  system-prompt sections), the built-in agent `systemPrompt`s in `registry.ts`, the
+  `PRESET_AGENTS` in `agentTools.ts`/`orchestrationTools.ts`, and the subagent system prompt
+  in `subagentLoop.ts`. The orchestrator IM canned replies were rewritten as behavior
+  instructions (the reply's language is handled by the response-language section, not a fixed
+  string). Agent-picker metadata was already bilingual (per-field
+  `displayNames`/`descriptions`/`*I18n` maps). P4 i18n'd (NOT hardcoded English — these are
+  user-visible, so both locales stay correct): `mcpDiscovery.ts` catalog descriptions + env
+  hints + result messages (`toolResult.system.mcpCatalog`/`mcpEnvHints`/`mcp*`),
+  `projectRules.ts` rule-bundle headers + truncation markers + the per-locale ABU.md template
+  + `/init` results (`toolResult.projectRules`), and the `agentLoop.ts`/`subagentLoop.ts`
+  runtime status/error strings (`chat.*` + `chat.subagent.*`). The one P4 exception left in
+  English is the context-compression hint injected into the volatile *system prompt*
+  (`agentLoop.ts` `compression-hint`) — it is LLM-facing and never rendered, so it follows the
+  English-prompt rule, not i18n.
 - **🔴 Exception — do NOT English-ify these (they are UI-facing, not LLM-facing)**: tool
   runtime result strings (`execute()` returns/success/error messages — rendered directly
   in `ToolCallsGroup.tsx`), `commandSafety` reason/label strings (command-confirmation
