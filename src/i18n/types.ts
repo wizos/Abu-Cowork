@@ -2537,6 +2537,57 @@ export interface TranslationDict {
       levelDanger: string;
       levelWarn: string;
       levelSafe: string;
+      // DANGEROUS_PATTERNS — block tier
+      blockRmRoot: string;
+      blockRmHome: string;
+      blockRmRootWild: string;
+      blockRmHomeWild: string;
+      blockSudoRmRoot: string;
+      blockDdSda: string;
+      blockDdNvme: string;
+      blockDdDisk: string;
+      blockMkfs: string;
+      blockForkBomb: string;
+      blockSilentBg: string;
+      blockCatSshKey: string;
+      blockCatAwsCreds: string;
+      blockWriteSshKeys: string;
+      blockWriteShellRc: string;
+      // DANGEROUS_PATTERNS — danger tier
+      dangerRmRf: string;
+      dangerRmWild: string;
+      dangerGitPushForce: string;
+      dangerGitResetHard: string;
+      dangerGitCleanF: string;
+      dangerGitCheckoutDot: string;
+      dangerChmod777: string;
+      dangerChmodR777: string;
+      dangerCurlPipeSh: string;
+      dangerCurlPipePython: string;
+      dangerPipBreakSystem: string;
+      dangerNpmForce: string;
+      dangerBashCRm: string;
+      dangerShCRm: string;
+      dangerXargsRm: string;
+      dangerFindDelete: string;
+      dangerFindExecRm: string;
+      // DANGEROUS_PATTERNS — warn tier
+      warnSudo: string;
+      warnRm: string;
+      warnGitPush: string;
+      warnNpmPublish: string;
+      warnBrewUninstall: string;
+      warnPipUninstall: string;
+      warnAptRemove: string;
+      warnAptPurge: string;
+      warnMvDevNull: string;
+      warnTruncate: string;
+      warnShred: string;
+      warnKill9: string;
+      warnKillall: string;
+      warnPkill: string;
+      warnSystemctlStop: string;
+      warnLaunchctl: string;
     };
     // computer (computerTools.ts) — AX/screenshot/input action results and errors
     computer: {

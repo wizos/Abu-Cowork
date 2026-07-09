@@ -297,74 +297,79 @@ const WIN_SAFE_PATTERNS: RegExp[] = [
 ];
 
 /**
- * Dangerous command patterns organized by severity level
+ * Dangerous command patterns organized by severity level.
+ * Returns a new object each call so that reasons are resolved at call time
+ * via getI18n() (must NOT run at module load).
  */
-const DANGEROUS_PATTERNS: Record<Exclude<DangerLevel, 'safe'>, Array<{ pattern: RegExp; reason: string }>> = {
-  block: [
-    // System-critical destructive commands
-    { pattern: /rm\s+.*(-r\s+-f|-f\s+-r|-rf|-fr|--recursive)\s+\/$/, reason: '此命令会删除系统根目录' },
-    { pattern: /rm\s+.*(-r\s+-f|-f\s+-r|-rf|-fr|--recursive)\s+~\/?$/, reason: '此命令会删除用户主目录' },
-    { pattern: /rm\s+.*(-r\s+-f|-f\s+-r|-rf|-fr|--recursive)\s+\/\*/, reason: '此命令会删除根目录下所有文件' },
-    { pattern: /rm\s+.*(-r\s+-f|-f\s+-r|-rf|-fr|--recursive)\s+~\/\*/, reason: '此命令会删除用户主目录下所有文件' },
-    { pattern: /sudo\s+rm\s+.*(-r|-f|--recursive).*\/$/, reason: '此命令会以管理员权限删除根目录' },
-    { pattern: />\s*\/dev\/sd[a-z]/, reason: '此命令会覆盖磁盘数据' },
-    { pattern: />\s*\/dev\/nvme/, reason: '此命令会覆盖 NVMe 磁盘数据' },
-    { pattern: /dd\s+.*of=\/dev\//, reason: '此命令会直接写入磁盘设备' },
-    { pattern: /mkfs\./, reason: '此命令会格式化文件系统' },
-    { pattern: /:\s*\(\)\s*\{/, reason: '这是 fork 炸弹，会耗尽系统资源' },
-    { pattern: />\s*\/dev\/null\s*2>&1\s*&/, reason: '可疑的后台静默执行' },
-    // Prevent reading/writing sensitive files via commands
-    { pattern: /cat\s+.*\.ssh\/id_/, reason: '禁止读取 SSH 私钥' },
-    { pattern: /cat\s+.*\.aws\/credentials/, reason: '禁止读取 AWS 凭证' },
-    { pattern: />\s*.*\.ssh\/authorized_keys/, reason: '禁止写入 SSH 授权密钥' },
-    { pattern: />\s*.*\.bashrc/, reason: '禁止写入 shell 配置文件' },
-    { pattern: />\s*.*\.zshrc/, reason: '禁止写入 shell 配置文件' },
-    { pattern: />\s*.*\.profile/, reason: '禁止写入 shell 配置文件' },
-  ],
-  danger: [
-    // Destructive but may be intentional (with various flag combinations)
-    { pattern: /rm\s+.*(-r|-R|--recursive)/, reason: '递归删除命令，可能导致数据丢失' },
-    { pattern: /rm\s+.*\*/, reason: '通配符删除命令，可能删除意外文件' },
-    { pattern: /git\s+push\s+.*(-f|--force)/, reason: '强制推送可能覆盖远程历史记录' },
-    { pattern: /git\s+reset\s+--hard/, reason: '硬重置会丢弃所有未提交的更改' },
-    { pattern: /git\s+clean\s+.*-f/, reason: '会删除所有未跟踪的文件' },
-    { pattern: /git\s+checkout\s+--\s*\.$/, reason: '会丢弃所有未暂存的更改' },
-    { pattern: /chmod\s+777/, reason: '设置完全开放权限存在安全风险' },
-    { pattern: /chmod\s+-R\s+777/, reason: '递归设置完全开放权限，风险极高' },
-    { pattern: /curl.*\|\s*(ba)?sh/, reason: '从网络下载并直接执行脚本存在安全风险' },
-    { pattern: /wget.*\|\s*(ba)?sh/, reason: '从网络下载并直接执行脚本存在安全风险' },
-    { pattern: /curl.*\|\s*python/, reason: '从网络下载并直接执行 Python 脚本' },
-    { pattern: /pip\s+install.*--break-system-packages/, reason: '可能破坏系统 Python 环境' },
-    { pattern: /npm\s+.*--force/, reason: '强制安装可能绕过安全检查' },
-    { pattern: /bash\s+-c\s+["'].*rm\s/, reason: 'bash -c 中包含删除命令' },
-    { pattern: /sh\s+-c\s+["'].*rm\s/, reason: 'sh -c 中包含删除命令' },
-    { pattern: /xargs\s+.*rm/, reason: 'xargs 与 rm 组合可能批量删除' },
-    { pattern: /find\s+.*-delete/, reason: 'find -delete 可能批量删除文件' },
-    { pattern: /find\s+.*-exec\s+rm/, reason: 'find -exec rm 可能批量删除文件' },
-  ],
-  warn: [
-    // Common commands that should be confirmed
-    { pattern: /sudo\s+/, reason: '需要管理员权限' },
-    { pattern: /rm\s+/, reason: '删除文件操作' },
-    { pattern: /git\s+push/, reason: '推送代码到远程仓库' },
-    { pattern: /npm\s+publish/, reason: '发布 npm 包到公共仓库' },
-    { pattern: /brew\s+uninstall/, reason: '卸载 Homebrew 软件包' },
-    { pattern: /pip\s+uninstall/, reason: '卸载 Python 包' },
-    { pattern: /apt\s+remove/, reason: '卸载系统软件包' },
-    { pattern: /apt-get\s+remove/, reason: '卸载系统软件包' },
-    { pattern: /apt\s+purge/, reason: '完全卸载系统软件包' },
-    { pattern: /yum\s+remove/, reason: '卸载系统软件包' },
-    { pattern: /dnf\s+remove/, reason: '卸载系统软件包' },
-    { pattern: /mv\s+.*\/dev\/null/, reason: '将文件移动到 /dev/null 会导致数据丢失' },
-    { pattern: /truncate\s+/, reason: '截断文件可能导致数据丢失' },
-    { pattern: /shred\s+/, reason: '安全擦除文件，不可恢复' },
-    { pattern: /kill\s+-9/, reason: '强制杀死进程' },
-    { pattern: /killall\s+/, reason: '杀死所有匹配进程' },
-    { pattern: /pkill\s+/, reason: '杀死匹配进程' },
-    { pattern: /systemctl\s+(stop|disable|mask)/, reason: '停止或禁用系统服务' },
-    { pattern: /launchctl\s+(unload|remove)/, reason: '卸载 macOS 服务' },
-  ],
-};
+function getDangerousPatterns(): Record<Exclude<DangerLevel, 'safe'>, Array<{ pattern: RegExp; reason: string }>> {
+  const t = getI18n().toolResult.commandSafety;
+  return {
+    block: [
+      // System-critical destructive commands
+      { pattern: /rm\s+.*(-r\s+-f|-f\s+-r|-rf|-fr|--recursive)\s+\/$/, reason: t.blockRmRoot },
+      { pattern: /rm\s+.*(-r\s+-f|-f\s+-r|-rf|-fr|--recursive)\s+~\/?$/, reason: t.blockRmHome },
+      { pattern: /rm\s+.*(-r\s+-f|-f\s+-r|-rf|-fr|--recursive)\s+\/\*/, reason: t.blockRmRootWild },
+      { pattern: /rm\s+.*(-r\s+-f|-f\s+-r|-rf|-fr|--recursive)\s+~\/\*/, reason: t.blockRmHomeWild },
+      { pattern: /sudo\s+rm\s+.*(-r|-f|--recursive).*\/$/, reason: t.blockSudoRmRoot },
+      { pattern: />\s*\/dev\/sd[a-z]/, reason: t.blockDdSda },
+      { pattern: />\s*\/dev\/nvme/, reason: t.blockDdNvme },
+      { pattern: /dd\s+.*of=\/dev\//, reason: t.blockDdDisk },
+      { pattern: /mkfs\./, reason: t.blockMkfs },
+      { pattern: /:\s*\(\)\s*\{/, reason: t.blockForkBomb },
+      { pattern: />\s*\/dev\/null\s*2>&1\s*&/, reason: t.blockSilentBg },
+      // Prevent reading/writing sensitive files via commands
+      { pattern: /cat\s+.*\.ssh\/id_/, reason: t.blockCatSshKey },
+      { pattern: /cat\s+.*\.aws\/credentials/, reason: t.blockCatAwsCreds },
+      { pattern: />\s*.*\.ssh\/authorized_keys/, reason: t.blockWriteSshKeys },
+      { pattern: />\s*.*\.bashrc/, reason: t.blockWriteShellRc },
+      { pattern: />\s*.*\.zshrc/, reason: t.blockWriteShellRc },
+      { pattern: />\s*.*\.profile/, reason: t.blockWriteShellRc },
+    ],
+    danger: [
+      // Destructive but may be intentional (with various flag combinations)
+      { pattern: /rm\s+.*(-r|-R|--recursive)/, reason: t.dangerRmRf },
+      { pattern: /rm\s+.*\*/, reason: t.dangerRmWild },
+      { pattern: /git\s+push\s+.*(-f|--force)/, reason: t.dangerGitPushForce },
+      { pattern: /git\s+reset\s+--hard/, reason: t.dangerGitResetHard },
+      { pattern: /git\s+clean\s+.*-f/, reason: t.dangerGitCleanF },
+      { pattern: /git\s+checkout\s+--\s*\.$/, reason: t.dangerGitCheckoutDot },
+      { pattern: /chmod\s+777/, reason: t.dangerChmod777 },
+      { pattern: /chmod\s+-R\s+777/, reason: t.dangerChmodR777 },
+      { pattern: /curl.*\|\s*(ba)?sh/, reason: t.dangerCurlPipeSh },
+      { pattern: /wget.*\|\s*(ba)?sh/, reason: t.dangerCurlPipeSh },
+      { pattern: /curl.*\|\s*python/, reason: t.dangerCurlPipePython },
+      { pattern: /pip\s+install.*--break-system-packages/, reason: t.dangerPipBreakSystem },
+      { pattern: /npm\s+.*--force/, reason: t.dangerNpmForce },
+      { pattern: /bash\s+-c\s+["'].*rm\s/, reason: t.dangerBashCRm },
+      { pattern: /sh\s+-c\s+["'].*rm\s/, reason: t.dangerShCRm },
+      { pattern: /xargs\s+.*rm/, reason: t.dangerXargsRm },
+      { pattern: /find\s+.*-delete/, reason: t.dangerFindDelete },
+      { pattern: /find\s+.*-exec\s+rm/, reason: t.dangerFindExecRm },
+    ],
+    warn: [
+      // Common commands that should be confirmed
+      { pattern: /sudo\s+/, reason: t.warnSudo },
+      { pattern: /rm\s+/, reason: t.warnRm },
+      { pattern: /git\s+push/, reason: t.warnGitPush },
+      { pattern: /npm\s+publish/, reason: t.warnNpmPublish },
+      { pattern: /brew\s+uninstall/, reason: t.warnBrewUninstall },
+      { pattern: /pip\s+uninstall/, reason: t.warnPipUninstall },
+      { pattern: /apt\s+remove/, reason: t.warnAptRemove },
+      { pattern: /apt-get\s+remove/, reason: t.warnAptRemove },
+      { pattern: /apt\s+purge/, reason: t.warnAptPurge },
+      { pattern: /yum\s+remove/, reason: t.warnAptRemove },
+      { pattern: /dnf\s+remove/, reason: t.warnAptRemove },
+      { pattern: /mv\s+.*\/dev\/null/, reason: t.warnMvDevNull },
+      { pattern: /truncate\s+/, reason: t.warnTruncate },
+      { pattern: /shred\s+/, reason: t.warnShred },
+      { pattern: /kill\s+-9/, reason: t.warnKill9 },
+      { pattern: /killall\s+/, reason: t.warnKillall },
+      { pattern: /pkill\s+/, reason: t.warnPkill },
+      { pattern: /systemctl\s+(stop|disable|mask)/, reason: t.warnSystemctlStop },
+      { pattern: /launchctl\s+(unload|remove)/, reason: t.warnLaunchctl },
+    ],
+  };
+}
 
 /**
  * Safe command patterns - commands that are always allowed without confirmation
@@ -421,8 +426,8 @@ function analyzeSegment(segment: string): CommandAnalysis {
   const levels: Array<Exclude<DangerLevel, 'safe'>> = ['block', 'danger', 'warn'];
   for (const level of levels) {
     const patterns = isWindows()
-      ? [...DANGEROUS_PATTERNS[level], ...WIN_DANGEROUS_PATTERNS[level]]
-      : DANGEROUS_PATTERNS[level];
+      ? [...getDangerousPatterns()[level], ...WIN_DANGEROUS_PATTERNS[level]]
+      : getDangerousPatterns()[level];
     for (const { pattern, reason } of patterns) {
       if (pattern.test(trimmed) || pattern.test(normalized)) {
         return { level, reason, matchedPattern: pattern.source, readOnly: false };
