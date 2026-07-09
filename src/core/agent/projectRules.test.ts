@@ -58,7 +58,7 @@ describe('loadUserRules', () => {
     mockReadTextFile.mockResolvedValue(longContent);
     const result = await loadUserRules();
     expect(result.length).toBeLessThan(5000);
-    expect(result).toContain('用户规则已截断');
+    expect(result).toContain('user rules truncated');
     // Should truncate at the paragraph boundary (3500), not at 4000
     expect(result).toContain(para1);
     expect(result).not.toContain(para2);
@@ -70,7 +70,7 @@ describe('loadUserRules', () => {
     mockReadTextFile.mockResolvedValue(longContent);
     const result = await loadUserRules();
     expect(result.length).toBeLessThan(5000);
-    expect(result).toContain('用户规则已截断');
+    expect(result).toContain('user rules truncated');
   });
 });
 
@@ -157,9 +157,9 @@ describe('loadAllRules', () => {
     mockExists.mockResolvedValue(false); // no modular rules dir
 
     const result = await loadAllRules('/workspace');
-    expect(result).toContain('用户规则');
+    expect(result).toContain('User Rules');
     expect(result).toContain('user rules');
-    expect(result).toContain('项目规则');
+    expect(result).toContain('Project Rules');
     expect(result).toContain('project rules');
   });
 
@@ -167,7 +167,7 @@ describe('loadAllRules', () => {
     mockReadTextFile.mockResolvedValue('user rules');
     const result = await loadAllRules(null);
     expect(result).toContain('user rules');
-    expect(result).not.toContain('项目规则（.abu/ABU.md）');
+    expect(result).not.toContain('Project Rules (.abu/ABU.md)');
   });
 
   it('truncates when total exceeds budget', async () => {
@@ -191,7 +191,7 @@ describe('initWorkspaceRules', () => {
   it('returns message when ABU.md already exists', async () => {
     mockExists.mockResolvedValue(true);
     const result = await initWorkspaceRules('/workspace');
-    expect(result).toContain('已存在');
+    expect(result).toContain('already exists');
   });
 
   it('creates template and rules directory', async () => {
@@ -201,10 +201,10 @@ describe('initWorkspaceRules', () => {
     mockWriteTextFile.mockResolvedValue(undefined);
 
     const result = await initWorkspaceRules('/workspace');
-    expect(result).toContain('创建了');
+    expect(result).toContain('Created');
     expect(mockWriteTextFile).toHaveBeenCalledWith(
       '/workspace/.abu/ABU.md',
-      expect.stringContaining('# 项目规则')
+      expect.stringContaining('# Project Rules')
     );
     expect(mockMkdir).toHaveBeenCalled();
   });
