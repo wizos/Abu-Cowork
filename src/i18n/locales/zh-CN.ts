@@ -410,6 +410,7 @@ const zhCN: TranslationDict = {
     running: '执行中...',
     showMore: '查看更多',
     collapse: '收起',
+    cancelled: '[已取消]',
   },
 
   batch: {
@@ -1853,6 +1854,55 @@ const zhCN: TranslationDict = {
     stop: '停止',
     overlayStep: '第 {step} 步',
     stopControl: '停止操控',
+  },
+
+  noticeMenubar: {
+    meetingPrep: '会议准备',
+    permissionRequest: '权限请求',
+    userInputNeeded: '需要输入',
+    agentError: 'Agent 错误',
+    scheduleFired: '定时任务触发',
+    taskComplete: '任务完成',
+    skillProposalOffer: '技能建议',
+    skillDraftReady: '技能草稿就绪',
+    skillPatch: '技能更新',
+    stuckDetection: '任务卡住',
+    imInbound: '收到消息',
+    contextResume: '上下文恢复',
+    deepFocusEnter: '进入深度专注',
+    deepFocusExit: '退出深度专注',
+  },
+
+  noticeTitle: {
+    taskComplete: '阿布完成啦！',
+    agentError: '哎呀出错了',
+    scheduleFired: '定时任务触发',
+    permissionRequest: '需要你的确认',
+    userInputNeeded: '需要你的输入',
+    meetingPrep: '会议准备就绪',
+    skillProposalOffer: '阿布想存一个技能',
+    skillDraftReady: '技能草稿就绪',
+    imInbound: '收到新消息',
+    updateAvailable: '有新版本可用',
+  },
+
+  scratchpad: {
+    extractionTitle: '内容提取',
+    extractionTitleFile: '{file} - 内容提取',
+    analysisTitle: '分析结果',
+    analysisTitleFile: '{file} - 分析结果',
+    searchTitle: '搜索: {query}',
+    searchResultsTitle: '搜索结果',
+    summaryTitle: '摘要',
+    summaryTitleFile: '{file} - 摘要',
+    previewTitle: '预览',
+    previewTitleFile: '{file} - 预览',
+    resultTitle: '结果',
+  },
+
+  chatDefaults: {
+    newConversationTitle: '新任务',
+    watcherConversationTitle: '[监听] {file} - {time}',
   },
 };
 
