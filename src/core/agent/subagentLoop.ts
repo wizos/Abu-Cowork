@@ -26,6 +26,7 @@ import { resolveEffectiveLlmCreds } from '../enterprise/llm-resolver';
 import { emitHook } from './lifecycleHooks';
 import type { SubagentStartEvent, SubagentEndEvent, PreToolCallEvent } from './lifecycleHooks';
 import { startSubagentSpan } from '../observability/langfuse';
+import { getI18n } from '../../i18n';
 import { escalateMaxOutputTokens, shouldContinueTruncatedToolCalls } from './agentLoop';
 
 /** Max times a subagent re-prompts after a max_tokens truncation. Mirrors the
@@ -332,7 +333,7 @@ export async function runSubagentLoop(options: SubagentLoopOptions): Promise<Sub
     for (let turn = 0; turn < maxTurns; turn++) {
       if (signal?.aborted) {
         const abortResult = new SubagentResult({
-          text: resultBuffer || 'Error: 任务被取消',
+          text: resultBuffer || getI18n().chat.subagent.taskCancelled,
           toolCallCount: totalToolCalls,
           turnCount: turn,
           tokenUsage: { input: totalInputTokens, output: totalOutputTokens },
@@ -541,7 +542,7 @@ export async function runSubagentLoop(options: SubagentLoopOptions): Promise<Sub
         && lastStopReason === 'max_tokens'
         && collectedToolCalls.length === 0
         && maxOutputTokensRecoveryCount >= MAX_OUTPUT_TOKENS_RECOVERY_LIMIT) {
-        const note = '[子代理输出多次达到 token 上限仍未完成，以下结果可能不完整，建议换用输出预算更大的模型重试。]';
+        const note = getI18n().chat.subagent.outputLimitIncomplete;
         resultBuffer = resultBuffer ? resultBuffer + '\n\n' + note : note;
       }
 
@@ -551,7 +552,7 @@ export async function runSubagentLoop(options: SubagentLoopOptions): Promise<Sub
       if (isNoProgressTurn({ toolCalls: collectedToolCalls, turnText, stopReason: lastStopReason })) {
         consecutiveNoProgress++;
         if (consecutiveNoProgress >= MAX_NO_PROGRESS_TURNS) {
-          const note = '[子代理已停止：模型连续多次生成不完整的工具调用或输出被截断，可能是该模型能力不足或上下文过长，建议换用能力更强的模型重试。]';
+          const note = getI18n().chat.subagent.stoppedIncomplete;
           resultBuffer = resultBuffer ? resultBuffer + '\n\n' + note : note;
           break;
         }
@@ -584,7 +585,7 @@ export async function runSubagentLoop(options: SubagentLoopOptions): Promise<Sub
       const toolResults = await Promise.allSettled(
         collectedToolCalls.map(async (tc) => {
           if (signal?.aborted) {
-            return { id: tc.id, result: '[已取消]' };
+            return { id: tc.id, result: getI18n().chat.subagent.cancelled };
           }
 
           // Emit preToolCall — may block or modify input
@@ -598,7 +599,7 @@ export async function runSubagentLoop(options: SubagentLoopOptions): Promise<Sub
             if (preEvent.blockReason) {
               return { id: tc.id, result: `Error: ${preEvent.blockReason}` };
             }
-            return { id: tc.id, result: '[被 hook 拦截]' };
+            return { id: tc.id, result: getI18n().chat.subagent.hookBlocked };
           }
           const effectiveInput = preEvent.modifiedInput ?? tc.input;
 
@@ -670,7 +671,7 @@ export async function runSubagentLoop(options: SubagentLoopOptions): Promise<Sub
     }
 
     const finalResult = new SubagentResult({
-      text: resultBuffer || 'Error: 子代理未产出内容（可能模型推理占满了输出预算）。建议换用能力更强或非推理的模型重试。',
+      text: resultBuffer || getI18n().chat.subagent.noContent,
       toolCallCount: totalToolCalls,
       turnCount: maxTurns,
       tokenUsage: { input: totalInputTokens, output: totalOutputTokens },

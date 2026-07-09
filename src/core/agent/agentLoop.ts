@@ -680,7 +680,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
     chatStore.addMessage(conversationId, {
       id: generateId(),
       role: 'assistant',
-      content: '请先在设置中配置你的 API Key。',
+      content: getI18n().chat.configureApiKey,
       timestamp: Date.now(),
       loopId,
     });
@@ -788,7 +788,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       chatStore.addMessage(conversationId, {
         id: generateId(),
         role: 'assistant',
-        content: `这个技能需要一些工具但当前不可用哦：${missing.join(', ')}。检查一下相关 MCP 服务器是否已连接～`,
+        content: format(getI18n().chat.skillMissingTools, { missing: missing.join(', ') }),
         timestamp: Date.now(),
         loopId,
       });
@@ -890,7 +890,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       chatStore.setAgentStatus('idle');
       chatStore.setConversationStatus(conversationId, 'completed');
 
-      const convTitle = useChatStore.getState().conversationIndex[conversationId]?.title ?? '任务';
+      const convTitle = useChatStore.getState().conversationIndex[conversationId]?.title ?? getI18n().chat.notificationTaskFallback;
       notifyTaskCompleted(convTitle, conversationId);
     } catch (err) {
       subagentCleanup();
@@ -911,7 +911,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       }
       const errorMessage = err instanceof Error ? err.message : String(err);
       const delegateDisplayError = err instanceof EnterpriseLlmUnavailableError
-        ? '无法连接企业 AI 网关。请检查网络连接，或联系管理员。\n\n客户端不会回退到个人 API key（防止预算绕过）。'
+        ? getI18n().chat.gatewayUnreachable
         : errorMessage;
       const delegateErrorId = generateId();
       chatStore.addMessage(conversationId, {
@@ -926,7 +926,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       eventRouter.route({ type: 'error', loopId, error: errorMessage });
       persistExecutionSnapshot(conversationId, loopId);
       chatStore.setConversationStatus(conversationId, 'error');
-      const convTitle = useChatStore.getState().conversationIndex[conversationId]?.title ?? '任务';
+      const convTitle = useChatStore.getState().conversationIndex[conversationId]?.title ?? getI18n().chat.notificationTaskFallback;
       notifyTaskError(convTitle, conversationId);
       return { reason: 'error', error: errorMessage };
     }
@@ -1322,7 +1322,10 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       if (compressionApplied) {
         const compressionHint: PromptSection = {
           name: 'compression-hint',
-          text: '\n[本轮对话历史经过压缩，较早的细节已摘要化。如果用户提到你不确定的早期细节，坦诚告知并请用户确认，不要编造。]',
+          // LLM-facing system-prompt hint (never rendered to the user), so it is
+          // written in English like the other prompts — not localized. The reply
+          // language is still governed by the response-language section.
+          text: '\n[The earlier conversation history has been compressed and older details summarized. If the user mentions early details you are unsure about, say so honestly and ask them to confirm — do not fabricate.]',
           cacheable: false,
         };
         allSections = mergeSections([...allSections, compressionHint]);
@@ -1623,7 +1626,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
 
           chatStore.appendToLastMessage(
             conversationId,
-            '\n*上下文过长，正在优化上下文...*',
+            getI18n().chat.compactingInlineNotice,
             assistantMsgId
           );
 
@@ -1791,14 +1794,15 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
           const removed = tools.filter(t => !freshNames.has(t.name));
 
           if (added.length > 0 || removed.length > 0) {
-            const parts: string[] = ['[系统通知] 可用工具已更新。'];
+            const tc = getI18n().chat;
+            const parts: string[] = [tc.toolsUpdatedHeader];
             if (added.length > 0) {
-              parts.push(`新增: ${added.map(t => t.name).join(', ')}`);
+              parts.push(format(tc.toolsAdded, { tools: added.map(t => t.name).join(', ') }));
             }
             if (removed.length > 0) {
-              parts.push(`移除: ${removed.map(t => t.name).join(', ')}`);
+              parts.push(format(tc.toolsRemoved, { tools: removed.map(t => t.name).join(', ') }));
             }
-            parts.push('请根据最新的工具列表继续执行任务。');
+            parts.push(tc.toolsUpdatedFooter);
             chatStore.addMessage(conversationId, {
               id: generateId(),
               role: 'user',
@@ -1851,11 +1855,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
           });
           chatStore.appendToLastMessage(
             conversationId,
-            `\n\n**Error:** 模型连续 ${MAX_OUTPUT_TOKENS_RECOVERY_LIMIT} 次输出达到 token 上限仍未完成。建议：\n` +
-            `1. 缩短当前对话或开启新会话\n` +
-            `2. 把任务拆分成更小的步骤\n` +
-            `3. 切换到上下文更大的模型\n` +
-            `4. 写入大文件时让模型用 \`run_command\` + heredoc 追加（\`>>\`）而非单次 \`write_file\``,
+            format(getI18n().chat.outputLimitError, { limit: MAX_OUTPUT_TOKENS_RECOVERY_LIMIT }),
             assistantMsgId
           );
         }
@@ -2001,7 +2001,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
             logger.warn('[proposalSignal] compute failed', { err: err instanceof Error ? err.message : String(err) });
           }
         }
-        const convTitle = useChatStore.getState().conversationIndex[conversationId]?.title ?? '任务';
+        const convTitle = useChatStore.getState().conversationIndex[conversationId]?.title ?? getI18n().chat.notificationTaskFallback;
         notifyTaskCompleted(convTitle, conversationId);
       }
     } catch (err) {
@@ -2119,11 +2119,11 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
         && /^forbidden\s*$/i.test(err.message.trim());
       const isEnterpriseGatewayUnavailable = err instanceof EnterpriseLlmUnavailableError;
       const displayError = isEnterpriseGatewayUnavailable
-        ? '无法连接企业 AI 网关。请检查网络连接，或联系管理员。\n\n客户端不会回退到个人 API key（防止预算绕过）。'
+        ? getI18n().chat.gatewayUnreachable
         : isLikelyVisionError
-        ? '当前模型可能不支持图片/视觉输入，请尝试移除图片或切换到支持视觉的模型（如 Claude、GPT-4o）。'
+        ? getI18n().chat.visionUnsupported
         : isOllamaForbidden
-        ? 'Ollama 返回了 403 Forbidden（CORS 来源限制）。请设置环境变量 `OLLAMA_ORIGINS=*` 后重启 Ollama，例如：`OLLAMA_ORIGINS=* ollama serve`'
+        ? getI18n().chat.ollamaForbidden
         : errorMessage;
 
       chatStore.appendToLastMessage(
@@ -2153,7 +2153,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       // Mark conversation as error and send notification
       chatStore.setConversationStatus(conversationId, 'error');
 
-      const convTitle = useChatStore.getState().conversationIndex[conversationId]?.title ?? '任务';
+      const convTitle = useChatStore.getState().conversationIndex[conversationId]?.title ?? getI18n().chat.notificationTaskFallback;
       notifyTaskError(convTitle, conversationId);
       exitReason = 'error';
       exitError = errorMessage;

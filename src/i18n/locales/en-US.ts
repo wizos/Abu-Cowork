@@ -354,6 +354,31 @@ const enUS: TranslationDict = {
     contextTooltipSubtitle: 'Context water level · Local estimate',
     maxTurnsReached: 'Completed {n} turns. Send a new message to continue if the task is not finished.',
     noProgressStopped: 'Stopped: the model repeatedly produced unparseable tool calls. The model may be too weak or the context too long — try a more capable model.',
+    configureApiKey: 'Please set up your API Key in Settings first.',
+    skillMissingTools: 'This skill needs some tools that aren\'t available right now: {missing}. Check whether the related MCP servers are connected.',
+    gatewayUnreachable: 'Cannot reach the enterprise AI gateway. Check your network connection, or contact your administrator.\n\nThe client will not fall back to a personal API key (to prevent budget bypass).',
+    visionUnsupported: 'The current model may not support image/vision input. Try removing the image or switching to a vision-capable model (e.g. Claude, GPT-4o).',
+    ollamaForbidden: 'Ollama returned 403 Forbidden (CORS origin restriction). Set the environment variable `OLLAMA_ORIGINS=*` and restart Ollama, e.g. `OLLAMA_ORIGINS=* ollama serve`',
+    compactingInlineNotice: '\n*Context is getting long, optimizing context...*',
+    notificationTaskFallback: 'Task',
+    outputLimitError:
+      '\n\n**Error:** The model hit the output token limit {limit} times in a row without finishing. Suggestions:\n' +
+      '1. Shorten the current conversation or start a new one\n' +
+      '2. Break the task into smaller steps\n' +
+      '3. Switch to a model with a larger context\n' +
+      '4. When writing large files, have the model append with `run_command` + heredoc (`>>`) instead of a single `write_file`',
+    toolsUpdatedHeader: '[System notice] The available tools have been updated.',
+    toolsAdded: 'Added: {tools}',
+    toolsRemoved: 'Removed: {tools}',
+    toolsUpdatedFooter: 'Continue the task based on the latest tool list.',
+    subagent: {
+      taskCancelled: 'Error: task was cancelled',
+      outputLimitIncomplete: '[The subagent repeatedly hit the output token limit without finishing; the result below may be incomplete. Consider retrying with a model that has a larger output budget.]',
+      stoppedIncomplete: '[Subagent stopped: the model repeatedly produced incomplete tool calls or its output was truncated — the model may not be capable enough or the context too long. Consider retrying with a more capable model.]',
+      cancelled: '[cancelled]',
+      hookBlocked: '[blocked by hook]',
+      noContent: 'Error: the subagent produced no content (its reasoning may have used up the entire output budget). Consider retrying with a more capable or non-reasoning model.',
+    },
     workedFor: 'Worked for {duration}',
     stoppedAfter: 'You stopped after {duration}',
     usageChipInput: 'Input',

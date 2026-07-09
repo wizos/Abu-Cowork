@@ -342,6 +342,46 @@ export interface TranslationDict {
     maxTurnsReached: string;
     // Agent loop no-progress guard (model stuck emitting unparseable tool calls)
     noProgressStopped: string;
+    // Agent loop runtime status / errors + subagent result strings (P4-C)
+    /** Error: no API key configured (keep the literal "API Key" substring). */
+    configureApiKey: string;
+    /** Skill requires tools that aren't currently available. {missing} */
+    skillMissingTools: string;
+    /** Enterprise AI gateway unreachable (shown as an error bubble). */
+    gatewayUnreachable: string;
+    /** Model likely doesn't support image/vision input. */
+    visionUnsupported: string;
+    /** Ollama returned 403 Forbidden (CORS origin restriction). */
+    ollamaForbidden: string;
+    /** Streamed-inline notice while compacting an oversized context (includes markdown). */
+    compactingInlineNotice: string;
+    /** Conversation-title fallback used in task notifications. */
+    notificationTaskFallback: string;
+    /** Error after repeated output-token-limit hits (multi-line). {limit} */
+    outputLimitError: string;
+    /** Tool-update notice header (injected into the conversation as a message). */
+    toolsUpdatedHeader: string;
+    /** Tool-update notice: added tools. {tools} */
+    toolsAdded: string;
+    /** Tool-update notice: removed tools. {tools} */
+    toolsRemoved: string;
+    /** Tool-update notice footer. */
+    toolsUpdatedFooter: string;
+    /** Subagent (subagentLoop.ts) result/status strings. */
+    subagent: {
+      /** Subagent task was cancelled. */
+      taskCancelled: string;
+      /** Output repeatedly hit the token limit; result may be incomplete. */
+      outputLimitIncomplete: string;
+      /** Subagent stopped: repeated incomplete tool calls / truncated output. */
+      stoppedIncomplete: string;
+      /** A tool call was cancelled. */
+      cancelled: string;
+      /** A tool call was blocked by a hook. */
+      hookBlocked: string;
+      /** Subagent produced no content. */
+      noContent: string;
+    };
     // Work-process fold label (Codex-style turn collapse). {duration} = e.g. "1m 4s"
     workedFor: string;
     stoppedAfter: string;
