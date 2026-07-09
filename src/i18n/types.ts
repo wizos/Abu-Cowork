@@ -1856,7 +1856,6 @@ export interface TranslationDict {
     commentToChat: string;
     addToChat: string;
     commentPlaceholder: string;
-    quoteChipFallback: string;
     /** {max} 占位 */
     maxReached: string;
   };

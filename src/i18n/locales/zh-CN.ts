@@ -1738,7 +1738,6 @@ const zhCN: TranslationDict = {
     commentToChat: '评论到对话',
     addToChat: '添加到对话',
     commentPlaceholder: '输入你的评论…',
-    quoteChipFallback: '引用',
     maxReached: '最多添加 {max} 条引用',
   },
 
