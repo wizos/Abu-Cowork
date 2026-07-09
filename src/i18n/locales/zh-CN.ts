@@ -354,6 +354,31 @@ const zhCN: TranslationDict = {
     contextTooltipSubtitle: '上下文水位 · 本地估算',
     maxTurnsReached: '已完成 {n} 轮执行。如果任务尚未完成，直接发送消息即可继续。',
     noProgressStopped: '已停止：模型连续多次生成无法解析的工具调用，可能是该模型能力不足或上下文过长，建议换用能力更强的模型重试。',
+    configureApiKey: '请先在设置中配置你的 API Key。',
+    skillMissingTools: '这个技能需要一些工具但当前不可用哦：{missing}。检查一下相关 MCP 服务器是否已连接～',
+    gatewayUnreachable: '无法连接企业 AI 网关。请检查网络连接，或联系管理员。\n\n客户端不会回退到个人 API key（防止预算绕过）。',
+    visionUnsupported: '当前模型可能不支持图片/视觉输入，请尝试移除图片或切换到支持视觉的模型（如 Claude、GPT-4o）。',
+    ollamaForbidden: 'Ollama 返回了 403 Forbidden（CORS 来源限制）。请设置环境变量 `OLLAMA_ORIGINS=*` 后重启 Ollama，例如：`OLLAMA_ORIGINS=* ollama serve`',
+    compactingInlineNotice: '\n*上下文过长，正在优化上下文...*',
+    notificationTaskFallback: '任务',
+    outputLimitError:
+      '\n\n**Error:** 模型连续 {limit} 次输出达到 token 上限仍未完成。建议：\n' +
+      '1. 缩短当前对话或开启新会话\n' +
+      '2. 把任务拆分成更小的步骤\n' +
+      '3. 切换到上下文更大的模型\n' +
+      '4. 写入大文件时让模型用 `run_command` + heredoc 追加（`>>`）而非单次 `write_file`',
+    toolsUpdatedHeader: '[系统通知] 可用工具已更新。',
+    toolsAdded: '新增: {tools}',
+    toolsRemoved: '移除: {tools}',
+    toolsUpdatedFooter: '请根据最新的工具列表继续执行任务。',
+    subagent: {
+      taskCancelled: 'Error: 任务被取消',
+      outputLimitIncomplete: '[子代理输出多次达到 token 上限仍未完成，以下结果可能不完整，建议换用输出预算更大的模型重试。]',
+      stoppedIncomplete: '[子代理已停止：模型连续多次生成不完整的工具调用或输出被截断，可能是该模型能力不足或上下文过长，建议换用能力更强的模型重试。]',
+      cancelled: '[已取消]',
+      hookBlocked: '[被 hook 拦截]',
+      noContent: 'Error: 子代理未产出内容（可能模型推理占满了输出预算）。建议换用能力更强或非推理的模型重试。',
+    },
     workedFor: '已处理 {duration}',
     stoppedAfter: '你在 {duration} 后停止了',
     usageChipInput: '输入',

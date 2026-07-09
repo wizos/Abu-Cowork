@@ -173,6 +173,6 @@ describe('subagent max_tokens recovery (integration)', () => {
 
     // 1 initial + 3 recovery attempts = 4 calls, then it stops (does not spin to maxTurns).
     expect(mockClaudeChat).toHaveBeenCalledTimes(4);
-    expect(result.text).toContain('token 上限');
+    expect(result.text).toContain('output token limit');
   });
 });
