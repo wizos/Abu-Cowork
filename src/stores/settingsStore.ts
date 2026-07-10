@@ -1034,9 +1034,44 @@ export const useSettingsStore = create<SettingsStore>()(
     }),
     {
       name: 'abu-settings',
-      version: 39,
+      version: 40,
       migrate: (persisted: unknown, version: number) => {
         const state = persisted as Record<string, unknown>;
+
+        // ════════════════════════════════════════════════
+        // V40: sink the model-varying subset of provider-level declaredCapabilities
+        // down onto each model (per-model overrides). Additive & non-destructive:
+        // provider-level object stays (fallback + endpoint-level fields kept), and a
+        // model that already declares a field is not clobbered. Behavior unchanged —
+        // every model just inherits what the whole provider declared before.
+        // ════════════════════════════════════════════════
+        if (version < 40) {
+          if (Array.isArray(state.providers)) {
+            const MODEL_FIELDS = [
+              'supportsTools', 'supportsImages', 'supportsReasoning',
+              'supportedEfforts', 'maxInputTokens', 'maxOutputTokens',
+            ] as const;
+            for (const p of state.providers as Array<Record<string, unknown>>) {
+              const declared = p?.declaredCapabilities as Record<string, unknown> | undefined;
+              if (!declared || typeof declared !== 'object') continue;
+              const models = p.models as Array<Record<string, unknown>> | undefined;
+              if (!Array.isArray(models)) continue;
+              for (const m of models) {
+                if (!m || typeof m !== 'object') continue;
+                const existing = (m.declaredCapabilities as Record<string, unknown> | undefined) ?? {};
+                const next: Record<string, unknown> = { ...existing };
+                let touched = false;
+                for (const f of MODEL_FIELDS) {
+                  if (declared[f] !== undefined && next[f] === undefined) {
+                    next[f] = declared[f];
+                    touched = true;
+                  }
+                }
+                if (touched) m.declaredCapabilities = next;
+              }
+            }
+          }
+        }
 
         // ════════════════════════════════════════════════
         // V39: ProviderInstance gains `declaredCapabilities` (optional).
