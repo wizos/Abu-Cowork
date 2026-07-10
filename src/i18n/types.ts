@@ -1801,6 +1801,25 @@ export interface TranslationDict {
     rememberChoice: string;
   };
 
+  // Desktop pet window (standalone Tauri window)
+  pet: {
+    openMain: string;
+    closePet: string;
+    closeMenu: string;
+    reply: string;
+    replyPlaceholder: string;
+    needAuth: string;
+    expand: string;
+    collapse: string;
+    status: {
+      idle: string;
+      running: string;
+      waiting: string;
+      error: string;
+      done: string;
+    };
+  };
+
   // Updates
   updates: {
     newVersionAvailable: string;

@@ -1677,6 +1677,24 @@ const enUS: TranslationDict = {
     rememberChoice: 'Remember my choice',
   },
 
+  pet: {
+    openMain: 'Open main window',
+    closePet: 'Close pet',
+    closeMenu: 'Close menu',
+    reply: 'Reply',
+    replyPlaceholder: 'Reply…',
+    needAuth: 'Needs approval',
+    expand: 'Expand',
+    collapse: 'Collapse',
+    status: {
+      idle: 'Idle',
+      running: 'Working…',
+      waiting: 'Waiting for input',
+      error: 'Ran into a problem',
+      done: 'Done',
+    },
+  },
+
   updates: {
     newVersionAvailable: 'New version available',
     currentVersion: 'Current version',

@@ -1678,6 +1678,24 @@ const zhCN: TranslationDict = {
     rememberChoice: '记住我的选择',
   },
 
+  pet: {
+    openMain: '打开主窗口',
+    closePet: '关闭桌宠',
+    closeMenu: '关闭菜单',
+    reply: '回复',
+    replyPlaceholder: '回复…',
+    needAuth: '需要授权',
+    expand: '展开',
+    collapse: '收起',
+    status: {
+      idle: '空闲',
+      running: '处理中…',
+      waiting: '等待输入',
+      error: '遇到问题',
+      done: '完成',
+    },
+  },
+
   updates: {
     newVersionAvailable: '发现新版本',
     currentVersion: '当前版本',
