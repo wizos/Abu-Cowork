@@ -269,7 +269,24 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
     setNameManuallyEdited(true);
   }, []);
 
+  // Seed default declared capabilities for newly-selected model ids that don't
+  // already have an entry (never overwrites an existing/edited entry). Shared by
+  // every path that can add a model to `selectedModels` — manual add, checklist
+  // toggle, and the fetch-all-then-select flows (cloud fetch / Ollama fetch) —
+  // so expanding a model's caps always shows meaningful defaults, not a
+  // misleading all-off state.
+  const seedDeclaredDefaults = useCallback((ids: string[]) => {
+    setPerModelDeclared(prev => {
+      const toAdd = ids.filter(id => !prev[id]);
+      if (toAdd.length === 0) return prev;
+      const next = { ...prev };
+      for (const id of toAdd) next[id] = defaultModelDeclaredCapabilities();
+      return next;
+    });
+  }, []);
+
   const handleToggleModel = useCallback((modelId: string) => {
+    const isSelecting = !selectedModels.has(modelId);
     setSelectedModels((prev) => {
       const next = new Set(prev);
       if (next.has(modelId)) {
@@ -279,17 +296,20 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
       }
       return next;
     });
-  }, []);
+    if (isSelecting && showAdvanced) {
+      seedDeclaredDefaults([modelId]);
+    }
+  }, [selectedModels, showAdvanced, seedDeclaredDefaults]);
 
   const handleAddManualModel = useCallback(() => {
     const id = manualModelInput.trim();
     if (!id) return;
     setSelectedModels((prev) => new Set(prev).add(id));
     if (showAdvanced) {
-      setPerModelDeclared(prev => (prev[id] ? prev : { ...prev, [id]: defaultModelDeclaredCapabilities() }));
+      seedDeclaredDefaults([id]);
     }
     setManualModelInput('');
-  }, [manualModelInput, showAdvanced]);
+  }, [manualModelInput, showAdvanced, seedDeclaredDefaults]);
 
   const updateModelDeclared = useCallback((id: string, updater: SetStateAction<ModelDeclaredCapabilities>) => {
     setPerModelDeclared(prev => ({
@@ -308,6 +328,38 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
     });
   }, []);
 
+  // ── Fix 3 dedup: shared per-model "advanced caps" expand affordance ──
+  // Used by all three model-list branches (fetched checklist / manual no-fetch
+  // list / Ollama list) so the chevron toggle + expanded panel isn't
+  // triplicated. Gated identically everywhere: showAdvanced && isSelected.
+  const renderModelExpandToggle = (modelId: string, isSelected: boolean) => {
+    if (!showAdvanced || !isSelected) return null;
+    const isExpanded = expandedModelIds.has(modelId);
+    return (
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); toggleModelExpand(modelId); }}
+        className="text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] shrink-0"
+      >
+        <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', isExpanded && 'rotate-180')} />
+      </button>
+    );
+  };
+
+  const renderModelCapsPanel = (modelId: string, isSelected: boolean) => {
+    if (!showAdvanced || !isSelected || !expandedModelIds.has(modelId)) return null;
+    return (
+      <div className="pl-2 pt-2 pb-1 border-l-2 border-[var(--abu-border)] ml-1 space-y-1.5">
+        <p className="text-[11px] text-[var(--abu-text-tertiary)]">{t.settings.capPerModelHint}</p>
+        <AdvancedCapabilitiesFields
+          declared={perModelDeclared[modelId] ?? {}}
+          setDeclared={(u) => updateModelDeclared(modelId, u)}
+          apiFormat={selectedOption?.format ?? 'openai-compatible'}
+        />
+      </div>
+    );
+  };
+
   // ── Fetch models handler (cloud providers) ──
 
   const handleFetchModels = useCallback(async () => {
@@ -325,6 +377,9 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
     if (result.success && result.models.length > 0) {
       setFetchedModels(result.models);
       setSelectedModels(new Set(result.models.map((m) => m.id)));
+      if (showAdvanced) {
+        seedDeclaredDefaults(result.models.map((m) => m.id));
+      }
       setFetchModelsStatus('success');
     } else if (result.success) {
       setFetchModelsStatus('error');
@@ -333,7 +388,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
       setFetchModelsStatus('error');
       setFetchModelsError(result.error ?? t.settings.fetchModelsFailed);
     }
-  }, [baseUrl, apiKey, selectedOption?.format, t]);
+  }, [baseUrl, apiKey, selectedOption?.format, t, showAdvanced, seedDeclaredDefaults]);
 
   // ── Ollama handlers ──
 
@@ -362,13 +417,16 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
 
       // Auto-select all fetched models
       setSelectedModels(new Set(modelInfos.map((m) => m.id)));
+      if (showAdvanced) {
+        seedDeclaredDefaults(modelInfos.map((m) => m.id));
+      }
 
       // Store raw sizes for display (attach to label)
       // Size info is already in the label via formatOllamaModelLabel
     } catch {
       // Ollama fetch failed silently
     }
-  }, [baseUrl]);
+  }, [baseUrl, showAdvanced, seedDeclaredDefaults]);
 
   // ── Validate connection ──
   const handleValidate = useCallback(async () => {
@@ -798,22 +856,13 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
                   <div className="space-y-1 max-h-48 overflow-y-auto rounded-lg border border-[var(--abu-border)] p-2">
                     {displayList.map((model) => {
                       const isSelected = selectedModels.has(model.id);
-                      const isExpanded = expandedModelIds.has(model.id);
                       return (
                         <div key={model.id} className="space-y-0">
                           <div
                             className="flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-[var(--abu-bg-hover)] cursor-pointer"
                             onClick={() => handleToggleModel(model.id)}
                           >
-                            {showAdvanced && isSelected && (
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); toggleModelExpand(model.id); }}
-                                className="text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] shrink-0"
-                              >
-                                <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', isExpanded && 'rotate-180')} />
-                              </button>
-                            )}
+                            {renderModelExpandToggle(model.id, isSelected)}
                             <div className={cn(
                               'flex items-center justify-center h-4 w-4 rounded border transition-colors shrink-0',
                               isSelected
@@ -824,16 +873,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
                             </div>
                             <span className="text-sm text-[var(--abu-text-primary)] flex-1 truncate">{model.label}</span>
                           </div>
-                          {showAdvanced && isSelected && isExpanded && (
-                            <div className="pl-2 pt-2 pb-1 border-l-2 border-[var(--abu-border)] ml-1 space-y-1.5">
-                              <p className="text-[11px] text-[var(--abu-text-tertiary)]">{t.settings.capPerModelHint}</p>
-                              <AdvancedCapabilitiesFields
-                                declared={perModelDeclared[model.id] ?? {}}
-                                setDeclared={(u) => updateModelDeclared(model.id, u)}
-                                apiFormat={selectedOption?.format ?? 'openai-compatible'}
-                              />
-                            </div>
-                          )}
+                          {renderModelCapsPanel(model.id, isSelected)}
                         </div>
                       );
                     })}
@@ -845,19 +885,10 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
               {!isOllama && fetchedModels.length === 0 && selectedModels.size > 0 && (
                 <div className="space-y-1 max-h-48 overflow-y-auto rounded-lg border border-[var(--abu-border)] p-2">
                   {[...selectedModels].map((modelId) => {
-                    const isExpanded = expandedModelIds.has(modelId);
                     return (
                       <div key={modelId} className="space-y-0">
                         <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-[var(--abu-bg-hover)]">
-                          {showAdvanced && (
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); toggleModelExpand(modelId); }}
-                              className="text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] shrink-0"
-                            >
-                              <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', isExpanded && 'rotate-180')} />
-                            </button>
-                          )}
+                          {renderModelExpandToggle(modelId, true)}
                           <div className="flex items-center justify-center h-4 w-4 rounded border bg-[var(--abu-clay)] border-[var(--abu-clay)] shrink-0">
                             <Check className="h-3 w-3 text-white" />
                           </div>
@@ -870,16 +901,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
                             <X className="h-3 w-3" />
                           </button>
                         </div>
-                        {showAdvanced && isExpanded && (
-                          <div className="pl-2 pt-2 pb-1 border-l-2 border-[var(--abu-border)] ml-1 space-y-1.5">
-                            <p className="text-[11px] text-[var(--abu-text-tertiary)]">{t.settings.capPerModelHint}</p>
-                            <AdvancedCapabilitiesFields
-                              declared={perModelDeclared[modelId] ?? {}}
-                              setDeclared={(u) => updateModelDeclared(modelId, u)}
-                              apiFormat={selectedOption?.format ?? 'openai-compatible'}
-                            />
-                          </div>
-                        )}
+                        {renderModelCapsPanel(modelId, true)}
                       </div>
                     );
                   })}
@@ -889,22 +911,26 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
               {/* Ollama models — checkbox list with size */}
               {isOllama && ollamaStatus === 'online' && ollamaModels.length > 0 && (
                 <div className="space-y-1 max-h-48 overflow-y-auto rounded-lg border border-[var(--abu-border)] p-2">
-                  {ollamaModels.map((model) => (
-                    <label
-                      key={model.id}
-                      className="flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-[var(--abu-bg-hover)] cursor-pointer"
-                    >
-                      <div className={cn(
-                        'flex items-center justify-center h-4 w-4 rounded border transition-colors',
-                        selectedModels.has(model.id)
-                          ? 'bg-[var(--abu-clay)] border-[var(--abu-clay)]'
-                          : 'border-[var(--abu-border)]',
-                      )}>
-                        {selectedModels.has(model.id) && <Check className="h-3 w-3 text-white" />}
+                  {ollamaModels.map((model) => {
+                    const isSelected = selectedModels.has(model.id);
+                    return (
+                      <div key={model.id} className="space-y-0">
+                        <label className="flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-[var(--abu-bg-hover)] cursor-pointer">
+                          {renderModelExpandToggle(model.id, isSelected)}
+                          <div className={cn(
+                            'flex items-center justify-center h-4 w-4 rounded border transition-colors',
+                            isSelected
+                              ? 'bg-[var(--abu-clay)] border-[var(--abu-clay)]'
+                              : 'border-[var(--abu-border)]',
+                          )}>
+                            {isSelected && <Check className="h-3 w-3 text-white" />}
+                          </div>
+                          <span className="text-sm text-[var(--abu-text-primary)] flex-1">{model.label}</span>
+                        </label>
+                        {renderModelCapsPanel(model.id, isSelected)}
                       </div>
-                      <span className="text-sm text-[var(--abu-text-primary)] flex-1">{model.label}</span>
-                    </label>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
