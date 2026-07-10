@@ -63,7 +63,7 @@
 <td align="center"><b>桌宠 · 活动通知条</b><br/>桌面浮窗常驻，活动条实时显示阿布状态<br/><br/><img src="website/assets/screenshot-pet.png" width="100%" /></td>
 </tr>
 <tr>
-<td align="center"><b>主题切换 · 暗色</b><br/>深色为默认设计方向<br/><br/><img src="website/assets/screenshot-theme.png" width="100%" /></td>
+<td align="center"><b>主题切换 · 暗色</b><br/>精心打磨的暗色主题<br/><br/><img src="website/assets/screenshot-theme.png" width="100%" /></td>
 <td align="center"><b>主题切换 · 亮色</b><br/>亮色 / 暗色 / 跟随系统一键切换<br/><br/><img src="website/assets/screenshot-theme-light.png" width="100%" /></td>
 </tr>
 <tr>

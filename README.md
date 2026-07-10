@@ -55,6 +55,10 @@ Recent highlights: **Labs** experiment framework (currently hosting: Desktop Pet
 <td align="center" width="50%"><b>Task Execution</b><br/>Autonomous planning & tool invocation for complex tasks<br/><br/><img src="website/assets/screenshot-execution.en.png" width="100%" /></td>
 </tr>
 <tr>
+<td align="center"><b>Web Pages · Live Preview</b><br/>Generate a site and preview it live, side by side<br/><br/><img src="website/assets/screenshot-web-pages.en.png" width="100%" /></td>
+<td align="center"><b>Content Creation · Live Preview</b><br/>Draft documents with a real-time Markdown preview<br/><br/><img src="website/assets/screenshot-doc-edit.en.png" width="100%" /></td>
+</tr>
+<tr>
 <td align="center"><b>Plan Mode</b><br/>High-risk tasks show a plan first — runs only after you confirm<br/><br/><img src="website/assets/screenshot-plan-mode.en.png" width="100%" /></td>
 <td align="center"><b>Interactive Questions</b><br/>Abu pops an option card when it needs you to decide (single / multi-select)<br/><br/><img src="website/assets/screenshot-ask-question.en.png" width="100%" /></td>
 </tr>
@@ -63,7 +67,7 @@ Recent highlights: **Labs** experiment framework (currently hosting: Desktop Pet
 <td align="center"><b>Desktop Pet · Activity Tray</b><br/>A floating pet on your desktop, its tray showing Abu's live status<br/><br/><img src="website/assets/screenshot-pet.en.png" width="100%" /></td>
 </tr>
 <tr>
-<td align="center"><b>Theme · Dark</b><br/>Dark is the default design direction<br/><br/><img src="website/assets/screenshot-theme.en.png" width="100%" /></td>
+<td align="center"><b>Theme · Dark</b><br/>A polished, low-glare dark theme<br/><br/><img src="website/assets/screenshot-theme.en.png" width="100%" /></td>
 <td align="center"><b>Theme · Light</b><br/>Switch between light / dark / follow-system<br/><br/><img src="website/assets/screenshot-theme-light.en.png" width="100%" /></td>
 </tr>
 <tr>
@@ -92,6 +96,13 @@ Recent highlights: **Labs** experiment framework (currently hosting: Desktop Pet
 <tr>
 <td align="center"><b>Soul (Personality)</b><br/>3 proactivity presets + custom SOUL.md for tone & style<br/><br/><img src="website/assets/screenshot-soul.en.png" width="100%" /></td>
 <td align="center"><b>Diagnostic Panel</b><br/>One-click self-check across AI / MCP / skills / network + bundle export<br/><br/><img src="website/assets/screenshot-diagnostic.en.png" width="100%" /></td>
+</tr>
+<tr>
+<td align="center"><b>Expert Agents</b><br/>A library of expert agents you can summon by @name<br/><br/><img src="website/assets/screenshot-agents.en.png" width="100%" /></td>
+<td align="center"><b>Usage Stats</b><br/>Requests, tokens, cache hits, and per model / skill usage<br/><br/><img src="website/assets/screenshot-usage.en.png" width="100%" /></td>
+</tr>
+<tr>
+<td align="center" colspan="2"><b>Projects & Workspaces</b><br/>Group work into projects, each with its own skills & MCP<br/><br/><img src="website/assets/screenshot-project.en.png" width="60%" /></td>
 </tr>
 <tr>
 <td align="center" colspan="2"><b>Content Safety Scan</b><br/>Three permission modes (Request Approval / Smart Review / Full Autonomy) + scan agents / skills / memory for prompt injection & dangerous instructions<br/><br/><img src="website/assets/screenshot-security-scan.en.png" width="60%" /></td>
