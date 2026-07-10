@@ -11,6 +11,7 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { StreamEvent } from '../../types';
+import type { ProviderInstance } from '../../types/provider';
 
 vi.mock('../../stores/workspaceStore', () => ({
   useWorkspaceStore: { getState: () => ({ currentPath: '/tmp/project' }), subscribe: vi.fn() },
@@ -40,7 +41,14 @@ vi.mock('../context/contextCompressor', () => ({
 }));
 vi.mock('../observability/langfuse', () => ({ startSubagentSpan: vi.fn().mockReturnValue({ end: vi.fn() }) }));
 
-const mockGetActiveProvider = vi.fn(() => ({ id: 'p1', apiFormat: 'anthropic', baseUrl: undefined, models: [] }));
+const mockGetActiveProvider = vi.fn(
+  (..._args: unknown[]): Partial<ProviderInstance> | undefined => ({
+    id: 'p1',
+    apiFormat: 'anthropic',
+    baseUrl: undefined,
+    models: [],
+  }),
+);
 vi.mock('../../stores/settingsStore', () => ({
   useSettingsStore: { getState: () => ({ agentMaxTurns: 200, maxOutputTokens: undefined, contextWindowSize: undefined }) },
   getActiveProvider: (...args: unknown[]) => mockGetActiveProvider(...args),
