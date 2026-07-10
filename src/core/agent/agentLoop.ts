@@ -43,6 +43,7 @@ import { isWindows } from '../../utils/platform';
 import { getBuiltinSearchConfig } from '../capabilities';
 import { resolveCapabilities, resolveEffectiveContextWindow, computeReasoningParams, type ModelCapabilities } from '../llm/modelCapabilities';
 import { applyDeclaredCapabilities } from '../llm/applyDeclaredCapabilities';
+import { resolveModelDeclared } from '../llm/resolveModelDeclared';
 import { rehydrateForSend, type ImageBase64Cache } from '../llm/imageRehydration';
 import { TOOL_NAMES } from '../tools/toolNames';
 import { prefetchTools } from '../tools/toolPrefetch';
@@ -755,7 +756,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
   // context and triggers a 400 on providers that only accept text content).
   toolContext.supportsVision = applyDeclaredCapabilities(
     resolveCapabilities(effectiveModelId),
-    getActiveProvider(settingsForModel)?.declaredCapabilities,
+    resolveModelDeclared(getActiveProvider(settingsForModel), effectiveModelId),
   ).vision;
 
   // Pin the resolved model to the conversation on first run, so it survives
@@ -1139,6 +1140,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       // for non-identity, mid-loop-tunable knobs (computerUse, maxOutputTokens,
       // contextWindowSize).
       const activeProvider = getActiveProvider(settingsForModel);
+      const modelDeclared = resolveModelDeclared(activeProvider, effectiveModelId);
       const builtinWebSearch = activeProvider
         ? getBuiltinSearchConfig(activeProvider.id as LLMProvider, true)
         : undefined;
@@ -1146,7 +1148,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       // resolution entirely so the model never sees tool definitions in the system
       // prompt and can't hallucinate tool calls. The adapter-level toolsGate rule
       // also strips tools from the request body as belt-and-suspenders.
-      const noTools = activeProvider?.declaredCapabilities?.supportsTools === false;
+      const noTools = modelDeclared?.supportsTools === false;
       // Build prefetch context for conditional tool loading
       const conv = useChatStore.getState().conversations[conversationId];
       const activeSkillObjects = (conv?.activeSkills ?? [])
@@ -1183,7 +1185,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       let modelCaps = resolveCapabilities(effectiveModelId);
       // Override auto-detected caps with user-declared values (custom/local providers only).
       // No-op when activeProvider has no declaredCapabilities (builtin providers).
-      modelCaps = applyDeclaredCapabilities(modelCaps, activeProvider?.declaredCapabilities);
+      modelCaps = applyDeclaredCapabilities(modelCaps, modelDeclared);
       modelSupportsVision = modelCaps.vision;
       const discoveredCaps = activeProvider
         ? useDiscoveredCapsStore.getState().get(activeProvider.id, effectiveModelId)
@@ -1208,13 +1210,13 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
         // Exception: if the user explicitly declared supportsReasoning=false for this
         // provider, respect that declaration and never flip thinking back on.
         ...(discoveredCaps?.isReasoningModel && modelCaps.thinking === false
-            && activeProvider?.declaredCapabilities?.supportsReasoning !== false
+            && modelDeclared?.supportsReasoning !== false
           ? { thinking: 'uncontrollable' as const }
           : {}),
       };
       const reasoningParams = computeReasoningParams(
         effectiveCaps,
-        activeProvider?.declaredCapabilities?.maxOutputTokens ?? freshSettings.maxOutputTokens ?? effectiveModelMaxOutput,
+        modelDeclared?.maxOutputTokens ?? freshSettings.maxOutputTokens ?? effectiveModelMaxOutput,
       );
       let maxOutputTokens = reasoningParams.maxTokens;
       // Effective context window = min(model published cap, user setting, runtime-discovered).
@@ -1223,7 +1225,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       // because the project default settingsStore.contextWindowSize is 200k.
       const contextWindowSize = resolveEffectiveContextWindow(
         effectiveModelId,
-        activeProvider?.declaredCapabilities?.maxInputTokens ?? freshSettings.contextWindowSize,
+        modelDeclared?.maxInputTokens ?? freshSettings.contextWindowSize,
         discoveredCaps?.contextWindow,
       );
 
@@ -1423,7 +1425,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
         thinkingBudget: reasoningParams.thinkingBudget,
         reasoningEffort: reasoningParams.reasoningEffort,
         supportsVision: modelCaps.vision,
-        declaredCapabilities: activeProvider?.declaredCapabilities,
+        declaredCapabilities: modelDeclared,
         builtinWebSearch,
         // When the adapter's max_tokens auto-retry succeeds, persist the
         // discovered limit so the next request uses it pre-emptively.
@@ -1863,7 +1865,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       // Skip if the user explicitly declared supportsReasoning=false — their declaration
       // takes precedence over runtime observation.
       if (collectedThinking && modelCaps.thinking === false && activeProvider
-          && activeProvider.declaredCapabilities?.supportsReasoning !== false) {
+          && modelDeclared?.supportsReasoning !== false) {
         useDiscoveredCapsStore.getState().recordReasoningObserved(activeProvider.id, effectiveModelId);
       }
 
