@@ -51,50 +51,61 @@ Recent highlights: **Labs** experiment framework (currently hosting: Desktop Pet
 
 <table>
 <tr>
-<td align="center" width="50%"><b>Welcome</b><br/>Natural language input — conversation is the command<br/><br/><img src="website/assets/screenshot-welcome.png" width="100%" /></td>
-<td align="center" width="50%"><b>Task Execution</b><br/>Autonomous planning & tool invocation for complex tasks<br/><br/><img src="website/assets/screenshot-execution.png" width="100%" /></td>
+<td align="center" width="50%"><b>Welcome</b><br/>Natural language input — conversation is the command<br/><br/><img src="website/assets/screenshot-welcome.en.png" width="100%" /></td>
+<td align="center" width="50%"><b>Task Execution</b><br/>Autonomous planning & tool invocation for complex tasks<br/><br/><img src="website/assets/screenshot-execution.en.png" width="100%" /></td>
 </tr>
 <tr>
-<td align="center"><b>Plan Mode</b><br/>High-risk tasks show a plan first — runs only after you confirm<br/><br/><img src="website/assets/screenshot-plan-mode.png" width="100%" /></td>
-<td align="center"><b>Interactive Questions</b><br/>Abu pops an option card when it needs you to decide (single / multi-select)<br/><br/><img src="website/assets/screenshot-ask-question.png" width="100%" /></td>
+<td align="center"><b>Web Pages · Live Preview</b><br/>Generate a site and preview it live, side by side<br/><br/><img src="website/assets/screenshot-web-pages.en.png" width="100%" /></td>
+<td align="center"><b>Content Creation · Live Preview</b><br/>Draft documents with a real-time Markdown preview<br/><br/><img src="website/assets/screenshot-doc-edit.en.png" width="100%" /></td>
 </tr>
 <tr>
-<td align="center"><b>Multi-Agent Parallel</b><br/>Up to 5 background agents working at once, progress in real time<br/><br/><img src="website/assets/screenshot-multi-agent.png" width="100%" /></td>
-<td align="center"><b>Desktop Pet · Activity Tray</b><br/>A floating pet on your desktop, its tray showing Abu's live status<br/><br/><img src="website/assets/screenshot-pet.png" width="100%" /></td>
+<td align="center"><b>Plan Mode</b><br/>High-risk tasks show a plan first — runs only after you confirm<br/><br/><img src="website/assets/screenshot-plan-mode.en.png" width="100%" /></td>
+<td align="center"><b>Interactive Questions</b><br/>Abu pops an option card when it needs you to decide (single / multi-select)<br/><br/><img src="website/assets/screenshot-ask-question.en.png" width="100%" /></td>
 </tr>
 <tr>
-<td align="center"><b>Theme · Dark</b><br/>Dark is the default design direction<br/><br/><img src="website/assets/screenshot-theme.png" width="100%" /></td>
-<td align="center"><b>Theme · Light</b><br/>Switch between light / dark / follow-system<br/><br/><img src="website/assets/screenshot-theme-light.png" width="100%" /></td>
+<td align="center"><b>Multi-Agent Parallel</b><br/>Up to 5 background agents working at once, progress in real time<br/><br/><img src="website/assets/screenshot-multi-agent.en.png" width="100%" /></td>
+<td align="center"><b>Desktop Pet · Activity Tray</b><br/>A floating pet on your desktop, its tray showing Abu's live status<br/><br/><img src="website/assets/screenshot-pet.en.png" width="100%" /></td>
 </tr>
 <tr>
-<td align="center" colspan="2"><b>Labs</b><br/>In-progress features, off by default, opt-in (currently hosting: Desktop Pet)<br/><br/><img src="website/assets/screenshot-labs.png" width="60%" /></td>
+<td align="center"><b>Theme · Dark</b><br/>A polished, low-glare dark theme<br/><br/><img src="website/assets/screenshot-theme.en.png" width="100%" /></td>
+<td align="center"><b>Theme · Light</b><br/>Switch between light / dark / follow-system<br/><br/><img src="website/assets/screenshot-theme-light.en.png" width="100%" /></td>
 </tr>
 <tr>
-<td align="center"><b>Permission Control</b><br/>File access requires user authorization<br/><br/><img src="website/assets/screenshot-permission.png" width="100%" /></td>
-<td align="center"><b>IM Channel Chat</b><br/>@Abu in Lark/DingTalk to interact<br/><br/><img src="website/assets/screenshot-im-chat.png" width="100%" /></td>
+<td align="center" colspan="2"><b>Labs</b><br/>In-progress features, off by default, opt-in (currently hosting: Desktop Pet)<br/><br/><img src="website/assets/screenshot-labs.en.png" width="60%" /></td>
 </tr>
 <tr>
-<td align="center"><b>Skills</b><br/>28 built-in skills + self-evolving + custom<br/><br/><img src="website/assets/screenshot-skills.png" width="100%" /></td>
-<td align="center"><b>MCP Connectors</b><br/>One-click integration with Playwright, GitHub & more<br/><br/><img src="website/assets/screenshot-mcp.png" width="100%" /></td>
+<td align="center"><b>Permission Control</b><br/>File access requires user authorization<br/><br/><img src="website/assets/screenshot-permission.en.png" width="100%" /></td>
+<td align="center"><b>IM Channel Chat</b><br/>@Abu in Lark/DingTalk to interact<br/><br/><img src="website/assets/screenshot-im-chat.en.png" width="100%" /></td>
 </tr>
 <tr>
-<td align="center"><b>Scheduled Tasks</b><br/>Cron-based scheduling for automated workflows<br/><br/><img src="website/assets/screenshot-schedule-create.png" width="100%" /></td>
-<td align="center"><b>Triggers / Watch</b><br/>HTTP, file changes, IM messages auto-trigger tasks<br/><br/><img src="website/assets/screenshot-triggers.png" width="100%" /></td>
+<td align="center"><b>Skills</b><br/>28 built-in skills + self-evolving + custom<br/><br/><img src="website/assets/screenshot-skills.en.png" width="100%" /></td>
+<td align="center"><b>MCP Connectors</b><br/>One-click integration with Playwright, GitHub & more<br/><br/><img src="website/assets/screenshot-mcp.en.png" width="100%" /></td>
 </tr>
 <tr>
-<td align="center"><b>AI Service Management</b><br/>Multi-provider management with health checks<br/><br/><img src="website/assets/screenshot-settings-ai.png" width="100%" /></td>
-<td align="center"><b>IM Channel Config</b><br/>Connect Lark, DingTalk, WeCom & more<br/><br/><img src="website/assets/screenshot-settings-im.png" width="100%" /></td>
+<td align="center"><b>Scheduled Tasks</b><br/>Cron-based scheduling for automated workflows<br/><br/><img src="website/assets/screenshot-schedule-create.en.png" width="100%" /></td>
+<td align="center"><b>Triggers / Watch</b><br/>HTTP, file changes, IM messages auto-trigger tasks<br/><br/><img src="website/assets/screenshot-triggers.en.png" width="100%" /></td>
 </tr>
 <tr>
-<td align="center"><b>Personal Memory</b><br/>Remembers your preferences and work habits<br/><br/><img src="website/assets/screenshot-memory.png" width="100%" /></td>
-<td align="center"><b>Security Sandbox</b><br/>Seatbelt sandbox + network isolation for privacy<br/><br/><img src="website/assets/screenshot-security.png" width="100%" /></td>
+<td align="center"><b>AI Service Management</b><br/>Multi-provider management with health checks<br/><br/><img src="website/assets/screenshot-settings-ai.en.png" width="100%" /></td>
+<td align="center"><b>IM Channel Config</b><br/>Connect Lark, DingTalk, WeCom & more<br/><br/><img src="website/assets/screenshot-settings-im.en.png" width="100%" /></td>
 </tr>
 <tr>
-<td align="center"><b>Soul (Personality)</b><br/>3 proactivity presets + custom SOUL.md for tone & style<br/><br/><img src="website/assets/screenshot-soul.png" width="100%" /></td>
-<td align="center"><b>Diagnostic Panel</b><br/>One-click self-check across AI / MCP / skills / network + bundle export<br/><br/><img src="website/assets/screenshot-diagnostic.png" width="100%" /></td>
+<td align="center"><b>Personal Memory</b><br/>Remembers your preferences and work habits<br/><br/><img src="website/assets/screenshot-memory.en.png" width="100%" /></td>
+<td align="center"><b>Security Sandbox</b><br/>Seatbelt sandbox + network isolation for privacy<br/><br/><img src="website/assets/screenshot-security.en.png" width="100%" /></td>
 </tr>
 <tr>
-<td align="center" colspan="2"><b>Content Safety Scan</b><br/>Three permission modes (Request Approval / Smart Review / Full Autonomy) + scan agents / skills / memory for prompt injection & dangerous instructions<br/><br/><img src="website/assets/screenshot-security-scan.png" width="60%" /></td>
+<td align="center"><b>Soul (Personality)</b><br/>3 proactivity presets + custom SOUL.md for tone & style<br/><br/><img src="website/assets/screenshot-soul.en.png" width="100%" /></td>
+<td align="center"><b>Diagnostic Panel</b><br/>One-click self-check across AI / MCP / skills / network + bundle export<br/><br/><img src="website/assets/screenshot-diagnostic.en.png" width="100%" /></td>
+</tr>
+<tr>
+<td align="center"><b>Expert Agents</b><br/>A library of expert agents you can summon by @name<br/><br/><img src="website/assets/screenshot-agents.en.png" width="100%" /></td>
+<td align="center"><b>Usage Stats</b><br/>Requests, tokens, cache hits, and per model / skill usage<br/><br/><img src="website/assets/screenshot-usage.en.png" width="100%" /></td>
+</tr>
+<tr>
+<td align="center" colspan="2"><b>Projects & Workspaces</b><br/>Group work into projects, each with its own skills & MCP<br/><br/><img src="website/assets/screenshot-project.en.png" width="60%" /></td>
+</tr>
+<tr>
+<td align="center" colspan="2"><b>Content Safety Scan</b><br/>Three permission modes (Request Approval / Smart Review / Full Autonomy) + scan agents / skills / memory for prompt injection & dangerous instructions<br/><br/><img src="website/assets/screenshot-security-scan.en.png" width="60%" /></td>
 </tr>
 </table>
 
