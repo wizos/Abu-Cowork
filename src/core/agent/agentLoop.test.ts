@@ -5,6 +5,7 @@ import {
   isInteractiveDesktop,
   shouldComputeProposalSignal,
   isIncompleteReason,
+  isVisionUnsupportedError,
 } from './agentLoop';
 
 describe('escalateMaxOutputTokens', () => {
@@ -215,5 +216,21 @@ describe('isIncompleteReason', () => {
 
   it('is false for error', () => {
     expect(isIncompleteReason('error')).toBe(false);
+  });
+});
+
+describe('isVisionUnsupportedError', () => {
+  it('true when 400 invalid_request with images on a non-vision model', () => {
+    expect(isVisionUnsupportedError('invalid_request', 400, true, false)).toBe(true);
+  });
+  it('false when the model DOES support vision (unrelated 400)', () => {
+    expect(isVisionUnsupportedError('invalid_request', 400, true, true)).toBe(false);
+  });
+  it('false when the conversation has no images', () => {
+    expect(isVisionUnsupportedError('invalid_request', 400, false, false)).toBe(false);
+  });
+  it('false for non-400 / non-invalid_request errors', () => {
+    expect(isVisionUnsupportedError('invalid_request', 500, true, false)).toBe(false);
+    expect(isVisionUnsupportedError('authentication', 400, true, false)).toBe(false);
   });
 });

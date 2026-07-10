@@ -76,6 +76,21 @@ function conversationHasImages(messages: import('../../types').Message[]): boole
 }
 
 /**
+ * Whether a request error is likely caused by sending image content to a model that
+ * does NOT support vision. Gated on the current model's vision capability so that
+ * unrelated 400s on a vision-capable model (bad tool schema, oversized payload, …) are
+ * NOT mislabeled as "vision unsupported".
+ */
+export function isVisionUnsupportedError(
+  errorCode: string | undefined,
+  statusCode: number | undefined,
+  hasImages: boolean,
+  modelSupportsVision: boolean,
+): boolean {
+  return errorCode === 'invalid_request' && statusCode === 400 && hasImages && !modelSupportsVision;
+}
+
+/**
  * Save user-pasted images to disk so they survive localStorage persistence.
  * Returns array of file paths (one per image). On failure, returns undefined for that slot.
  */
@@ -1109,6 +1124,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
     let finalUsage: TokenUsage | undefined;
     let thinkingEndTime: number | undefined;  // Track when thinking ends
     let lastStopReason = '';
+    let modelSupportsVision = false;
 
     try {
       // ── Per-turn: refresh tools and dynamic prompt sections ──
@@ -1168,6 +1184,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       // Override auto-detected caps with user-declared values (custom/local providers only).
       // No-op when activeProvider has no declaredCapabilities (builtin providers).
       modelCaps = applyDeclaredCapabilities(modelCaps, activeProvider?.declaredCapabilities);
+      modelSupportsVision = modelCaps.vision;
       const discoveredCaps = activeProvider
         ? useDiscoveredCapsStore.getState().get(activeProvider.id, effectiveModelId)
         : undefined;
@@ -2138,9 +2155,12 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
 
       // Friendly message when a 400 error is likely caused by image content
       // sent to a model that doesn't support vision
-      const isLikelyVisionError = errorCode === 'invalid_request'
-        && err instanceof LLMError && err.statusCode === 400
-        && conversationHasImages(useChatStore.getState().conversations[conversationId]?.messages ?? []);
+      const isLikelyVisionError = isVisionUnsupportedError(
+        errorCode,
+        err instanceof LLMError ? err.statusCode : undefined,
+        conversationHasImages(useChatStore.getState().conversations[conversationId]?.messages ?? []),
+        modelSupportsVision,
+      );
       const isOllamaForbidden = errorCode === 'authentication'
         && err instanceof LLMError && err.statusCode === 403
         && /^forbidden\s*$/i.test(err.message.trim());
