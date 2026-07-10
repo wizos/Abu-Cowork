@@ -9,6 +9,7 @@ import { useI18n } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { Toggle } from '@/components/ui/toggle';
 import { checkProviderHealth } from '@/core/llm/healthCheck';
 import { buildFullChatUrl } from '@/core/llm/urlUtils';
@@ -147,6 +148,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
   const [apiKey, setApiKey] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [baseUrl, setBaseUrl] = useState('');
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [selectedModels, setSelectedModels] = useState<Set<string>>(new Set());
   const [manualModelInput, setManualModelInput] = useState('');
   const [showAddModelInput, setShowAddModelInput] = useState(false);
@@ -200,6 +202,17 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
   const showAdvanced = computeShowAdvanced(isCustom, selectedOption?.provider, selectedOption?.format);
   const guide = selectedOption && !isCustom ? PROVIDER_GUIDES[selectedOption.provider] : null;
 
+  // ── Multi-endpoint config plans (e.g. volcengine paygo/coding/agent) ──
+  const providerPlans = useMemo(
+    () => (selectedOption && !isCustom ? (PROVIDER_CONFIGS[selectedOption.provider].plans ?? null) : null),
+    [selectedOption, isCustom],
+  );
+  const activePlan = useMemo(
+    () => providerPlans?.find(p => p.id === selectedPlanId) ?? null,
+    [providerPlans, selectedPlanId],
+  );
+  const effectiveFormat: ApiFormat = activePlan?.format ?? selectedOption?.format ?? 'openai-compatible';
+
   // knownModels removed — models are fetched from API or added manually
 
   // ── Filtered dropdown options ──
@@ -229,12 +242,22 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
 
       // Auto-fill base URL for known providers
       if (!isCustomId(option.id)) {
-        const config = PROVIDER_CONFIGS[option.provider];
-        setBaseUrl(config.baseUrl);
+        const cfg = PROVIDER_CONFIGS[option.provider];
+        if (cfg.plans && cfg.plans.length > 0) {
+          // Multi-endpoint provider — default to the plan matching the
+          // top-level baseUrl (falls back to the first plan).
+          const def = cfg.plans.find(p => p.baseUrl === cfg.baseUrl) ?? cfg.plans[0];
+          setSelectedPlanId(def.id);
+          setBaseUrl(def.baseUrl);
+        } else {
+          setSelectedPlanId(null);
+          setBaseUrl(cfg.baseUrl);
+        }
 
         // Don't pre-select models — user fetches from API or adds manually
         setSelectedModels(new Set());
       } else {
+        setSelectedPlanId(null);
         setBaseUrl('');
         setSelectedModels(new Set());
       }
@@ -266,6 +289,24 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
     },
     [nameManuallyEdited, providers]
   );
+
+  // Switching config plan (e.g. paygo → coding) swaps the whole endpoint
+  // preset: baseUrl + format change together, and the key/models selected
+  // under the old plan aren't valid under the new one, so downstream
+  // selection/fetch state is cleared.
+  const handleSelectPlan = useCallback((planId: string) => {
+    const plan = providerPlans?.find(p => p.id === planId);
+    if (!plan) return;
+    setSelectedPlanId(planId);
+    setBaseUrl(plan.baseUrl);
+    setApiKey('');
+    setSelectedModels(new Set());
+    setPerModelDeclared({});
+    setExpandedModelIds(new Set());
+    setFetchModelsStatus('idle');
+    setFetchedModels([]);
+    setFetchModelsError('');
+  }, [providerPlans]);
 
   const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setServiceName(e.target.value);
@@ -385,7 +426,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
     const result = await fetchProviderModels(
       baseUrl,
       apiKey,
-      selectedOption?.format ?? 'openai-compatible',
+      effectiveFormat,
     );
 
     if (result.success && result.models.length > 0) {
@@ -402,7 +443,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
       setFetchModelsStatus('error');
       setFetchModelsError(result.error ?? t.settings.fetchModelsFailed);
     }
-  }, [baseUrl, apiKey, selectedOption?.format, t, showAdvanced, seedDeclaredDefaults]);
+  }, [baseUrl, apiKey, effectiveFormat, t, showAdvanced, seedDeclaredDefaults]);
 
   // ── Ollama handlers ──
 
@@ -456,7 +497,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
         source: 'custom',
         name: '',
         enabled: true,
-        apiFormat: selectedOption?.format ?? 'openai-compatible',
+        apiFormat: effectiveFormat,
         baseUrl,
         apiKey,
         models: testModel ? [{ id: testModel, label: testModel }] : [],
@@ -474,7 +515,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
     } finally {
       setValidating(false);
     }
-  }, [baseUrl, apiKey, selectedModels, selectedOption, t]);
+  }, [baseUrl, apiKey, selectedModels, effectiveFormat, t]);
 
   // ── Save ──
 
@@ -491,14 +532,14 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
     });
 
     const apiFormat: ApiFormat = selectedOption
-      ? selectedOption.format
+      ? effectiveFormat
       : 'openai-compatible';
 
     const resolvedBaseUrl = baseUrl || (selectedOption && !isCustom
-      ? PROVIDER_CONFIGS[selectedOption.provider].baseUrl
+      ? (activePlan?.baseUrl ?? PROVIDER_CONFIGS[selectedOption.provider].baseUrl)
       : '');
     const capabilities = selectedOption && !isCustom
-      ? PROVIDER_CONFIGS[selectedOption.provider].capabilities
+      ? (activePlan?.capabilities ?? PROVIDER_CONFIGS[selectedOption.provider].capabilities)
       : undefined;
     const declaredCapabilities = showAdvanced ? { useRawUrl } : undefined;
 
@@ -545,6 +586,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
   }, [
     serviceName, selectedModels, ollamaModels, selectedOption,
     isCustom, showAdvanced, perModelDeclared, useRawUrl, baseUrl, apiKey, providers,
+    effectiveFormat, activePlan,
     addProvider, updateProvider, selectModel, onClose,
   ]);
 
@@ -556,6 +598,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
     setApiKey('');
     setShowApiKey(false);
     setBaseUrl('');
+    setSelectedPlanId(null);
     setSelectedModels(new Set());
     setManualModelInput('');
     setShowAddModelInput(false);
@@ -693,6 +736,23 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
               )}
             </div>
           </div>
+
+          {/* 2b. Config Plan (multi-endpoint providers only, e.g. volcengine) */}
+          {providerPlans && providerPlans.length > 1 && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-[var(--abu-text-primary)]">
+                {t.settings.configPlan}
+              </label>
+              <Select
+                value={selectedPlanId ?? ''}
+                options={providerPlans.map(p => ({
+                  value: p.id,
+                  label: p.id === 'paygo' ? t.settings.billingPaygo : p.id === 'coding' ? t.settings.billingCoding : t.settings.billingAgent,
+                }))}
+                onChange={handleSelectPlan}
+              />
+            </div>
+          )}
         </div>
 
         {/* Scrollable content area: guide, API key, models, etc. */}
@@ -751,7 +811,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
                 <label className="text-xs font-medium text-[var(--abu-text-primary)]">
                   {isOllama ? t.settings.ollamaUrlLabel : isLMStudio ? t.settings.lmstudioUrlLabel : t.settings.apiUrl}
                 </label>
-                {showAdvanced && selectedOption?.format !== 'anthropic' && (
+                {showAdvanced && effectiveFormat !== 'anthropic' && (
                   <div className="flex items-center gap-2" title={t.settings.capRawUrlHint}>
                     <span className="text-xs text-[var(--abu-text-secondary)]">{t.settings.capRawUrl}</span>
                     <Toggle checked={useRawUrl} onChange={() => setUseRawUrl(v => !v)} size="sm" />
@@ -774,7 +834,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
               {/* Final request URL preview — hidden for local providers which have their own status UI */}
               {!isOllama && !isLMStudio && baseUrl.trim() && selectedOption && (
                 <p className="text-[11px] font-mono text-[var(--abu-text-muted)] break-all">
-                  ↳ {t.settings.apiUrlPreview}: POST {buildFullChatUrl(baseUrl, selectedOption.format, { useRawUrl })}
+                  ↳ {t.settings.apiUrlPreview}: POST {buildFullChatUrl(baseUrl, effectiveFormat, { useRawUrl })}
                 </p>
               )}
 
@@ -818,7 +878,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
                 </label>
                 <div className="flex items-center gap-3">
                   {/* Fetch/refresh models button — only when baseUrl is filled */}
-                  {!isOllama && selectedOption?.format !== 'anthropic' && baseUrl.trim() && (
+                  {!isOllama && effectiveFormat !== 'anthropic' && baseUrl.trim() && (
                     <button
                       type="button"
                       onClick={handleFetchModels}
