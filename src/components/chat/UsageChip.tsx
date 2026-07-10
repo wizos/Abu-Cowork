@@ -31,8 +31,6 @@ export default function UsageChip({ conversationId }: { conversationId: string }
             className="inline-flex items-center gap-1 text-[11px] text-[var(--abu-text-muted)] tabular-nums select-none cursor-default"
           >
             <span>{formatTokens(total)}</span>
-            <span className="opacity-50">·</span>
-            <span>{usage.requests} {t.chat.usageChipRequests}</span>
           </span>
         </TooltipTrigger>
         <TooltipContent side="top" className="flex flex-col items-start gap-0.5 max-w-xs">

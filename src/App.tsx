@@ -17,6 +17,8 @@ import { LABS_TODOS_INBOX, LABS_PET } from '@/core/labs/registry';
 import { resolvePetBootAction } from '@/core/pet/petBoot';
 import { setPetVisible, hidePet } from '@/core/pet/petVisibility';
 import RightPanel from '@/components/panel/RightPanel';
+import { usePreviewStore } from '@/stores/previewStore';
+import { resolveChatWidth, useViewportWidth } from '@/components/panel/panelWidths';
 import ToastContainer from '@/components/common/ToastContainer';
 import { registerBuiltinTools } from '@/core/tools/builtins';
 import { installLargeWriteGuard } from '@/core/agent/hooks/largeWriteGuard';
@@ -114,6 +116,11 @@ function App() {
   const toggleRightPanel = useSettingsStore((s) => s.toggleRightPanel);
   const viewMode = useSettingsStore((s) => s.viewMode);
   const setViewMode = useSettingsStore((s) => s.setViewMode);
+  // Preview split (TRAE-style): when a file preview is open, the chat column takes a
+  // stable, resizable width and the preview flex-fills the rest.
+  const previewFilePath = usePreviewStore((s) => s.previewFilePath);
+  const chatWidth = usePreviewStore((s) => s.chatWidth);
+  const viewportWidth = useViewportWidth();
   const showTodosInbox = useLabsFlag(LABS_TODOS_INBOX);
   const closeSystemSettings = useSettingsStore((s) => s.closeSystemSettings);
   const closeAutomation = useSettingsStore((s) => s.closeAutomation);
@@ -566,6 +573,11 @@ function App() {
   // macOS uses overlay title bar (content behind traffic lights); Windows uses native title bar
   const mac = isMacOS();
 
+  // Preview split is active only when a preview is open in the chat view AND the
+  // right panel is showing — then the chat holds a stable width and preview flex-fills.
+  const previewSplit = viewMode === 'chat' && !!previewFilePath && !rightPanelCollapsed;
+  const previewChatWidth = resolveChatWidth(chatWidth, viewportWidth, !sidebarCollapsed);
+
   return (
     <ErrorBoundary>
     <TooltipProvider delayDuration={200}>
@@ -630,8 +642,16 @@ function App() {
           <Sidebar />
         </div>
 
-        {/* Main — pt-7 on macOS to clear overlay title bar; no padding on Windows (native title bar) */}
-        <main className={cn('flex-1 min-w-0 bg-[var(--abu-bg-base)]', mac ? 'pt-11' : 'pt-8')}>
+        {/* Main — pt-7 on macOS to clear overlay title bar; no padding on Windows (native title bar).
+            In preview mode the chat takes a stable resizable width; otherwise it flex-fills. */}
+        <main
+          className={cn(
+            'bg-[var(--abu-bg-base)]',
+            mac ? 'pt-11' : 'pt-8',
+            previewSplit ? 'shrink-0' : 'flex-1 min-w-0',
+          )}
+          style={previewSplit ? { width: previewChatWidth } : undefined}
+        >
           {viewMode === 'automation' && <AutomationView />}
           {viewMode === 'toolbox' && <ToolboxView />}
           {viewMode === 'settings' && <SystemSettingsView />}

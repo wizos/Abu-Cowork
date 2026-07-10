@@ -8,14 +8,18 @@ import TaskProgressPanel from './TaskProgressPanel';
 import WorkspaceSection from './WorkspaceSection';
 import ContextSection from './ContextSection';
 import PreviewPanel from './PreviewPanel';
+import {
+  PREVIEW_MIN_WIDTH,
+  clampChatWidth,
+  resolveChatWidth,
+  getViewportWidth,
+} from './panelWidths';
 
-const PANEL_WIDTH = 280;
-const PREVIEW_WIDTH = 420;
-const PREVIEW_WIDTH_WIDE = 520; // For slides (PPTX) that need more width
-const MIN_PANEL_WIDTH = 220;
-const MAX_PANEL_WIDTH = 800;
-
-const WIDE_PREVIEW_EXTENSIONS = new Set(['pptx', 'ppt']);
+// Details mode (workspace/context sidebar) keeps its own fixed, resizable width.
+// This is NOT a file preview — the chat still flex-fills to its left.
+const PANEL_WIDTH = 280;          // Default width of the details panel
+const MIN_PANEL_WIDTH = 220;      // Lower bound when dragging the details panel
+const MAX_PANEL_WIDTH = 520;      // Upper bound for the details panel
 
 export default function RightPanel() {
   const collapsed = useSettingsStore((s) => s.rightPanelCollapsed);
@@ -58,16 +62,31 @@ export default function RightPanel() {
     if (upHandlerRef.current) document.removeEventListener('mouseup', upHandlerRef.current);
 
     const startX = e.clientX;
-    const startWidth = dragWidthRef.current ?? (previewFilePath ? PREVIEW_WIDTH : PANEL_WIDTH);
+    const isPreview = !!usePreviewStore.getState().previewFilePath;
+    const sidebarOpen = !useSettingsStore.getState().sidebarCollapsed;
 
     setIsDragging(true);
 
-    const onMouseMove = (ev: MouseEvent) => {
-      ev.preventDefault();
-      const delta = startX - ev.clientX;
-      const newWidth = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, startWidth + delta));
-      setDragWidth(newWidth);
-    };
+    let onMouseMove: (ev: MouseEvent) => void;
+    if (isPreview) {
+      // Preview mode: the divider resizes the CHAT column (preview flex-fills the rest).
+      // Dragging right widens the chat; dragging left narrows it.
+      const startChat = resolveChatWidth(usePreviewStore.getState().chatWidth, getViewportWidth(), sidebarOpen);
+      onMouseMove = (ev) => {
+        ev.preventDefault();
+        const next = clampChatWidth(startChat + (ev.clientX - startX), getViewportWidth(), sidebarOpen);
+        usePreviewStore.getState().setChatWidth(next);
+      };
+    } else {
+      // Details mode: the divider resizes the details panel itself.
+      const startWidth = dragWidthRef.current ?? PANEL_WIDTH;
+      onMouseMove = (ev) => {
+        ev.preventDefault();
+        const delta = startX - ev.clientX;
+        const newWidth = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, startWidth + delta));
+        setDragWidth(newWidth);
+      };
+    }
 
     const onMouseUp = () => {
       setIsDragging(false);
@@ -86,7 +105,7 @@ export default function RightPanel() {
     document.addEventListener('mouseup', onMouseUp);
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
-  }, [previewFilePath]);
+  }, []);
 
   // Check if conversation has started (has messages)
   const hasMessages = (conversation?.messages?.length ?? 0) > 0;
@@ -142,10 +161,9 @@ export default function RightPanel() {
     setDragWidth(null);
   }, [showPreview]);
 
-  const previewExt = previewFilePath?.split('.').pop()?.toLowerCase() || '';
-  const isWidePreview = WIDE_PREVIEW_EXTENSIONS.has(previewExt);
-  const defaultPreviewWidth = isWidePreview ? PREVIEW_WIDTH_WIDE : PREVIEW_WIDTH;
-  const currentWidth = dragWidth ?? (showPreview ? defaultPreviewWidth : PANEL_WIDTH);
+  // Details-panel width (only meaningful when NOT previewing — in preview mode the
+  // panel flex-fills and the chat owns the width).
+  const currentWidth = dragWidth ?? PANEL_WIDTH;
 
   // Hide panel when not in chat view or no conversation has started yet
   if (viewMode !== 'chat' || (!hasMessages && !showPreview)) {
@@ -157,11 +175,20 @@ export default function RightPanel() {
     return null;
   }
 
-  // When expanded, render the full panel
+  // When expanded, render the full panel.
+  // Preview mode: flex-fill the space the chat column leaves (chat owns the width).
+  // Details mode: fixed, resizable width.
   return (
     <div
-      className="shrink-0 bg-[var(--abu-bg-subtle)] h-full flex overflow-hidden relative"
-      style={{ width: currentWidth, minWidth: currentWidth, maxWidth: currentWidth, transition: isDragging ? 'none' : 'width 200ms, min-width 200ms, max-width 200ms' }}
+      className={cn(
+        'bg-[var(--abu-bg-subtle)] h-full flex overflow-hidden relative',
+        showPreview ? 'flex-1 min-w-0' : 'shrink-0',
+      )}
+      style={
+        showPreview
+          ? { minWidth: PREVIEW_MIN_WIDTH }
+          : { width: currentWidth, minWidth: currentWidth, maxWidth: currentWidth, transition: isDragging ? 'none' : 'width 200ms, min-width 200ms, max-width 200ms' }
+      }
     >
       {/* Full-screen overlay during drag — blocks iframe from stealing mouse events */}
       {isDragging && (

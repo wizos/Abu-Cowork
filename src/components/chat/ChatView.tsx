@@ -502,9 +502,9 @@ export default function ChatView() {
               top-right edge; they enter the transcript when the loop drains them */}
           <QueuedMessagesStrip conversationId={activeConv.id} />
           <ChatInput variant="chat" onSend={handleSend} />
-          <div className="flex items-center justify-center gap-3 mt-1.5">
+          <div className="flex items-center justify-center gap-3 mt-1.5 whitespace-nowrap overflow-hidden">
             <UsageChip conversationId={activeConv.id} />
-            <p className="text-[11px] text-[var(--abu-text-muted)]">
+            <p className="text-[11px] text-[var(--abu-text-muted)] truncate">
               {t.chat.disclaimer}
             </p>
             <span className="text-[var(--abu-text-muted)] opacity-50">·</span>
