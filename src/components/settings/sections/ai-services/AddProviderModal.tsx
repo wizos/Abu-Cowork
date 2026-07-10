@@ -555,6 +555,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
         enabled: true,
         apiKey,
         baseUrl: resolvedBaseUrl,
+        apiFormat: effectiveFormat,
         models: modelInfos,
         capabilities,
         userAdded: true,
