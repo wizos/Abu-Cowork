@@ -1,4 +1,4 @@
-import type { StreamEvent, ToolCall, TokenUsage, ImageAttachment, MessageContent, ToolExecutionContext, LLMProvider } from '../../types';
+import type { StreamEvent, ToolCall, TokenUsage, ImageAttachment, MessageContent, ToolExecutionContext } from '../../types';
 import type { LLMAdapter } from '../llm/adapter';
 import { LLMError } from '../llm/adapter';
 import { ClaudeAdapter } from '../llm/claude';
@@ -1142,7 +1142,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       const activeProvider = getActiveProvider(settingsForModel);
       const modelDeclared = resolveModelDeclared(activeProvider, effectiveModelId);
       const builtinWebSearch = activeProvider
-        ? getBuiltinSearchConfig(activeProvider.id as LLMProvider, true)
+        ? getBuiltinSearchConfig(activeProvider.capabilities, true)
         : undefined;
       // When the provider explicitly declared supportsTools=false, suppress tool
       // resolution entirely so the model never sees tool definitions in the system

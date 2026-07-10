@@ -249,13 +249,16 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
           const def = cfg.plans.find(p => p.baseUrl === cfg.baseUrl) ?? cfg.plans[0];
           setSelectedPlanId(def.id);
           setBaseUrl(def.baseUrl);
+          // Pre-select the default plan's curated models so anthropic-format
+          // plans (no fetch button) are Save-able out of the box; user can
+          // still add/remove, and openai-format plans can still fetch to override.
+          setSelectedModels(new Set((def.models ?? []).map(m => m.id)));
         } else {
           setSelectedPlanId(null);
           setBaseUrl(cfg.baseUrl);
+          // Single-endpoint provider — don't pre-select, user fetches or adds manually.
+          setSelectedModels(new Set());
         }
-
-        // Don't pre-select models — user fetches from API or adds manually
-        setSelectedModels(new Set());
       } else {
         setSelectedPlanId(null);
         setBaseUrl('');
@@ -300,7 +303,10 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
     setSelectedPlanId(planId);
     setBaseUrl(plan.baseUrl);
     setApiKey('');
-    setSelectedModels(new Set());
+    // Pre-select the new plan's curated models (same rationale as the
+    // provider-select default-plan path above) — swapping to an
+    // anthropic-format plan without a fetch button must stay Save-able.
+    setSelectedModels(new Set((plan.models ?? []).map(m => m.id)));
     setPerModelDeclared({});
     setExpandedModelIds(new Set());
     setFetchModelsStatus('idle');
@@ -538,8 +544,13 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
     const resolvedBaseUrl = baseUrl || (selectedOption && !isCustom
       ? (activePlan?.baseUrl ?? PROVIDER_CONFIGS[selectedOption.provider].baseUrl)
       : '');
+    // When a plan is active, use ONLY the plan's own capabilities (no fallback
+    // to the provider-family top-level capabilities) — anthropic-format plans
+    // deliberately have no builtin webSearch, and falling back would both show
+    // a misleading web-search badge and store the wrong capabilities for the
+    // runtime to act on (see getBuiltinSearchConfig in core/capabilities.ts).
     const capabilities = selectedOption && !isCustom
-      ? (activePlan?.capabilities ?? PROVIDER_CONFIGS[selectedOption.provider].capabilities)
+      ? (activePlan ? activePlan.capabilities : PROVIDER_CONFIGS[selectedOption.provider].capabilities)
       : undefined;
     const declaredCapabilities = showAdvanced ? { useRawUrl } : undefined;
 
