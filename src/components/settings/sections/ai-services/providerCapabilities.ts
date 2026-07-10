@@ -1,5 +1,5 @@
 import type { LLMProvider, ApiFormat } from '@/types';
-import type { DeclaredCapabilities } from '@/types/provider';
+import type { DeclaredCapabilities, ModelDeclaredCapabilities } from '@/types/provider';
 
 /** Whether the "advanced config" (declared capabilities) section should show.
  *  Any custom provider (openai-compatible OR anthropic format), or local
@@ -31,4 +31,9 @@ export function toggleEffort(
   const set = new Set(current ?? []);
   if (set.has(effort)) set.delete(effort); else set.add(effort);
   return [...set];
+}
+
+/** Defaults for a newly added custom model (per-model). Tools on, images/reasoning off. */
+export function defaultModelDeclaredCapabilities(): ModelDeclaredCapabilities {
+  return { supportsTools: true, supportsImages: false, supportsReasoning: false };
 }

@@ -19,4 +19,10 @@ describe('toModelInfo', () => {
     const m = toModelInfo('deepseek-chat');
     expect(m.isCustom).toBeUndefined();
   });
+  it('attaches declaredCapabilities when provided, omits when not', () => {
+    const withCaps = toModelInfo('m', { declaredCapabilities: { supportsImages: true } });
+    expect(withCaps.declaredCapabilities?.supportsImages).toBe(true);
+    const withoutCaps = toModelInfo('m');
+    expect(withoutCaps.declaredCapabilities).toBeUndefined();
+  });
 });

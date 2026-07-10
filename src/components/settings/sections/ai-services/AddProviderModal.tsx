@@ -9,15 +9,16 @@ import { useI18n } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { checkProviderHealth } from '@/core/llm/healthCheck';
 import { buildFullChatUrl } from '@/core/llm/urlUtils';
 import { useSettingsStore, PROVIDER_CONFIGS } from '@/stores/settingsStore';
 import { PROVIDER_GUIDES } from './providerGuides';
-import { computeShowAdvanced, defaultDeclaredCapabilities } from './providerCapabilities';
+import { computeShowAdvanced, defaultModelDeclaredCapabilities } from './providerCapabilities';
 import { toModelInfo } from './modelInfoUtil';
 import AdvancedCapabilitiesFields from './AdvancedCapabilitiesFields';
 import type { LLMProvider, ApiFormat } from '@/types';
-import type { ModelInfo, ProviderSource, DeclaredCapabilities } from '@/types/provider';
+import type { ModelInfo, ProviderSource, ModelDeclaredCapabilities } from '@/types/provider';
 import {
   checkOllamaHealth,
   fetchOllamaModels,
@@ -163,7 +164,8 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
   const [fetchModelsError, setFetchModelsError] = useState('');
 
   // ── Advanced capabilities (custom/local providers only) ──
-  const [declared, setDeclared] = useState<DeclaredCapabilities>({});
+  const [modelCaps, setModelCaps] = useState<ModelDeclaredCapabilities>({});
+  const [useRawUrl, setUseRawUrl] = useState(false);
 
   // ── Validate state ──
   const [validating, setValidating] = useState(false);
@@ -235,7 +237,8 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
       // New custom/local providers get explicit defaults so toggles are not misleading tri-state.
       const existingP = providers.find(p => p.id === option.provider);
       const willShowAdvanced = computeShowAdvanced(isCustomId(option.id), option.provider, option.format);
-      setDeclared(existingP?.declaredCapabilities ?? (willShowAdvanced ? defaultDeclaredCapabilities() : {}));
+      setModelCaps(existingP?.declaredCapabilities ?? (willShowAdvanced ? defaultModelDeclaredCapabilities() : {}));
+      setUseRawUrl(existingP?.declaredCapabilities?.useRawUrl ?? false);
 
       // Reset Ollama state
       setOllamaStatus('idle');
@@ -396,7 +399,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
     const capabilities = selectedOption && !isCustom
       ? PROVIDER_CONFIGS[selectedOption.provider].capabilities
       : undefined;
-    const declaredCapabilities = showAdvanced ? declared : undefined;
+    const declaredCapabilities = showAdvanced ? { ...modelCaps, useRawUrl } : undefined;
 
     // For builtin providers: update the existing entry instead of creating a duplicate
     const existingBuiltin = !isCustom && selectedOption
@@ -440,7 +443,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
     onClose();
   }, [
     serviceName, selectedModels, ollamaModels, selectedOption,
-    isCustom, showAdvanced, declared, baseUrl, apiKey, providers,
+    isCustom, showAdvanced, modelCaps, useRawUrl, baseUrl, apiKey, providers,
     addProvider, updateProvider, selectModel, onClose,
   ]);
 
@@ -462,7 +465,8 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
     setFetchModelsStatus('idle');
     setFetchedModels([]);
     setFetchModelsError('');
-    setDeclared({});
+    setModelCaps({});
+    setUseRawUrl(false);
     onClose();
   }, [onClose]);
 
@@ -656,10 +660,18 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
                 </p>
               )}
 
+              {showAdvanced && selectedOption?.format !== 'anthropic' && (
+                <div className="flex items-center gap-2 cursor-pointer select-none pt-1" title={t.settings.capRawUrlHint}
+                  onClick={() => setUseRawUrl(v => !v)}>
+                  <Checkbox checked={useRawUrl} onChange={() => setUseRawUrl(v => !v)} />
+                  <span className="text-xs text-[var(--abu-text-primary)]">{t.settings.capRawUrl}</span>
+                </div>
+              )}
+
               {/* Final request URL preview — hidden for local providers which have their own status UI */}
               {!isOllama && !isLMStudio && baseUrl.trim() && selectedOption && (
                 <p className="text-[11px] font-mono text-[var(--abu-text-muted)] break-all">
-                  ↳ {t.settings.apiUrlPreview}: POST {buildFullChatUrl(baseUrl, selectedOption.format, { useRawUrl: declared.useRawUrl })}
+                  ↳ {t.settings.apiUrlPreview}: POST {buildFullChatUrl(baseUrl, selectedOption.format, { useRawUrl })}
                 </p>
               )}
 
@@ -855,8 +867,8 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
           {/* 7. Advanced capabilities (custom/local providers only) */}
           {showAdvanced && (
             <AdvancedCapabilitiesFields
-              declared={declared}
-              setDeclared={setDeclared}
+              declared={modelCaps}
+              setDeclared={setModelCaps}
               apiFormat={selectedOption?.format ?? 'openai-compatible'}
             />
           )}

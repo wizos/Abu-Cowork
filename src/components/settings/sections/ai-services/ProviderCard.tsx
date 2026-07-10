@@ -4,6 +4,7 @@ import { useI18n, format } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Toggle } from '@/components/ui/toggle';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { checkProviderHealth } from '@/core/llm/healthCheck';
@@ -14,7 +15,7 @@ import { computeShowAdvanced } from './providerCapabilities';
 import { toModelInfo } from './modelInfoUtil';
 import AdvancedCapabilitiesFields from './AdvancedCapabilitiesFields';
 import type { LLMProvider } from '@/types';
-import type { ProviderInstance, ModelInfo, DeclaredCapabilities } from '@/types/provider';
+import type { ProviderInstance, ModelInfo, ModelDeclaredCapabilities } from '@/types/provider';
 import { SECRET_KEYS } from '@/utils/secretStore';
 
 interface ProviderCardProps {
@@ -78,7 +79,8 @@ export default function ProviderCard({ provider, isActive }: ProviderCardProps) 
   const [formApiKey, setFormApiKey] = useState(provider.apiKey);
   const [formBaseUrl, setFormBaseUrl] = useState(provider.baseUrl);
   const [formModels, setFormModels] = useState<ModelInfo[]>(provider.models);
-  const [declared, setDeclared] = useState<DeclaredCapabilities>(provider.declaredCapabilities ?? {});
+  const [modelCaps, setModelCaps] = useState<ModelDeclaredCapabilities>(provider.declaredCapabilities ?? {});
+  const [useRawUrl, setUseRawUrl] = useState(provider.declaredCapabilities?.useRawUrl ?? false);
   const [newModelId, setNewModelId] = useState('');
   const [showStatus, setShowStatus] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -100,7 +102,8 @@ export default function ProviderCard({ provider, isActive }: ProviderCardProps) 
     setFormApiKey(provider.apiKey);
     setFormBaseUrl(provider.baseUrl);
     setFormModels([...provider.models]);
-    setDeclared(provider.declaredCapabilities ?? {});
+    setModelCaps(provider.declaredCapabilities ?? {});
+    setUseRawUrl(provider.declaredCapabilities?.useRawUrl ?? false);
     setNewModelId('');
     setShowApiKey(false);
     setModelsExpanded(false);
@@ -117,10 +120,10 @@ export default function ProviderCard({ provider, isActive }: ProviderCardProps) 
     };
     // Only touch declaredCapabilities when the advanced section is actually shown;
     // otherwise a hidden section must not clobber a provider's existing caps.
-    if (showAdvanced) patch.declaredCapabilities = declared;
+    if (showAdvanced) patch.declaredCapabilities = { ...modelCaps, useRawUrl };
     updateProvider(provider.id, patch);
     setEditing(false);
-  }, [provider.id, formName, formApiKey, formBaseUrl, formModels, showAdvanced, declared, updateProvider]);
+  }, [provider.id, formName, formApiKey, formBaseUrl, formModels, showAdvanced, modelCaps, useRawUrl, updateProvider]);
 
   const selectModel = useSettingsStore((s) => s.selectModel);
 
@@ -254,9 +257,16 @@ export default function ProviderCard({ provider, isActive }: ProviderCardProps) 
           ) : (
             <Input value={formBaseUrl} onChange={(e) => setFormBaseUrl(e.target.value)} />
           )}
+          {showAdvanced && provider.apiFormat !== 'anthropic' && (
+            <div className="flex items-center gap-2 cursor-pointer select-none pt-1" title={t.settings.capRawUrlHint}
+              onClick={() => setUseRawUrl(v => !v)}>
+              <Checkbox checked={useRawUrl} onChange={() => setUseRawUrl(v => !v)} />
+              <span className="text-xs text-[var(--abu-text-primary)]">{t.settings.capRawUrl}</span>
+            </div>
+          )}
           {!isOllama && formBaseUrl.trim() && (
             <p className="text-[11px] font-mono text-[var(--abu-text-muted)] break-all">
-              ↳ POST {buildFullChatUrl(formBaseUrl, provider.apiFormat, { useRawUrl: provider.declaredCapabilities?.useRawUrl })}
+              ↳ POST {buildFullChatUrl(formBaseUrl, provider.apiFormat, { useRawUrl })}
             </p>
           )}
         </div>
@@ -354,7 +364,7 @@ export default function ProviderCard({ provider, isActive }: ProviderCardProps) 
 
         {/* Edit: Advanced capabilities (custom / local providers only) */}
         {showAdvanced && (
-          <AdvancedCapabilitiesFields declared={declared} setDeclared={setDeclared} apiFormat={provider.apiFormat} />
+          <AdvancedCapabilitiesFields declared={modelCaps} setDeclared={setModelCaps} apiFormat={provider.apiFormat} />
         )}
 
         {/* Edit: Actions */}
