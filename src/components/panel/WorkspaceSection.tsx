@@ -22,6 +22,7 @@ import PermissionDialog from '@/components/common/PermissionDialog';
 import InstructionsEditModal from '@/components/common/InstructionsEditModal';
 import MemoryViewModal from '@/components/common/MemoryViewModal';
 import FilesSection from './FilesSection';
+import WorkspaceFileTree from './WorkspaceFileTree';
 import { cn } from '@/lib/utils';
 import { joinPath } from '@/utils/pathUtils';
 
@@ -350,6 +351,9 @@ export default function WorkspaceSection() {
             {t.panel.selectWorkspace}
           </button>
         )}
+
+            {/* Project file tree - lightweight browse + click-to-preview, always shown */}
+            <WorkspaceFileTree />
 
             {/* Operated files - always shown */}
             <FilesSection />

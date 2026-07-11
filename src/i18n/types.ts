@@ -1487,6 +1487,14 @@ export interface TranslationDict {
     openWithPowerPoint: string;
     // Preview: data-URL image (no file path)
     imagePreview: string;
+    // WorkspaceFileTree (lightweight lazy-loaded project file tree, code-canvas P0)
+    fileTree: {
+      title: string;
+      noWorkspace: string;
+      empty: string;
+      loadError: string;
+      loading: string;
+    };
   };
 
   // Folder Selector

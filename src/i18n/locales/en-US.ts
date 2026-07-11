@@ -1362,6 +1362,14 @@ const enUS: TranslationDict = {
     openWithPowerPoint: 'Open in PowerPoint',
     // Preview: data-URL image (no file path)
     imagePreview: 'Image Preview',
+    // WorkspaceFileTree
+    fileTree: {
+      title: 'Project Files',
+      noWorkspace: 'No workspace folder bound',
+      empty: 'Empty folder',
+      loadError: 'Failed to read folder',
+      loading: 'Loading...',
+    },
   },
 
   folder: {

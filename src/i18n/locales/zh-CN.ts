@@ -1363,6 +1363,14 @@ const zhCN: TranslationDict = {
     openWithPowerPoint: '用 PowerPoint 打开',
     // Preview: data-URL image (no file path)
     imagePreview: '图片预览',
+    // WorkspaceFileTree
+    fileTree: {
+      title: '项目文件',
+      noWorkspace: '未绑定工作区文件夹',
+      empty: '空文件夹',
+      loadError: '读取文件夹失败',
+      loading: '加载中...',
+    },
   },
 
   folder: {
