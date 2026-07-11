@@ -20,12 +20,12 @@ describe('provider config plans (multi-endpoint)', () => {
       }
     }
   });
-  it('volcengine default (top-level) equals its Agent plan (Anthropic /api/plan)', () => {
+  it('volcengine default (top-level) equals its Agent plan (OpenAI /api/plan/v3)', () => {
     const v = PROVIDER_CONFIGS.volcengine;
     const agent = v.plans!.find(p => p.id === 'agent')!;
     expect(v.baseUrl).toBe(agent.baseUrl);
-    expect(v.format).toBe('anthropic');
-    expect(agent.baseUrl).toBe('https://ark.cn-beijing.volces.com/api/plan');
+    expect(v.format).toBe('openai-compatible');
+    expect(agent.baseUrl).toBe('https://ark.cn-beijing.volces.com/api/plan/v3');
   });
   it('plan models (when present) resolve to a sane context window', () => {
     const suspicious: string[] = [];

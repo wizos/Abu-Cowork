@@ -3,8 +3,11 @@ import type { ModelDeclaredCapabilities } from '@/types/provider';
 import { deriveDeclaredDefaults } from '@/core/llm/modelCapabilities';
 
 /** Whether the "advanced config" (declared capabilities) section should show.
- *  Any custom provider (openai-compatible OR anthropic format), or local
- *  Ollama / LM Studio. Builtin cloud providers → false.
+ *  Shown wherever the models are user-supplied rather than curated: any custom
+ *  provider (openai-compatible OR anthropic format), local Ollama / LM Studio,
+ *  and the aggregator built-ins (OpenRouter / SiliconFlow) which ship no curated
+ *  list and let the user fetch/add their own models. Curated builtin cloud
+ *  providers → false.
  *  Anthropic-format custom endpoints are often proxies fronting non-Claude
  *  models, so tools/vision/token-limit declarations are still meaningful;
  *  the fields that don't apply (useRawUrl, reasoning-effort) are hidden by
@@ -15,7 +18,8 @@ export function computeShowAdvanced(
   apiFormat: ApiFormat | undefined,
 ): boolean {
   return (isCustom && (apiFormat === 'openai-compatible' || apiFormat === 'anthropic'))
-    || provider === 'ollama' || provider === 'lmstudio';
+    || provider === 'ollama' || provider === 'lmstudio'
+    || provider === 'openrouter' || provider === 'siliconflow';
 }
 
 /** Toggle one effort level in the supportedEfforts array (order-preserving add/remove). */
