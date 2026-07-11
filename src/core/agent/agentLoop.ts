@@ -45,7 +45,8 @@ import { resolveCapabilities, resolveEffectiveContextWindow, computeReasoningPar
 import { applyDeclaredCapabilities } from '../llm/applyDeclaredCapabilities';
 import { resolveModelDeclared } from '../llm/resolveModelDeclared';
 import { rehydrateForSend, type ImageBase64Cache } from '../llm/imageRehydration';
-import { TOOL_NAMES } from '../tools/toolNames';
+import { TOOL_NAMES, isDisplayHiddenStepBackedTool } from '../tools/toolNames';
+import { WIDGET_CDN_HOSTS } from '../widget/guidelines';
 import { prefetchTools } from '../tools/toolPrefetch';
 import { classifyTools, buildDeferredToolsSummary } from '../tools/toolSearch';
 import { hasQueuedInputs } from './userInputQueue';
@@ -216,29 +217,58 @@ export function getDefaultSoul(): string {
 }
 
 /**
+ * The "Visual output" capability section — two variants, selected on the
+ * resolved model's tool support:
+ *
+ * - Tools supported (default): visualization goes through the explicit
+ *   show_widget tool (P1 widget system, aligned with WorkBuddy/ChatGPT/TRAE).
+ * - Tools NOT supported (`supportsTools === false`): the model gets tools=[]
+ *   (see the `noTools` gate in the turn loop), so instructing show_widget
+ *   would strand it with no visualization path at all. These models keep the
+ *   previous ```html-fence instruction — the fence rendering path still
+ *   works (codeBlockRenderers.ts) and remains the only channel they have.
+ */
+const VISUAL_OUTPUT_TOOL_VARIANT = `When the user needs a chart, visualization, interactive demo, animation, UI prototype, data display, process explanation, or other visual content,
+**call the show_widget tool**. It renders inline in the conversation alongside your text, right where you called it.
+Before your FIRST show_widget call in a conversation, call read_me once to load the design guidelines — don't narrate that call to the user.
+
+**Strictly forbidden**:
+- ❌ Don't call the generate_image tool — show_widget can draw charts and visualizations
+- ❌ Don't call the write_file tool for an in-conversation visualization — that's what show_widget is for, not a standalone file
+- ❌ Don't call the todo_write tool — just call show_widget
+
+**Allowed**:
+- ✅ Load external libraries from a CDN (Chart.js, D3, etc.): ${WIDGET_CDN_HOSTS.join(' / ')}
+- ✅ Call write_file only when the user explicitly asks for a standalone/deliverable file ("save as a file", "export")`;
+
+const VISUAL_OUTPUT_FENCE_VARIANT = `When the user needs a chart, visualization, interactive demo, animation, UI prototype, data display, process explanation, or other visual content,
+**you must output a \`\`\`html code block directly in your reply**. The frontend automatically renders it as an interactive inline component.
+
+**Strictly forbidden**:
+- ❌ Don't write DOCTYPE/html/head/body tags — write an HTML fragment only (style + HTML + script)
+
+**Allowed**:
+- ✅ Load external libraries from a CDN (Chart.js, D3, etc.): ${WIDGET_CDN_HOSTS.join(' / ')}`;
+
+/**
  * Abu's capability prompt — always injected, cannot be overridden by SOUL.md.
  * Contains operational rules: visualization, work style, permissions, extensions.
+ *
+ * `supportsTools` (default true) selects the visual-output variant — see the
+ * variant constants above. All other sections are identical in both modes.
  */
-export function getCapabilityPrompt(): string {
+export function getCapabilityPrompt(opts?: { supportsTools?: boolean }): string {
   const win = isWindows();
   const dangerousCmd = win ? 'del /s /q' : 'rm -rf';
   const abuDir = win ? '%USERPROFILE%\\.abu\\' : '~/.abu/';
   const skillPathTmpl = win ? '%USERPROFILE%\\.abu\\skills\\{skill-name}\\' : '~/.abu/skills/{skill-name}/';
   const agentPathTmpl = win ? '%USERPROFILE%\\.abu\\agents\\{agent-name}\\' : '~/.abu/agents/{agent-name}/';
+  const visualOutput = opts?.supportsTools === false
+    ? VISUAL_OUTPUT_FENCE_VARIANT
+    : VISUAL_OUTPUT_TOOL_VARIANT;
 
   return `## Visual output — generative UI (important!)
-When the user needs a chart, visualization, interactive demo, animation, UI prototype, data display, process explanation, or other visual content,
-**you must output a \`\`\`html code block directly in your reply**. The frontend automatically renders it as an interactive inline component.
-
-**Strictly forbidden**:
-- ❌ Don't call the generate_image tool — an html code block can draw charts and visualizations
-- ❌ Don't call the write_file tool to write an HTML file — this is a temporary in-conversation visualization, not a file
-- ❌ Don't call the todo_write tool — just output the code block
-- ❌ Don't write DOCTYPE/html/head/body tags — write an HTML fragment only (style + HTML + script)
-
-**Allowed**:
-- ✅ Load external libraries from a CDN (Chart.js, D3, etc.): cdn.jsdelivr.net / cdnjs.cloudflare.com / unpkg.com
-- ✅ Call write_file only when the user explicitly asks to "save as a file" or "export"
+${visualOutput}
 
 **Editing an already-exported file**:
 - ⚠️ Once a file is written to disk, **partial edits must use edit_file** (provide old_content + new_content for an exact replacement)
@@ -729,9 +759,6 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
     }
   }
 
-  // Build static system prompt sections once (active skills are injected dynamically per-turn)
-  const systemPromptSections = await buildSystemPromptSections(route, getCapabilityPrompt(), conversationId, options?.imContext, 0);
-
   // Build tool execution context — provides resolved workspace for tools like update_memory.
   // Priority: IM-injected path > conversation's own stored path > global store fallback.
   // Using the conversation record rather than the global store prevents cross-conversation
@@ -754,10 +781,24 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
   // Tell tools whether this model can consume images. read_file uses it to
   // avoid emitting base64 image blocks to text-only models (which bloats
   // context and triggers a 400 on providers that only accept text content).
+  const entryModelDeclared = resolveModelDeclared(getActiveProvider(settingsForModel), effectiveModelId);
   toolContext.supportsVision = applyDeclaredCapabilities(
     resolveCapabilities(effectiveModelId),
-    resolveModelDeclared(getActiveProvider(settingsForModel), effectiveModelId),
+    entryModelDeclared,
   ).vision;
+
+  // Build static system prompt sections once (active skills are injected
+  // dynamically per-turn). Built AFTER model resolution because the
+  // capability prompt's visual-output section branches on the model's tool
+  // support: no-tools models get the fence variant since tools=[] for them
+  // (the per-turn `noTools` gate resolves the same declared value).
+  const systemPromptSections = await buildSystemPromptSections(
+    route,
+    getCapabilityPrompt({ supportsTools: entryModelDeclared?.supportsTools !== false }),
+    conversationId,
+    options?.imContext,
+    0,
+  );
 
   // Pin the resolved model to the conversation on first run, so it survives
   // later global model switches (for display + future runs). Pins the
@@ -1553,6 +1594,13 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
                 input: event.input,
                 isExecuting: true,
                 startTime: Date.now(),
+                // Display-hidden but step-backed (show_widget): MessageGroup
+                // renders it as a dedicated inline ShowWidgetCard (reading
+                // title/widget_code/loading_messages off `input`) instead of
+                // the generic tool list. Unlike report_plan (which breaks
+                // early above), it goes through the full step bookkeeping so
+                // planned-step auto-link/advance still counts widget calls.
+                hidden: isDisplayHiddenStepBackedTool(event.name) || undefined,
               });
 
               break;

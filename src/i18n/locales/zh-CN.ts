@@ -255,6 +255,8 @@ const zhCN: TranslationDict = {
     htmlWidgetDownload: '下载文件',
     htmlWidgetViewCode: '查看代码',
     htmlWidgetViewPreview: '查看预览',
+    widgetCardError: '组件渲染失败',
+    widgetCardCancelled: '组件渲染已取消',
     enterpriseModelLoading: '加载企业模型列表中...',
     enterpriseModelNoMatch: '未找到匹配的模型',
     enterpriseModelEmpty: '暂无可用模型',
@@ -2350,6 +2352,18 @@ const zhCN: TranslationDict = {
     file: {
       imageSkipNoVision: '[图片文件 {path}（{mediaType}）：当前模型无视觉能力，未读取图像内容。如需分析图片，请切换到支持视觉的模型（如 Claude / GPT-4o）。]',
       errFileLocked: 'Error: {path} 正在被其他代理编辑，请稍后重试。',
+    },
+    widget: {
+      errTitleEmpty: '参数错误：title 不能为空。',
+      errWidgetCodeEmpty: '参数错误：widget_code 不能为空。',
+      errLoadingMessagesLength: '参数错误：loading_messages 长度必须在 1-4 之间，收到 {received}。',
+      errLoadingMessageEntry: '参数错误：loading_messages[{idx}] 必须是非空字符串。',
+      errWidgetCodeTooLarge: 'widget_code 超过约 1MB 的大小上限，请精简片段（如缩减内联数据或改用更简单的图形）。',
+      errFullDocument: 'widget_code 必须是不带文档包裹标签的原始 SVG 或 HTML 片段。',
+      errStorageApi: 'widget_code 不能使用 localStorage/sessionStorage：沙箱 iframe 是不透明源，没有存储能力。',
+      errPositionFixed: 'widget_code 不能使用 position:fixed：组件高度是根据文档流内容自动计算的。',
+      errFormElement: 'widget_code 不能包含 <form> 元素：请改用普通控件和事件处理函数。',
+      rendered: '组件已渲染：{title}',
     },
     computer: {
       noInteractiveElements: '（没有找到可交互元素）',

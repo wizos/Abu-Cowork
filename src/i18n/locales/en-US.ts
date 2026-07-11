@@ -255,6 +255,8 @@ const enUS: TranslationDict = {
     htmlWidgetDownload: 'Download file',
     htmlWidgetViewCode: 'View code',
     htmlWidgetViewPreview: 'View preview',
+    widgetCardError: 'Widget failed to render',
+    widgetCardCancelled: 'Widget rendering cancelled',
     enterpriseModelLoading: 'Loading enterprise models...',
     enterpriseModelNoMatch: 'No matching models',
     enterpriseModelEmpty: 'No models available',
@@ -2349,6 +2351,18 @@ const enUS: TranslationDict = {
     file: {
       imageSkipNoVision: '[Image file {path} ({mediaType}): the current model has no vision capability; image content was not read. To analyse images, switch to a vision-capable model (e.g. Claude / GPT-4o).]',
       errFileLocked: 'Error: {path} is being edited by another agent — please retry later.',
+    },
+    widget: {
+      errTitleEmpty: 'Parameter error: title cannot be empty.',
+      errWidgetCodeEmpty: 'Parameter error: widget_code cannot be empty.',
+      errLoadingMessagesLength: 'Parameter error: loading_messages must have between 1 and 4 entries; received {received}.',
+      errLoadingMessageEntry: 'Parameter error: loading_messages[{idx}] must be a non-empty string.',
+      errWidgetCodeTooLarge: 'widget_code exceeds the ~1MB size budget — trim the fragment (e.g. reduce inline data or use a simpler graphic).',
+      errFullDocument: 'widget_code must be a raw SVG or HTML fragment without document wrapper tags.',
+      errStorageApi: 'widget_code must not use localStorage/sessionStorage — the sandboxed iframe has an opaque origin with no storage.',
+      errPositionFixed: 'widget_code must not use position:fixed — widget height is auto-sized from in-flow content.',
+      errFormElement: 'widget_code must not contain a <form> element — use normal controls and event handlers instead.',
+      rendered: 'Widget rendered: {title}',
     },
     computer: {
       noInteractiveElements: '(No interactive elements found)',

@@ -453,11 +453,14 @@ function buildFullHtml(widgetCode: string): string {
 // Component
 // ---------------------------------------------------------------------------
 
-export default function HtmlWidgetBlock({ code }: { code: string }) {
+export default function HtmlWidgetBlock({ code, title }: { code: string; title?: string }) {
   const { t } = useI18n();
 
   const config: CodeBlockRendererConfig = {
-    label: t.chat.htmlWidgetLabel,
+    // Per-instance title (from show_widget's `title` input) disambiguates
+    // multiple widgets in one conversation and becomes the download
+    // filename; falls back to the generic label for the fence-fallback path.
+    label: title ?? t.chat.htmlWidgetLabel,
     fallbackLanguage: 'html',
     seamless: true,
     render: renderHtmlWidget,

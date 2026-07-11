@@ -286,6 +286,9 @@ export interface TranslationDict {
     htmlWidgetDownload: string;
     htmlWidgetViewCode: string;
     htmlWidgetViewPreview: string;
+    // show_widget inline card status rows (invalid input / cancelled call)
+    widgetCardError: string;
+    widgetCardCancelled: string;
     // Enterprise model selector
     enterpriseModelLoading: string;
     enterpriseModelNoMatch: string;
@@ -2653,6 +2656,29 @@ export interface TranslationDict {
       imageSkipNoVision: string;
       /** File locked by another agent. {path} */
       errFileLocked: string;
+    };
+    // show_widget / read_me — inline visualization tool
+    widget: {
+      /** Error: title cannot be empty. */
+      errTitleEmpty: string;
+      /** Error: widget_code cannot be empty. */
+      errWidgetCodeEmpty: string;
+      /** Error: loading_messages must have 1-4 entries. {received} */
+      errLoadingMessagesLength: string;
+      /** Error: loading_messages[{idx}] must be a non-empty string. */
+      errLoadingMessageEntry: string;
+      /** Error: widget_code exceeds the ~1MB size budget. */
+      errWidgetCodeTooLarge: string;
+      /** Error: widget_code contains a document wrapper tag (doctype/html/head/body). */
+      errFullDocument: string;
+      /** Error: widget_code references localStorage/sessionStorage (unavailable in the sandbox). */
+      errStorageApi: string;
+      /** Error: widget_code uses position:fixed (breaks auto-sizing). */
+      errPositionFixed: string;
+      /** Error: widget_code contains a <form> element. */
+      errFormElement: string;
+      /** Success: widget rendered. {title} */
+      rendered: string;
     };
     // commandSafety — injection reason strings and danger-level labels
     commandSafety: {

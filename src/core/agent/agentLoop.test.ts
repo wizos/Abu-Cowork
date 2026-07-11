@@ -6,6 +6,7 @@ import {
   shouldComputeProposalSignal,
   isIncompleteReason,
   isVisionUnsupportedError,
+  getCapabilityPrompt,
 } from './agentLoop';
 
 describe('escalateMaxOutputTokens', () => {
@@ -216,6 +217,32 @@ describe('isIncompleteReason', () => {
 
   it('is false for error', () => {
     expect(isIncompleteReason('error')).toBe(false);
+  });
+});
+
+describe('getCapabilityPrompt — visual-output variant selection', () => {
+  it('instructs show_widget (no fence) by default / for tool-capable models', () => {
+    for (const prompt of [getCapabilityPrompt(), getCapabilityPrompt({ supportsTools: true })]) {
+      expect(prompt).toContain('call the show_widget tool');
+      expect(prompt).toContain('read_me');
+      expect(prompt).not.toContain('```html code block');
+    }
+  });
+
+  it('falls back to the ```html-fence instruction when supportsTools is false (tools=[] models)', () => {
+    const prompt = getCapabilityPrompt({ supportsTools: false });
+    expect(prompt).toContain('```html code block');
+    // Fence fragment discipline retained from the pre-P1 wording
+    expect(prompt).toContain("Don't write DOCTYPE/html/head/body tags");
+    expect(prompt).not.toContain('show_widget');
+    expect(prompt).not.toContain('read_me');
+  });
+
+  it('keeps the shared sections in both variants', () => {
+    for (const prompt of [getCapabilityPrompt(), getCapabilityPrompt({ supportsTools: false })]) {
+      expect(prompt).toContain('Editing an already-exported file');
+      expect(prompt).toContain('Style requirement');
+    }
   });
 });
 

@@ -1,13 +1,14 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Sparkles, ChevronDown, ChevronRight } from 'lucide-react';
 import type { Message, MessageContent, ToolCall, ImageAttachment } from '@/types';
-import { TOOL_NAMES } from '@/core/tools/toolNames';
+import { TOOL_NAMES, isDisplayHiddenStepBackedTool } from '@/core/tools/toolNames';
 import type { ExecutionStep } from '@/types/execution';
 import type { WorkflowStep } from '@/utils/workflowExtractor';
 import MessageBubble from './MessageBubble';
 import SkillProposalCard from './SkillProposalCard';
 import UserQuestionCard from './UserQuestionCard';
 import PlanStepsCard from './PlanStepsCard';
+import ShowWidgetCard from './ShowWidgetCard';
 import TaskBlock from './TaskBlock';
 import BatchProgress from './BatchProgress';
 import MarkdownRenderer from './MarkdownRenderer';
@@ -138,6 +139,7 @@ type RenderSegment =
   | { kind: 'text'; text: string; message: Message; isLastTurn: boolean }
   | { kind: 'steps'; executionSteps: ExecutionStep[]; legacySteps: WorkflowStep[]; isLastGroup: boolean; stepsMsgs: Message[] }
   | { kind: 'plan'; toolCall: ToolCall }
+  | { kind: 'widget'; toolCall: ToolCall }
   | { kind: 'user'; message: Message };
 
 /**
@@ -211,12 +213,24 @@ export function buildRenderSegments(
       pendingExecSteps.push(buildThinkingStep(msg));
     }
 
-    // Slice this message's tool steps (hidden report_plan excluded — see plan segment).
-    const visibleToolCount = (msg.toolCalls || []).filter((tc) => !tc.hidden).length;
-    const turnExecSteps = toolExecSteps.slice(execOffset, execOffset + visibleToolCount);
-    execOffset += visibleToolCount;
-    const turnLegacySteps = toolLegacySteps.slice(legacyOffset, legacyOffset + visibleToolCount);
-    legacyOffset += visibleToolCount;
+    // Slice this message's tool steps. Counted by step-backed calls, not
+    // visible calls: report_plan is hidden AND creates no execution step
+    // (agentLoop breaks before createStepForToolUse — see plan segment),
+    // while display-hidden step-backed tools (show_widget) go through full
+    // step bookkeeping (so planned-step advance counts them) and their steps
+    // are filtered from the timeline below because they render as widget
+    // segments instead.
+    const stepBackedCount = (msg.toolCalls || []).filter(
+      (tc) => !tc.hidden || isDisplayHiddenStepBackedTool(tc.name),
+    ).length;
+    const turnExecSteps = toolExecSteps
+      .slice(execOffset, execOffset + stepBackedCount)
+      .filter((s) => !isDisplayHiddenStepBackedTool(s.toolName));
+    execOffset += stepBackedCount;
+    const turnLegacySteps = toolLegacySteps
+      .slice(legacyOffset, legacyOffset + stepBackedCount)
+      .filter((s) => !isDisplayHiddenStepBackedTool(s.toolName));
+    legacyOffset += stepBackedCount;
 
     // 2. Text — flush accumulated tool steps, then emit text.
     const text = getTextContent(msg.content);
@@ -234,10 +248,21 @@ export function buildRenderSegments(
       segments.push({ kind: 'plan', toolCall: planCall });
     }
 
+    // 3b. Widgets — each display-hidden step-backed call (show_widget)
+    // becomes a dedicated inline card at its real position (text → widget →
+    // text), same hidden-from-generic-list treatment as the plan card above.
+    // A single turn can call show_widget more than once (multiple visuals),
+    // so unlike planCall this iterates every match instead of taking the first.
+    const widgetCalls = (msg.toolCalls || []).filter((tc) => isDisplayHiddenStepBackedTool(tc.name));
+    for (const widgetCall of widgetCalls) {
+      flushSteps();
+      segments.push({ kind: 'widget', toolCall: widgetCall });
+    }
+
     // 4. Accumulate this message's tool steps (merges with adjacent tool-only turns).
     pendingExecSteps.push(...turnExecSteps);
     pendingLegacySteps.push(...turnLegacySteps);
-    if (visibleToolCount > 0) pendingStepsMsgs.push(msg);
+    if (stepBackedCount > 0) pendingStepsMsgs.push(msg);
   }
 
   flushSteps();
@@ -571,6 +596,14 @@ export default function MessageGroup({ messages, isLastGroup: isLastGroupProp = 
       );
     }
 
+    if (seg.kind === 'widget') {
+      return (
+        <MessageErrorBoundary key={`widget-${seg.toolCall.id}`}>
+          <ShowWidgetCard toolCall={seg.toolCall} />
+        </MessageErrorBoundary>
+      );
+    }
+
     // kind === 'steps' — merged TaskBlock
     const hasExecSteps = seg.executionSteps.length > 0;
     const hasLegacySteps = seg.legacySteps.length > 0;
@@ -700,7 +733,14 @@ export default function MessageGroup({ messages, isLastGroup: isLastGroupProp = 
                     className={cn('h-3.5 w-3.5 transition-transform', !workExpanded && '-rotate-90')}
                   />
                 </button>
-                {workExpanded && segments.slice(0, workFoldEnd).map((seg, i) => renderSegment(seg, i))}
+                {/* Widgets are content, not work-process auxiliary — they stay
+                    visible even when the fold is collapsed (unlike thinking/
+                    steps/plan, which the toggle is actually for). */}
+                {workExpanded
+                  ? segments.slice(0, workFoldEnd).map((seg, i) => renderSegment(seg, i))
+                  : segments.slice(0, workFoldEnd)
+                      .filter((seg) => seg.kind === 'widget')
+                      .map((seg, i) => renderSegment(seg, i))}
                 {segments.slice(workFoldEnd).map((seg, i) => renderSegment(seg, workFoldEnd + i))}
               </>
             )}

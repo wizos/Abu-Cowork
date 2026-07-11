@@ -29,6 +29,17 @@ import { startToolSpan } from '../observability/langfuse';
 
 const logger = createLogger('toolExecutor');
 
+/**
+ * Result markers for tool calls that never actually executed. Written with
+ * error:false (they are not model mistakes), so consumers that need to
+ * distinguish "skipped" from "succeeded" must compare against these
+ * constants — e.g. ShowWidgetCard renders a muted "cancelled" row instead
+ * of mounting the widget. Pre-existing literal values kept verbatim (they
+ * are persisted in conversation history).
+ */
+export const TOOL_RESULT_CANCELLED_MARKER = '[已取消]';
+export const TOOL_RESULT_HOOK_BLOCKED_MARKER = '[被 hook 拦截]';
+
 /** Human-readable description of a computer use action for the status bar. */
 function actionToDescription(action: string, input: Record<string, unknown>): string {
   switch (action) {
@@ -138,7 +149,7 @@ export async function executeToolBatch(params: ToolBatchParams): Promise<ToolBat
   const executeSingleTool = async (tc: typeof collectedToolCalls[number]): Promise<ToolExecResult> => {
     // Check if cancelled before executing
     if (abortController.signal.aborted) {
-      return { id: tc.id, result: '[已取消]', resultContent: undefined, error: false, duration: 0 };
+      return { id: tc.id, result: TOOL_RESULT_CANCELLED_MARKER, resultContent: undefined, error: false, duration: 0 };
     }
 
     // Emit preToolCall hook (can block or modify input)
@@ -157,7 +168,7 @@ export async function executeToolBatch(params: ToolBatchParams): Promise<ToolBat
       if (preEvent.blockReason) {
         return { id: tc.id, result: preEvent.blockReason, resultContent: undefined, error: true, duration: 0 };
       }
-      return { id: tc.id, result: '[被 hook 拦截]', resultContent: undefined, error: false, duration: 0 };
+      return { id: tc.id, result: TOOL_RESULT_HOOK_BLOCKED_MARKER, resultContent: undefined, error: false, duration: 0 };
     }
 
     // Plan mode gate: while a plan is pending approval ('planning'), block

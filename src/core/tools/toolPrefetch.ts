@@ -28,6 +28,13 @@ export const CORE_TOOL_NAMES: ReadonlySet<string> = new Set([
   TOOL_NAMES.USE_SKILL,
   TOOL_NAMES.DELEGATE_TO_AGENT,
   TOOL_NAMES.TOOL_SEARCH,
+  // show_widget / read_me are core for the same reason as ask_user_question:
+  // visualization is now a primary capability (replacing the old ```html
+  // fence output). If they went through deferred tool_search discovery,
+  // weaker models would misjudge them as unavailable and regress to plain
+  // text / fence output.
+  TOOL_NAMES.SHOW_WIDGET,
+  TOOL_NAMES.READ_ME,
 ]);
 
 /** Keyword → tool mapping for demand-based loading */
