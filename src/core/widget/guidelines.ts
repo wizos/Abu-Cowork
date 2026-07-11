@@ -16,17 +16,30 @@
  * plus keeps the per-module pointers; the `modules` filter parameter and
  * section-map structure exist so per-module growth doesn't require
  * reshaping the call sites in widgetTools.ts.
+ *
+ * show_widget + this guide is now the single AUTOMATIC visualization router
+ * — the four builtin skills that used to compete on the same triggers
+ * (html-widget/svg-diagram/mermaid-diagram/infographic) had
+ * `disable-auto-invoke: true` set (still user-invocable, just not
+ * auto-triggered) once their non-redundant guidance was distilled in here:
+ * the `diagram` module's canvas-sizing/arrow-marker tips came from
+ * svg-diagram, the `mockup` module's device-frame/icon/multi-screen tips
+ * came from html-widget, and the whole `poster` module came from
+ * infographic (the layout recipes it uniquely provided). mermaid-diagram
+ * needed no fold-in here — mermaid output goes through a ```mermaid fence,
+ * not read_me (see agentLoop.ts's carve-out).
  */
 import { getDesignSystemGuideText } from './designSystem';
 
 /** Widget guideline module identifiers `read_me` accepts. */
-export type WidgetGuidelineModule = 'diagram' | 'chart' | 'interactive' | 'mockup';
+export type WidgetGuidelineModule = 'diagram' | 'chart' | 'interactive' | 'mockup' | 'poster';
 
 export const WIDGET_GUIDELINE_MODULES: readonly WidgetGuidelineModule[] = [
   'diagram',
   'chart',
   'interactive',
   'mockup',
+  'poster',
 ];
 
 /**
@@ -137,7 +150,9 @@ const MODULE_SECTIONS: Record<WidgetGuidelineModule, string> = {
   diagram: `## Diagrams
 - Static structure diagrams (flowchart, tree, sequence, state machine) are better as a \`\`\`mermaid code block outside the widget — prefer that over drawing one here.
 - Draw inline SVG in this widget only when you need custom spatial layout, annotations, or interactivity that Mermaid can't express.
-- Keep label text legible: minimum ~12px, sufficient contrast against the background.`,
+- Keep label text legible: minimum ~12px, sufficient contrast against the background.
+- Size the canvas to content: set \`viewBox\` height to the lowest element's bottom edge plus a ~40px margin, so nothing clips or leaves dead space.
+- Define arrow markers once in \`<defs>\` (an SVG \`<marker>\`) and reuse via \`marker-end="url(#id)"\` on each connecting line, rather than hand-drawing every arrowhead.`,
   chart: `## Charts
 - Prefer inline SVG for simple charts (a handful of bars/points) — no library needed.
 - For anything data-heavy (multi-series, tooltips, legends), use Chart.js loaded from the CDN allowlist.
@@ -147,7 +162,19 @@ const MODULE_SECTIONS: Record<WidgetGuidelineModule, string> = {
 - Keep state in-memory (plain JS variables/closures); there is no persistent storage available.`,
   mockup: `## UI mockups
 - Build with plain HTML + CSS; avoid framework runtimes unless the user specifically asked for a live interactive prototype.
-- Match Abu's light, uncluttered visual style rather than inventing a heavy custom theme.`,
+- Match Abu's light, uncluttered visual style rather than inventing a heavy custom theme.
+- Simulating a device (phone/tablet/desktop app UI): use a fixed-width frame (phone ~375px, tablet ~768px, desktop ~1024px), centered, to read as "a real app" rather than a wireframe.
+- Prefer Unicode glyphs (\`←\` \`✓\` \`⚙\` \`☆\` \`⋯\`) over hand-drawn SVG icons for nav/tab-bar iconography — cheaper and reads clean at small sizes.
+- A multi-screen prototype: keep every screen in the DOM at once as sibling \`<div>\`s, toggle one active with a class + a tiny JS function — don't use iframes or multiple files.`,
+  poster: `## Data posters (infographics)
+Layout recipes for a poster-style show_widget — structured information presented for reading, not charts. Compose \`.w-card\`/\`.w-stat\`/\`.w-grid\` (design system below) into these shapes:
+- **Timeline**: a vertical line with dot nodes; each node's label + description sits to one side. Good for history, milestones, version progression.
+- **Process steps**: a numbered-circle badge + title + description per step, divided by hairlines. Good for procedures, onboarding flows.
+- **Card grid**: 2-3 column grid of \`.w-card\` tiles, each with a short tinted-label header. Good for SWOT, feature/option comparison, categorized lists.
+- **Stat row**: a \`.w-grid\` of \`.w-stat\` blocks (label + large number), optionally with an up/down trend badge. Good for KPI/metric overviews.
+- **Ranked list**: horizontal rows, rank number on the left, value on the right. Good for top-N / leaderboards.
+- **Pyramid / funnel**: stacked horizontal bands whose width increases or decreases top-to-bottom. Good for hierarchy models, conversion funnels.
+- Treat it as a poster, not a page: generous section spacing (32-48px), one accent color, no decorative icons/gradients/shadows — restraint is the whole aesthetic.`,
 };
 
 /**

@@ -39,6 +39,7 @@ describe('getWidgetGuidelines', () => {
     expect(text).toContain('## Charts');
     expect(text).toContain('## Interactive widgets');
     expect(text).toContain('## UI mockups');
+    expect(text).toContain('## Data posters (infographics)');
   });
 
   it('includes every module section when an empty array is given (treated as "all")', () => {
@@ -89,8 +90,31 @@ describe('getWidgetGuidelines', () => {
     expect(text).not.toContain('## Charts');
   });
 
-  it('canonical module list has exactly the four documented modules', () => {
-    expect(WIDGET_GUIDELINE_MODULES).toEqual(['diagram', 'chart', 'interactive', 'mockup']);
+  it('canonical module list has exactly the five documented modules', () => {
+    expect(WIDGET_GUIDELINE_MODULES).toEqual(['diagram', 'chart', 'interactive', 'mockup', 'poster']);
+  });
+
+  it('the poster module carries the infographic layout recipes folded in from the (now non-auto-invoking) infographic builtin skill', () => {
+    const text = getWidgetGuidelines(['poster']);
+    expect(text).toContain('## Data posters (infographics)');
+    for (const recipe of ['Timeline', 'Process steps', 'Card grid', 'Stat row', 'Ranked list', 'Pyramid / funnel']) {
+      expect(text).toContain(recipe);
+    }
+    // References the existing design-system vocabulary rather than inventing new classes.
+    expect(text).toContain('.w-card');
+    expect(text).toContain('.w-stat');
+  });
+
+  it('the diagram module carries the canvas-sizing/arrow-marker tips folded in from the svg-diagram builtin skill', () => {
+    const text = getWidgetGuidelines(['diagram']);
+    expect(text).toContain('viewBox');
+    expect(text).toContain('marker-end');
+  });
+
+  it('the mockup module carries the device-frame/icon/multi-screen tips folded in from the html-widget builtin skill', () => {
+    const text = getWidgetGuidelines(['mockup']);
+    expect(text).toContain('375px');
+    expect(text).toContain('Unicode glyphs');
   });
 
   it('includes the design-system section (vars + classes), regardless of module filter', () => {

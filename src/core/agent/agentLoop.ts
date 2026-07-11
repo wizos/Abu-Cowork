@@ -242,11 +242,15 @@ export function getDefaultSoul(): string {
  * prompt layer, before a single widget is ever rendered.
  *
  * Both variants also carve a STATIC structure diagram (flowchart, tree,
- * sequence, state machine, org chart, node/edge graph) out of the
- * show_widget/```html default and route it to a ```mermaid fence instead —
- * Abu bundles a real Mermaid engine (MermaidBlock.tsx, no CDN) registered
- * for that fence in codeBlockRenderers.ts, so this carve-out routes static
- * structure diagrams to the robust engine instead of fragile hand-drawn SVG.
+ * sequence, state machine, org chart, node/edge graph, ER diagram, Gantt
+ * chart) out of the show_widget/```html default and route it to a
+ * ```mermaid fence instead — Abu bundles a real Mermaid engine
+ * (MermaidBlock.tsx, no CDN) registered for that fence in
+ * codeBlockRenderers.ts, so this carve-out routes static structure diagrams
+ * to the robust engine instead of fragile hand-drawn SVG. (ER diagram/Gantt
+ * chart were folded in from the now-non-auto-invoking mermaid-diagram
+ * builtin skill's type table — the two mermaid strengths svg-diagram can't
+ * match — see guidelines.ts's file-header note on the wider skill fold-in.)
  * The carve-out must be worded as scoping DOWN the show_widget/html default,
  * not replacing it, so the two rules don't read as contradictory.
  */
@@ -263,7 +267,7 @@ const VISUAL_OUTPUT_TOOL_VARIANT = `${VISUAL_TRIGGER_TIERS}
 
 **Routing — the deciding question is "is this a file the user wants to keep?"** Ephemeral, part of this reply → **call the show_widget tool**, right where you need it — this is the default (call read_me once before your first call each conversation, don't narrate it). A page the user wants to **save, export, download, or keep as a real file** → write_file a COMPLETE self-contained \`.html\` document (doctype + html/head/body; inline CSS/JS or the CDN allowlist below) — it can then be opened in the side preview panel. Only escalate to write_file on an explicit save/export intent.
 
-**Static structure diagrams — carve-out**: when labeled nodes and edges fully explain a STATIC structure — flowchart, tree, sequence diagram, state machine, org chart, node/edge graph — output a \`\`\`mermaid code block instead (rendered by the built-in Mermaid engine, no sandbox). This narrows, not replaces, the show_widget default above: show_widget stays the default for everything dynamic, interactive, data-driven, or chart-like.
+**Static structure diagrams — carve-out**: when labeled nodes and edges fully explain a STATIC structure — flowchart, tree, sequence diagram, state machine, org chart, node/edge graph, ER diagram, Gantt chart — output a \`\`\`mermaid code block instead (rendered by the built-in Mermaid engine, no sandbox). This narrows, not replaces, the show_widget default above: show_widget stays the default for everything dynamic, interactive, data-driven, or chart-like.
 
 ${VISUAL_HARD_BANS_BLOCK}
 
@@ -275,7 +279,7 @@ const VISUAL_OUTPUT_FENCE_VARIANT = `${VISUAL_TRIGGER_TIERS}
 
 **Rendering**: no tools here — every visual, including a "save"/"download" ask, goes through **a \`\`\`html code block in your reply**; there's no separate saved-file path, so say so if the user needs a real downloadable file.
 
-**Static structure diagrams — carve-out**: when labeled nodes and edges fully explain a STATIC structure — flowchart, tree, sequence diagram, state machine, org chart, node/edge graph — output a \`\`\`mermaid code block instead (rendered by the built-in Mermaid engine, no sandbox). Use an \`\`\`html fragment for everything dynamic, interactive, data-driven, or chart-like.
+**Static structure diagrams — carve-out**: when labeled nodes and edges fully explain a STATIC structure — flowchart, tree, sequence diagram, state machine, org chart, node/edge graph, ER diagram, Gantt chart — output a \`\`\`mermaid code block instead (rendered by the built-in Mermaid engine, no sandbox). Use an \`\`\`html fragment for everything dynamic, interactive, data-driven, or chart-like.
 
 ${VISUAL_HARD_BANS_BLOCK}
 

@@ -363,7 +363,9 @@ describe('getCapabilityPrompt — visual-output variant selection', () => {
     // The carve-out still routes everything else back to show_widget.
     expect(prompt).toContain('show_widget stays the default for everything dynamic, interactive, data-driven, or chart-like');
     // Names concrete static-structure diagram kinds so a weak model can pattern-match.
-    for (const kind of ['flowchart', 'tree', 'sequence diagram', 'state machine', 'org chart', 'node/edge graph']) {
+    // ER diagram / Gantt chart were folded in from the mermaid-diagram builtin skill's
+    // type table once that skill's auto-invoke was disabled (see guidelines.ts).
+    for (const kind of ['flowchart', 'tree', 'sequence diagram', 'state machine', 'org chart', 'node/edge graph', 'ER diagram', 'Gantt chart']) {
       expect(prompt).toContain(kind);
     }
   });
