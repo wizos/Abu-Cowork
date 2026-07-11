@@ -330,7 +330,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
       const toAdd = ids.filter(id => !prev[id]);
       if (toAdd.length === 0) return prev;
       const next = { ...prev };
-      for (const id of toAdd) next[id] = defaultModelDeclaredCapabilities();
+      for (const id of toAdd) next[id] = defaultModelDeclaredCapabilities(id);
       return next;
     });
   }, []);

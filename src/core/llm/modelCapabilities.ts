@@ -248,3 +248,28 @@ export function deriveUiCaps(modelId: string): import('@/types/provider').ModelC
   if (caps.contextWindow >= 512000) result.push('long_context');
   return result;
 }
+
+/**
+ * Derive the declared-capabilities default for a newly-added custom model, from
+ * the same `resolveCapabilities` source of truth `deriveUiCaps` uses for the UI
+ * badges — so a hand-typed `gpt-4o` gets `supportsImages: true` instead of the
+ * old hardcoded `false`, which silently disabled vision at runtime
+ * (`applyDeclaredCapabilities` treats any defined `supportsImages` as an
+ * override) even though the model is known to support it.
+ *
+ * Unrecognized ids (`resolveCapabilities` falls through to `FALLBACK_DEFAULT`,
+ * identity-checked below) stay conservative and declare `supportsImages: false`
+ * — `FALLBACK_DEFAULT.vision` is `true`, but declaring vision for an unknown
+ * proxy model is unsafe: it would forward images to a model that may reject
+ * them (400). Every recognized family/KNOWN_MODELS branch returns a fresh
+ * object, so `=== FALLBACK_DEFAULT` only matches the pure-fallback path.
+ */
+export function deriveDeclaredDefaults(modelId: string): import('@/types/provider').ModelDeclaredCapabilities {
+  const caps = resolveCapabilities(modelId);
+  const isUnknown = caps === FALLBACK_DEFAULT;
+  return {
+    supportsTools: true, // no tools axis in ModelCapabilities; matches prior default
+    supportsImages: isUnknown ? false : caps.vision,
+    supportsReasoning: caps.thinking !== false,
+  };
+}
