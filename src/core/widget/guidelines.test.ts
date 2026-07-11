@@ -17,6 +17,22 @@ describe('getWidgetGuidelines', () => {
     expect(text).toContain('unpkg.com');
   });
 
+  it('C1: the fragment-only detail is scoped to the inline widget and points at the opposite saved-page rule', () => {
+    const text = getWidgetGuidelines();
+    // Scoped so read_me does not contradict the save-as-webpage section (which needs a full document).
+    expect(text).toContain('Fragment only (inline widget)');
+    expect(text).toContain('A page saved via write_file is the opposite');
+  });
+
+  it('C1/C2: the save-as-webpage section is present and its preview claim is non-absolute', () => {
+    const text = getWidgetGuidelines();
+    expect(text).toContain('Saving a visualization as a real webpage file');
+    expect(text).toContain('COMPLETE self-contained HTML document');
+    // Non-absolute: auto-open only fires for the LAST non-image deliverable of the turn.
+    expect(text).toContain('can be opened in the side preview panel');
+    expect(text).not.toContain('opens automatically');
+  });
+
   it('includes every module section when no filter is given', () => {
     const text = getWidgetGuidelines();
     expect(text).toContain('## Diagrams');

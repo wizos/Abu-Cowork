@@ -46,7 +46,7 @@ import { applyDeclaredCapabilities } from '../llm/applyDeclaredCapabilities';
 import { resolveModelDeclared } from '../llm/resolveModelDeclared';
 import { rehydrateForSend, type ImageBase64Cache } from '../llm/imageRehydration';
 import { TOOL_NAMES, isDisplayHiddenStepBackedTool } from '../tools/toolNames';
-import { WIDGET_CDN_HOSTS } from '../widget/guidelines';
+import { WIDGET_CDN_HOSTS, getWidgetHardBanBriefList } from '../widget/guidelines';
 import { prefetchTools } from '../tools/toolPrefetch';
 import { classifyTools, buildDeferredToolsSummary } from '../tools/toolSearch';
 import { hasQueuedInputs } from './userInputQueue';
@@ -221,38 +221,54 @@ export function getDefaultSoul(): string {
  * resolved model's tool support:
  *
  * - Tools supported (default): visualization goes through the explicit
- *   show_widget tool (P1 widget system, aligned with WorkBuddy/ChatGPT/TRAE).
+ *   show_widget tool (P1 widget system, aligned with WorkBuddy/ChatGPT/TRAE),
+ *   and a "save as a real webpage" intent escalates to write_file. A written
+ *   .html CAN open in the side preview panel — MessageGroup.tsx's openPreview
+ *   effect auto-opens the LAST non-image deliverable of the turn, so the
+ *   prompt is worded "can be opened" (not "always auto-opens"): if the model
+ *   writes another file after the page, that one wins the auto-open. No new
+ *   tool needed either way.
  * - Tools NOT supported (`supportsTools === false`): the model gets tools=[]
- *   (see the `noTools` gate in the turn loop), so instructing show_widget
- *   would strand it with no visualization path at all. These models keep the
- *   previous ```html-fence instruction — the fence rendering path still
- *   works (codeBlockRenderers.ts) and remains the only channel they have.
+ *   (see the `noTools` gate in the turn loop) — no show_widget, no
+ *   write_file, nothing. These models keep the previous ```html-fence
+ *   instruction — the fence rendering path still works
+ *   (codeBlockRenderers.ts) and is the ONLY channel they have, so there is
+ *   no save-as-a-file escalation to offer them.
+ *
+ * Both variants share the same trigger tiers (when to make a visual at all)
+ * and the same hard-ban list (`getWidgetHardBanBriefList()`, single-sourced
+ * from guidelines.ts's `WIDGET_HARD_BAN_RULES` — read_me documents the same
+ * rules in full) — this is what stops the white-screen failure class at the
+ * prompt layer, before a single widget is ever rendered.
  */
-const VISUAL_OUTPUT_TOOL_VARIANT = `When the user needs a chart, visualization, interactive demo, animation, UI prototype, data display, process explanation, or other visual content,
-**call the show_widget tool**. It renders inline in the conversation alongside your text, right where you called it.
-Before your FIRST show_widget call in a conversation, call read_me once to load the design guidelines — don't narrate that call to the user.
+const VISUAL_TRIGGER_TIERS = `**When to make a visual** — explicit ask (show/visualize/diagram/chart/draw/graph/plot, "what does X look like"); proactive (teaching/explain requests, "compare A vs B" data, architecture/process/flow); or implied by the noun phrase ("comparison table of A vs B", "settings panel mockup", "state machine for …") — a markdown table is NOT a substitute when a visual is what's actually being asked for. (Mockups use plain inputs/buttons, never a real <form>.)`;
 
-**Strictly forbidden**:
-- ❌ Don't call the generate_image tool — show_widget can draw charts and visualizations
-- ❌ Don't call the write_file tool for an in-conversation visualization — that's what show_widget is for, not a standalone file
-- ❌ Don't call the todo_write tool — just call show_widget
+// Shared blocks — identical in both variants, factored out so the ban list
+// and the CDN allowlist can't drift between the tool and fence prompts.
+const VISUAL_HARD_BANS_BLOCK = `**Hard bans** (cause a blank/broken render):
+${getWidgetHardBanBriefList()}`;
 
-**Allowed**:
-- ✅ Load external libraries from a CDN (Chart.js, D3, etc.): ${WIDGET_CDN_HOSTS.join(' / ')}
-- ✅ Call write_file only when the user explicitly asks for a standalone/deliverable file ("save as a file", "export")
+const VISUAL_CDN_ALLOWED_LINE = `**Allowed**: CDN libraries (Chart.js, D3, etc.): ${WIDGET_CDN_HOSTS.join(' / ')}`;
 
-**Styling**: prefer the design-system variables/classes read_me documents (\`--w-*\` vars, \`.w-*\` classes) over freestyle CSS — never hardcode white/black; the widget must look right in both light and dark hosts.`;
+const VISUAL_OUTPUT_TOOL_VARIANT = `${VISUAL_TRIGGER_TIERS}
 
-const VISUAL_OUTPUT_FENCE_VARIANT = `When the user needs a chart, visualization, interactive demo, animation, UI prototype, data display, process explanation, or other visual content,
-**you must output a \`\`\`html code block directly in your reply**. The frontend automatically renders it as an interactive inline component.
+**Routing — the deciding question is "is this a file the user wants to keep?"** Ephemeral, part of this reply → **call the show_widget tool**, right where you need it — this is the default (call read_me once before your first call each conversation, don't narrate it). A page the user wants to **save, export, download, or keep as a real file** → write_file a COMPLETE self-contained \`.html\` document (doctype + html/head/body; inline CSS/JS or the CDN allowlist below) — it can then be opened in the side preview panel. Only escalate to write_file on an explicit save/export intent.
 
-**Strictly forbidden**:
-- ❌ Don't write DOCTYPE/html/head/body tags — write an HTML fragment only (style + HTML + script)
+${VISUAL_HARD_BANS_BLOCK}
 
-**Allowed**:
-- ✅ Load external libraries from a CDN (Chart.js, D3, etc.): ${WIDGET_CDN_HOSTS.join(' / ')}
+**Strictly forbidden**: generate_image for a chart/diagram (show_widget draws those); todo_write before show_widget — just call show_widget.
 
-**Styling**: a small theme-aware design system is already loaded — prefer its \`--w-*\` CSS variables and \`.w-*\` utility classes (card/stat/grid/row/badge/button) over freestyle CSS, and never hardcode white/black.`;
+${VISUAL_CDN_ALLOWED_LINE}`;
+
+const VISUAL_OUTPUT_FENCE_VARIANT = `${VISUAL_TRIGGER_TIERS}
+
+**Rendering**: no tools here — every visual, including a "save"/"download" ask, goes through **a \`\`\`html code block in your reply**; there's no separate saved-file path, so say so if the user needs a real downloadable file.
+
+${VISUAL_HARD_BANS_BLOCK}
+
+**Design system** (no design-guide tool in this mode — use these directly): utility classes \`.w-card\`/\`.w-stat\`/\`.w-grid\`/\`.w-row\`/\`.w-badge\`/\`.w-btn\` plus the \`--w-*\` theme vars.
+
+${VISUAL_CDN_ALLOWED_LINE}`;
 
 /**
  * Abu's capability prompt — always injected, cannot be overridden by SOUL.md.
@@ -279,7 +295,7 @@ ${visualOutput}
 - ❌ Never use write_file to fully overwrite an existing multi-section document (report / long HTML / long code) — it loses content the user didn't ask to change
 - ✅ If you truly need to rebuild the whole file structure, first run_command to delete the original file, then write_file to create a new one
 
-**Style requirement**: use a light/white background, no dark/black background. Stay consistent with Abu's UI style.
+**Style requirement (exported/write_file documents only)**: use a light/white background, no dark/black background — a standalone file has no host theme to follow. (This is the opposite of the inline visual path above, which is theme-aware by design because it renders inside Abu's chat.)
 
 ## How you work — take initiative!
 You are a **proactive assistant**. When the user gives you a task:

@@ -43,22 +43,92 @@ export const WIDGET_CDN_HOSTS: readonly string[] = [
 ];
 
 /**
- * Hard rules — apply to every widget regardless of module. These are
- * contract-level constraints; `widgetTools.ts`'s `showWidgetTool.execute()`
- * hard-rejects violations of the structural ones (fragment-only, no
- * position:fixed, no localStorage/sessionStorage, no <form>) rather than
- * just documenting them here.
+ * One hard-ban rule, documented at two altitudes:
+ * - `detail` — the full explanation, used in `HARD_RULES` below (read_me's
+ *   detailed guide text).
+ * - `brief` — a short phrase. Rules with `inPromptBanList: true` also get
+ *   echoed into agentLoop.ts's two visual-output capability-prompt variants
+ *   (the always-in-context system prompt, which must stay concise) via
+ *   `getWidgetHardBanBriefList()`. Both altitudes come from this one array —
+ *   the capability prompt's ban list can't drift from what read_me
+ *   documents, because there's no second hand-written copy to drift.
+ *
+ * `widgetTools.ts`'s `showWidgetTool.execute()` hard-rejects violations of
+ * the structural ones (fragment-only, no position:fixed, no
+ * localStorage/sessionStorage, no <form>) rather than just documenting them
+ * here; `hidden-reveal`/`viewport-sizing`/`theme-aware` are prompt-only (not
+ * mechanically checkable) — this is the layer that prevents them, which is
+ * why those three (plus fragment-only and position-fixed) are the ones
+ * promoted into the capability prompt's own ban list — storage/form
+ * violations already get a hard runtime rejection with a clear error, so
+ * they don't need to spend prompt budget too.
  */
+export interface WidgetHardBanRule {
+  readonly id: 'fragment-only' | 'position-fixed' | 'storage' | 'form' | 'hidden-reveal' | 'viewport-sizing' | 'theme-aware';
+  readonly detail: string;
+  readonly brief: string;
+  /** Whether this rule is promoted into agentLoop's capability-prompt ban list. */
+  readonly inPromptBanList: boolean;
+}
+
+export const WIDGET_HARD_BAN_RULES: readonly WidgetHardBanRule[] = [
+  {
+    id: 'fragment-only',
+    detail: '**Fragment only (inline widget)** — the inline widget is a raw fragment: no `<!DOCTYPE>`, `<html>`, `<head>`, or `<body>` tags; write the inner content only (style + markup + script). (A page saved via write_file is the opposite — a complete self-contained document; see the save section below.)',
+    brief: 'inline widget: a raw HTML/SVG fragment — no <!DOCTYPE>/html/head/body (a saved write_file page is the opposite: a complete document)',
+    inPromptBanList: true,
+  },
+  {
+    id: 'position-fixed',
+    detail: '**No `position: fixed`** — widget height is auto-sized from in-flow content; fixed positioning breaks that measurement.',
+    brief: 'no `position: fixed`',
+    inPromptBanList: true,
+  },
+  {
+    id: 'storage',
+    detail: '**No `localStorage` / `sessionStorage`** — the widget renders in a sandboxed iframe with an opaque origin; storage APIs are unavailable.',
+    brief: 'no `localStorage` / `sessionStorage`',
+    inPromptBanList: false,
+  },
+  {
+    id: 'form',
+    detail: '**No `<form>` elements** — use normal controls (buttons, inputs) with event handlers instead of form submission.',
+    brief: 'no `<form>` elements',
+    inPromptBanList: false,
+  },
+  {
+    id: 'hidden-reveal',
+    detail: '**No initial-hidden reveal animations** — patterns like `opacity: 0` + scroll/IntersectionObserver reveal leave content permanently blank if the observer never fires in the preview context. Content must be visible on first paint; animate other properties (transform, color) if you want motion.',
+    brief: 'no initial-hidden reveal (opacity: 0 / visibility: hidden revealed via scroll/observer/DOMContentLoaded) — must be visible on first paint',
+    inPromptBanList: true,
+  },
+  {
+    id: 'viewport-sizing',
+    detail: '**No `100vh` / viewport-height layouts and no internal scrolling** — the widget grows to fit its content in the conversation flow; it is not a standalone viewport.',
+    brief: 'no 100vh/viewport-height sizing or internal scroll containers (auto-sizes to content)',
+    inPromptBanList: true,
+  },
+  {
+    id: 'theme-aware',
+    detail: '**Theme-aware only** — use the `--w-*` vars / `.w-*` classes (documented in the design-system section below), never hardcode white/black; hardcoded colors break in whichever theme (light/dark) they weren\'t written for.',
+    brief: 'theme-aware only — use the `--w-*` vars / `.w-*` classes, never hardcode white/black',
+    inPromptBanList: true,
+  },
+];
+
+/** Compact ban bullets for a system prompt — see `WidgetHardBanRule` docstring. */
+export function getWidgetHardBanBriefList(): string {
+  return WIDGET_HARD_BAN_RULES.filter((r) => r.inPromptBanList).map((r) => `- ${r.brief}`).join('\n');
+}
+
 const HARD_RULES = `## Hard rules (apply to every widget)
-- **Fragment only** — no \`<!DOCTYPE>\`, \`<html>\`, \`<head>\`, or \`<body>\` tags. Write the inner content only (style + markup + script).
-- **No \`position: fixed\`** — widget height is auto-sized from in-flow content; fixed positioning breaks that measurement.
-- **No \`localStorage\` / \`sessionStorage\`** — the widget renders in a sandboxed iframe with an opaque origin; storage APIs are unavailable.
-- **No \`<form>\` elements** — use normal controls (buttons, inputs) with event handlers instead of form submission.
-- **No initial-hidden reveal animations** — patterns like \`opacity: 0\` + scroll/IntersectionObserver reveal leave content permanently blank if the observer never fires in the preview context. Content must be visible on first paint; animate other properties (transform, color) if you want motion.
-- **No \`100vh\` / viewport-height layouts and no internal scrolling** — the widget grows to fit its content in the conversation flow; it is not a standalone viewport.
+${WIDGET_HARD_BAN_RULES.map((r) => `- ${r.detail}`).join('\n')}
 - **CDN allowlist** — only load scripts from ${WIDGET_CDN_HOSTS.map((h) => `\`${h}\``).join(', ')}.
 - **Size budget** — keep the fragment under ~1MB.
-- **Optional \`window.sendPrompt(text)\`** — call this to send a short follow-up into the chat composer (max 500 characters; longer text is truncated). It fills the input box for the user to review, it does NOT auto-send — use it for things like a button that proposes a next question or action, not for anything the widget needs to happen silently.`;
+- **Optional \`window.sendPrompt(text)\`** — call this to send a short follow-up into the chat composer (max 500 characters; longer text is truncated). It fills the input box for the user to review, it does NOT auto-send — use it for things like a button that proposes a next question or action, not for anything the widget needs to happen silently.
+
+## Saving a visualization as a real webpage file
+To save a visualization as a real webpage the user can keep/reopen (as opposed to the ephemeral in-conversation widget above), write a COMPLETE self-contained HTML document — doctype + html/head/body, inline the CSS/JS or use the CDN allowlist above — via the write_file tool. This is the opposite of the fragment-only rule: a saved page needs the full document wrapper. Once written, the .html can be opened in the side preview panel.`;
 
 /** Per-module guidance — brief, general-purpose pointers. Shared styling
  *  vocabulary (vars/classes) lives in the always-present design-system

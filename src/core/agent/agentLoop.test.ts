@@ -232,10 +232,22 @@ describe('getCapabilityPrompt — visual-output variant selection', () => {
   it('falls back to the ```html-fence instruction when supportsTools is false (tools=[] models)', () => {
     const prompt = getCapabilityPrompt({ supportsTools: false });
     expect(prompt).toContain('```html code block');
-    // Fence fragment discipline retained from the pre-P1 wording
-    expect(prompt).toContain("Don't write DOCTYPE/html/head/body tags");
+    // Fence fragment discipline retained (rewording is deliberate — the fragment
+    // ban is now sourced from the shared WIDGET_HARD_BAN_RULES list, see the
+    // consistency describe block below).
+    expect(prompt).toContain('<!DOCTYPE>');
+    expect(prompt).toContain('raw HTML/SVG fragment');
     expect(prompt).not.toContain('show_widget');
     expect(prompt).not.toContain('read_me');
+    // No tools at all in this mode (noTools gate) — the visual-output section
+    // must not OFFER a write_file save escalation. (The fragment ban's contrast
+    // note "a saved write_file page is the opposite" is fine — it's a clarifying
+    // reference, not an escalation the model can take here.) The shared
+    // "Editing an already-exported file" section further down is a separate,
+    // pre-existing block, out of scope — hence the slice.
+    const visualSection = prompt.slice(0, prompt.indexOf('Editing an already-exported file'));
+    expect(visualSection).not.toContain('write_file a COMPLETE');
+    expect(visualSection).toContain("there's no separate saved-file path");
   });
 
   it('keeps the shared sections in both variants', () => {
@@ -243,6 +255,111 @@ describe('getCapabilityPrompt — visual-output variant selection', () => {
       expect(prompt).toContain('Editing an already-exported file');
       expect(prompt).toContain('Style requirement');
     }
+  });
+
+  it('states the three trigger tiers (explicit / proactive / implied-by-noun-phrase) in both variants', () => {
+    for (const prompt of [getCapabilityPrompt(), getCapabilityPrompt({ supportsTools: false })]) {
+      expect(prompt).toContain('explicit ask');
+      expect(prompt).toContain('proactive');
+      expect(prompt).toContain('implied by the noun phrase');
+      // The noun-phrase tier's whole point: a table is not a substitute for a rendered visual
+      expect(prompt).toContain('markdown table');
+    }
+  });
+
+  it('states the A/B routing boundary ("is this a file the user wants to keep?") for the tool variant', () => {
+    const prompt = getCapabilityPrompt({ supportsTools: true });
+    expect(prompt).toContain('is this a file the user wants to keep?');
+    expect(prompt).toContain('save, export, download, or keep as a real file');
+    // The escalation target: a complete self-contained document via write_file
+    expect(prompt).toContain('COMPLETE self-contained');
+    // C2: the preview claim is non-absolute — auto-open only fires for the LAST
+    // non-image deliverable of the turn (MessageGroup.tsx), so the prompt must
+    // not promise it ALWAYS auto-opens.
+    expect(prompt).toContain('can then be opened in the side preview panel');
+    expect(prompt).not.toContain('opens automatically');
+  });
+
+  it('C1: the fragment ban is scoped to the inline widget, and does NOT contradict the saved-page complete-document rule', () => {
+    // The fragment-only ban previously read as an unconditional "no doctype/html/head/body",
+    // contradicting the routing line that tells the model to write a COMPLETE self-contained
+    // .html for a saved page. The ban bullet must now name the inline/widget scope AND flag
+    // the saved page as the opposite.
+    for (const prompt of [getCapabilityPrompt(), getCapabilityPrompt({ supportsTools: false })]) {
+      expect(prompt).toContain('inline widget: a raw HTML/SVG fragment');
+      expect(prompt).toContain('a saved write_file page is the opposite: a complete document');
+    }
+  });
+
+  it('C3: the fence (no-tools) variant enumerates the utility classes inline, since it cannot call read_me', () => {
+    const fence = getCapabilityPrompt({ supportsTools: false });
+    for (const cls of ['.w-card', '.w-stat', '.w-grid', '.w-row', '.w-badge', '.w-btn']) {
+      expect(fence).toContain(cls);
+    }
+    expect(fence).toContain('--w-*');
+    // The tool variant keeps the read_me pointer (those models CAN call read_me),
+    // so it does NOT need the inline class enumeration.
+    expect(getCapabilityPrompt({ supportsTools: true })).toContain('read_me');
+  });
+
+  it('C4: the trigger examples do not invite a bare <form> (validator hard-rejects <form> elements)', () => {
+    for (const prompt of [getCapabilityPrompt(), getCapabilityPrompt({ supportsTools: false })]) {
+      expect(prompt).not.toContain('signup form mockup');
+      // A short note steers form-shaped mockups to plain controls.
+      expect(prompt).toContain('never a real <form>');
+    }
+  });
+
+  it('includes the hard-ban bullets (opacity/position:fixed/100vh/theme-aware/inline-fragment) in both variants', () => {
+    for (const prompt of [getCapabilityPrompt(), getCapabilityPrompt({ supportsTools: false })]) {
+      expect(prompt).toContain('opacity: 0');
+      expect(prompt).toContain('position: fixed');
+      expect(prompt).toContain('100vh');
+      expect(prompt).toContain('theme-aware only');
+      expect(prompt).toContain('never hardcode white/black');
+      expect(prompt).toContain('raw HTML/SVG fragment');
+    }
+  });
+
+  it('Cleanup5: the hard-bans block and the CDN-allowed line are shared verbatim across both variants', () => {
+    const tool = getCapabilityPrompt({ supportsTools: true });
+    const fence = getCapabilityPrompt({ supportsTools: false });
+    // Same generated bans block in both (single constant, can't drift).
+    const bansHeader = '**Hard bans** (cause a blank/broken render):';
+    expect(tool).toContain(bansHeader);
+    expect(fence).toContain(bansHeader);
+    // Same CDN-allowed line in both.
+    const allowedLine = '**Allowed**: CDN libraries (Chart.js, D3, etc.):';
+    expect(tool).toContain(allowedLine);
+    expect(fence).toContain(allowedLine);
+  });
+});
+
+// Single-source consistency: the capability prompt's hard-ban bullets must be
+// generated FROM guidelines.ts's WIDGET_HARD_BAN_RULES (not a hand-copied
+// second list) — this is what stops the prompt-level ban list and read_me's
+// detailed guide text from drifting apart over time.
+describe('getCapabilityPrompt — hard-ban single source (guidelines.ts)', () => {
+  it('every prompt-listed WIDGET_HARD_BAN_RULES brief phrase appears verbatim in both prompt variants', async () => {
+    const { WIDGET_HARD_BAN_RULES, getWidgetHardBanBriefList } = await import('../widget/guidelines');
+    const toolPrompt = getCapabilityPrompt({ supportsTools: true });
+    const fencePrompt = getCapabilityPrompt({ supportsTools: false });
+    for (const rule of WIDGET_HARD_BAN_RULES.filter((r) => r.inPromptBanList)) {
+      expect(toolPrompt).toContain(rule.brief);
+      expect(fencePrompt).toContain(rule.brief);
+    }
+    // Both variants embed the exact generated bullet list, not a paraphrase.
+    const briefList = getWidgetHardBanBriefList();
+    expect(toolPrompt).toContain(briefList);
+    expect(fencePrompt).toContain(briefList);
+  });
+
+  it('storage/form rules stay read_me-only (runtime-enforced by widgetTools.ts, not spent in the always-in-context prompt)', async () => {
+    const { WIDGET_HARD_BAN_RULES } = await import('../widget/guidelines');
+    const storageRule = WIDGET_HARD_BAN_RULES.find((r) => r.id === 'storage')!;
+    const formRule = WIDGET_HARD_BAN_RULES.find((r) => r.id === 'form')!;
+    expect(storageRule.inPromptBanList).toBe(false);
+    expect(formRule.inPromptBanList).toBe(false);
   });
 });
 
