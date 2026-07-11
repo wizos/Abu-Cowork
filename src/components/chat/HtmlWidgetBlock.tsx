@@ -7,6 +7,7 @@ import {
   WIDGET_PREVIEW_PHASE_CLASS,
 } from './widgetNormalize';
 import { WIDGET_RECEIVER_DOM_JS } from './widgetReceiverDom';
+import { buildWidgetDesignCss } from '@/core/widget/designSystem';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -54,6 +55,7 @@ input[type="range"] { accent-color: var(--abu-primary); }
 const RECEIVER_HTML = `<!DOCTYPE html><html><head>
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' ${CDN_ALLOWLIST}; style-src 'unsafe-inline' ${CDN_ALLOWLIST}; img-src data: blob: ${CDN_ALLOWLIST}; media-src data: blob: ${CDN_ALLOWLIST}; connect-src ${CDN_ALLOWLIST}; font-src data: ${CDN_ALLOWLIST};">
 <style>${BASE_STYLES}
+${buildWidgetDesignCss()}
 ${buildPreviewNeutralizeCss()}
 </style>
 </head><body>
@@ -436,16 +438,26 @@ function captureHtmlWidgetImage(_code: string, container: HTMLDivElement): Promi
 // Fullscreen — opens widget in a new browser window
 // ---------------------------------------------------------------------------
 
-function buildFullHtml(widgetCode: string): string {
+// Exported so the fragment/full-document styling split can be unit-tested
+// without rendering the component (mirrors this file's other testable helpers).
+// eslint-disable-next-line react-refresh/only-export-components
+export function buildFullHtml(widgetCode: string): string {
   // Fullscreen is a REAL viewport — the author's fixed/vh choices are correct
   // there, so no neutralization. Full documents render verbatim (wrapping
   // them in another document would nest <html> inside <body>), with a
   // doctype guaranteed so they don't fall into quirks mode; fragments get
   // the base-style wrap.
+  // Full-document passthrough: the author owns complete styling (our classes
+  // don't apply), so no design CSS is injected here.
   if (isFullDocument(widgetCode)) return ensureDoctype(widgetCode);
+  // Fragment wrap: mirror RECEIVER_HTML and ship the design system too, so a
+  // widget styled with .w-*/--w-* inline renders identically fullscreen
+  // (without it, those classes/vars would be undefined in this window).
   return `<!DOCTYPE html><html><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<style>${BASE_STYLES} body { overflow: auto; }</style>
+<style>${BASE_STYLES}
+${buildWidgetDesignCss()}
+body { overflow: auto; }</style>
 </head><body>${widgetCode}</body></html>`;
 }
 

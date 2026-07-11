@@ -239,7 +239,9 @@ Before your FIRST show_widget call in a conversation, call read_me once to load 
 
 **Allowed**:
 - ✅ Load external libraries from a CDN (Chart.js, D3, etc.): ${WIDGET_CDN_HOSTS.join(' / ')}
-- ✅ Call write_file only when the user explicitly asks for a standalone/deliverable file ("save as a file", "export")`;
+- ✅ Call write_file only when the user explicitly asks for a standalone/deliverable file ("save as a file", "export")
+
+**Styling**: prefer the design-system variables/classes read_me documents (\`--w-*\` vars, \`.w-*\` classes) over freestyle CSS — never hardcode white/black; the widget must look right in both light and dark hosts.`;
 
 const VISUAL_OUTPUT_FENCE_VARIANT = `When the user needs a chart, visualization, interactive demo, animation, UI prototype, data display, process explanation, or other visual content,
 **you must output a \`\`\`html code block directly in your reply**. The frontend automatically renders it as an interactive inline component.
@@ -248,7 +250,9 @@ const VISUAL_OUTPUT_FENCE_VARIANT = `When the user needs a chart, visualization,
 - ❌ Don't write DOCTYPE/html/head/body tags — write an HTML fragment only (style + HTML + script)
 
 **Allowed**:
-- ✅ Load external libraries from a CDN (Chart.js, D3, etc.): ${WIDGET_CDN_HOSTS.join(' / ')}`;
+- ✅ Load external libraries from a CDN (Chart.js, D3, etc.): ${WIDGET_CDN_HOSTS.join(' / ')}
+
+**Styling**: a small theme-aware design system is already loaded — prefer its \`--w-*\` CSS variables and \`.w-*\` utility classes (card/stat/grid/row/badge/button) over freestyle CSS, and never hardcode white/black.`;
 
 /**
  * Abu's capability prompt — always injected, cannot be overridden by SOUL.md.

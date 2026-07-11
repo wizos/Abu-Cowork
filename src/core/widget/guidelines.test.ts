@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getWidgetGuidelines, WIDGET_GUIDELINE_MODULES } from './guidelines';
+import { WIDGET_THEME_VARS, WIDGET_UTILITY_CLASSES, getDesignSystemGuideText } from './designSystem';
 
 describe('getWidgetGuidelines', () => {
   it('includes the hard rules in every call', () => {
@@ -61,5 +62,20 @@ describe('getWidgetGuidelines', () => {
 
   it('canonical module list has exactly the four documented modules', () => {
     expect(WIDGET_GUIDELINE_MODULES).toEqual(['diagram', 'chart', 'interactive', 'mockup']);
+  });
+
+  it('includes the design-system section (vars + classes), regardless of module filter', () => {
+    // Every module-filter shape (default/empty/single/unknown) must still carry the
+    // design-system section — it's a hard-rules-adjacent, always-present section.
+    for (const text of [getWidgetGuidelines(), getWidgetGuidelines([]), getWidgetGuidelines(['diagram']), getWidgetGuidelines(['not-a-real-module'])]) {
+      expect(text).toContain('## Design system');
+      for (const v of WIDGET_THEME_VARS) expect(text).toContain(v.name);
+      for (const c of WIDGET_UTILITY_CLASSES) expect(text).toContain(`.${c.name}`);
+    }
+  });
+
+  it('single source: the design-system section is exactly designSystem.ts\'s guide text (no separate copy that could drift)', () => {
+    const text = getWidgetGuidelines();
+    expect(text).toContain(getDesignSystemGuideText());
   });
 });

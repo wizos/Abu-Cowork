@@ -6,13 +6,18 @@
  * compose from the section constants below, so the rules never drift between
  * what's documented and what's enforced (the hard rules here mirror the
  * validation in `widgetTools.ts` — keep both in sync when either changes).
+ * The design-system section is itself sourced from `designSystem.ts`
+ * (`getDesignSystemGuideText()`), which generates its text from the exact
+ * same constants that build the CSS shipped to the widget iframe — that's
+ * what keeps documented vars/classes from drifting off the runtime CSS.
  *
- * P1 ships one flat "hard rules" section covering every module uniformly.
- * P2 will expand this into a real per-module design system (diagram/chart/
- * interactive/mockup each getting their own section); the `modules` filter
- * parameter and section-map structure exist now so that growth doesn't
- * require reshaping the call sites in widgetTools.ts.
+ * P1 shipped one flat "hard rules" section covering every module uniformly.
+ * P2 adds the always-present design-system section (vars/classes/examples)
+ * plus keeps the per-module pointers; the `modules` filter parameter and
+ * section-map structure exist so per-module growth doesn't require
+ * reshaping the call sites in widgetTools.ts.
  */
+import { getDesignSystemGuideText } from './designSystem';
 
 /** Widget guideline module identifiers `read_me` accepts. */
 export type WidgetGuidelineModule = 'diagram' | 'chart' | 'interactive' | 'mockup';
@@ -54,7 +59,9 @@ const HARD_RULES = `## Hard rules (apply to every widget)
 - **CDN allowlist** — only load scripts from ${WIDGET_CDN_HOSTS.map((h) => `\`${h}\``).join(', ')}.
 - **Size budget** — keep the fragment under ~1MB.`;
 
-/** Per-module guidance. P1: brief, general-purpose pointers; P2 will deepen these. */
+/** Per-module guidance — brief, general-purpose pointers. Shared styling
+ *  vocabulary (vars/classes) lives in the always-present design-system
+ *  section instead of being duplicated per module. */
 const MODULE_SECTIONS: Record<WidgetGuidelineModule, string> = {
   diagram: `## Diagrams
 - Prefer inline SVG for flowcharts, trees, and simple node/edge graphics — it's crisp at any size and needs no CDN dependency.
@@ -62,7 +69,7 @@ const MODULE_SECTIONS: Record<WidgetGuidelineModule, string> = {
   chart: `## Charts
 - Prefer inline SVG for simple charts (a handful of bars/points) — no library needed.
 - For anything data-heavy (multi-series, tooltips, legends), use Chart.js loaded from the CDN allowlist.
-- Canvas cannot resolve CSS custom properties (\`var(--...)\`) — use hardcoded hex colors for canvas-drawn content, and pick values that stay legible in both light and dark hosts (avoid pure black/white extremes).`,
+- Canvas cannot resolve CSS custom properties (\`var(--...)\`) — use hardcoded hex colors for canvas-drawn content. The design-system section below documents fixed hex values for exactly this (\`--w-primary\`/\`--w-series-2..4\`); reuse those (they're chosen mid-tone to stay legible on both light and dark hosts) instead of inventing new ones, and avoid pure black/white extremes for canvas text or axes.`,
   interactive: `## Interactive widgets
 - Wire real event handlers (click, input, change) directly on elements — no \`<form>\` submission flow.
 - Keep state in-memory (plain JS variables/closures); there is no persistent storage available.`,
@@ -81,6 +88,6 @@ export function getWidgetGuidelines(modules?: readonly string[]): string {
     ? WIDGET_GUIDELINE_MODULES.filter((m) => modules.includes(m))
     : WIDGET_GUIDELINE_MODULES;
 
-  const sections = [HARD_RULES, ...requested.map((m) => MODULE_SECTIONS[m])];
+  const sections = [HARD_RULES, getDesignSystemGuideText(), ...requested.map((m) => MODULE_SECTIONS[m])];
   return sections.join('\n\n');
 }
