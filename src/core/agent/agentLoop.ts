@@ -1,6 +1,7 @@
 import type { StreamEvent, ToolCall, TokenUsage, ImageAttachment, MessageContent, ToolExecutionContext, LLMProvider } from '../../types';
 import type { LLMAdapter } from '../llm/adapter';
-import { LLMError } from '../llm/adapter';
+import { LLMError, formatLlmDisplayError } from '../llm/adapter';
+import { recordProviderCallOutcome, isConfigFailureCode } from '../llm/providerCallHealth';
 import { ClaudeAdapter } from '../llm/claude';
 import { OpenAICompatibleAdapter } from '../llm/openai-compatible';
 import { getAllTools, type ConfirmationInfo, type FilePermissionCallback } from '../tools/registry';
@@ -906,6 +907,9 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       persistExecutionSnapshot(conversationId, loopId);
       chatStore.setAgentStatus('idle');
       chatStore.setConversationStatus(conversationId, 'completed');
+      // Delegate run completed without an LLMError → provider is healthy; clears
+      // any stale config-failure recorded for it (mirrors the main-loop path).
+      recordProviderCallOutcome(getActiveProvider(settingsForModel)?.id, { ok: true, at: Date.now() });
 
       const convTitle = useChatStore.getState().conversationIndex[conversationId]?.title ?? getI18n().chat.notificationTaskFallback;
       notifyTaskCompleted(convTitle, conversationId);
@@ -927,9 +931,15 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
         return { reason: 'aborted' };
       }
       const errorMessage = err instanceof Error ? err.message : String(err);
-      const delegateDisplayError = err instanceof EnterpriseLlmUnavailableError
+      if (err instanceof LLMError && isConfigFailureCode(err.code)) {
+        recordProviderCallOutcome(getActiveProvider(settingsForModel)?.id, { ok: false, code: err.code, at: Date.now() });
+      }
+      let delegateDisplayError = err instanceof EnterpriseLlmUnavailableError
         ? getI18n().chat.gatewayUnreachable
-        : errorMessage;
+        : formatLlmDisplayError(err, errorMessage, getI18n().chat.errorEmptyBody);
+      if (err instanceof LLMError && err.code === 'not_found') {
+        delegateDisplayError += `\n\n${getI18n().chat.errorNotFoundHint}`;
+      }
       const delegateErrorId = generateId();
       chatStore.addMessage(conversationId, {
         id: delegateErrorId,
@@ -1086,6 +1096,10 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       eventRouter.route({ type: 'done', loopId, reason: 'max_turns' });
       persistExecutionSnapshot(conversationId, loopId);
       chatStore.setConversationStatus(conversationId, 'completed');
+      // Hitting the turn cap means every LLM call succeeded (a failed call throws
+      // to the catch) → provider is healthy; record it so a prior config-failure
+      // is cleared even when the run ends via the cap rather than end_turn.
+      recordProviderCallOutcome(getActiveProvider(settingsForModel)?.id, { ok: true, at: Date.now() });
       // C: report the cap to callers (scheduler/trigger) instead of 'completed'.
       exitReason = 'max_turns';
       // Same terminal cleanup as the normal end_turn path — now that the cap is
@@ -1964,6 +1978,9 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
           ? 'no_progress'
           : maxTokensRecoveryExhausted ? 'max_tokens_exhausted' : 'end_turn';
         logger.info('Agent loop ended', { conversationId, loopId, turnCount, reason: endReason });
+        // Reaching this point means no LLM call threw, so ok:true is correct
+        // regardless of endReason (no_progress / max_tokens_exhausted / end_turn).
+        recordProviderCallOutcome(getActiveProvider(settingsForModel)?.id, { ok: true, at: Date.now() });
         // Complete the TaskExecution
         eventRouter.route({ type: 'done', loopId, reason: endReason });
         persistExecutionSnapshot(conversationId, loopId);
@@ -2145,11 +2162,22 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       clearLoopContext(loopId);
       const errorMessage = err instanceof Error ? err.message : String(err);
       const errorCode = err instanceof LLMError ? err.code : undefined;
-      logger.error('LLM call failed', { error: errorMessage, code: errorCode });
+      logger.error('LLM call failed', {
+        error: errorMessage,
+        code: errorCode,
+        model: effectiveModelId,
+        providerId: getActiveProvider(settingsForModel)?.id,
+      });
 
       // Fire-and-forget: report to console for quality monitoring
       if (err instanceof LLMError) {
         reportError('api_error', err.code, err.statusCode ?? undefined, effectiveModelId, errorMessage, err.rawBody);
+        // Only a persistent config-class provider failure (not a transient rate
+        // limit / 5xx / network blip, and not a non-LLM agent crash) should mark
+        // this provider unhealthy for the diagnostic.
+        if (isConfigFailureCode(err.code)) {
+          recordProviderCallOutcome(getActiveProvider(settingsForModel)?.id, { ok: false, code: err.code, at: Date.now() });
+        }
       } else {
         reportError('agent_crash', 'unknown', undefined, effectiveModelId, errorMessage);
       }
@@ -2167,13 +2195,16 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
         && err instanceof LLMError && err.statusCode === 403
         && /^forbidden\s*$/i.test(err.message.trim());
       const isEnterpriseGatewayUnavailable = err instanceof EnterpriseLlmUnavailableError;
-      const displayError = isEnterpriseGatewayUnavailable
+      let displayError = isEnterpriseGatewayUnavailable
         ? getI18n().chat.gatewayUnreachable
         : isLikelyVisionError
         ? getI18n().chat.visionUnsupported
         : isOllamaForbidden
         ? getI18n().chat.ollamaForbidden
-        : errorMessage;
+        : formatLlmDisplayError(err, errorMessage, getI18n().chat.errorEmptyBody);
+      if (errorCode === 'not_found') {
+        displayError += `\n\n${getI18n().chat.errorNotFoundHint}`;
+      }
 
       chatStore.appendToLastMessage(
         conversationId,

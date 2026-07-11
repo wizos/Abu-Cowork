@@ -386,6 +386,8 @@ const enUS: TranslationDict = {
     usageChipCache: 'cache',
     usageChipRequests: 'requests',
     usageChipSubtitle: 'Cumulative API usage · Model-reported',
+    errorEmptyBody: 'The request failed, but the service returned no error details.',
+    errorNotFoundHint: 'The model or API endpoint was not found, or the endpoint does not support a parameter this request carried (e.g. thinking / tool calls). Check the service URL and this model’s capability settings under Settings → Models, or switch models.',
   },
 
   share: {
@@ -778,6 +780,7 @@ const enUS: TranslationDict = {
     aiServicesNoProvider: 'No AI service configured',
     aiServicesNoProviderHint: 'Enable at least one provider to chat with Abu',
     aiServicesNoKey: 'API key missing',
+    aiRecentFailure: 'Connectivity OK, but the most recent real call failed ({detail}). Live conversations may fail — check this model’s URL / capability settings, or switch models.',
     permAppData: 'App data directory writable',
     permWorkspace: 'Current workspace read/writable',
     permWorkspaceAbu: 'Workspace .abu subdir read/writable',

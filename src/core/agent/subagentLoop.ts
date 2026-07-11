@@ -9,6 +9,7 @@
 import type { StreamEvent, Message, SubagentDefinition, ToolExecutionContext } from '../../types';
 import type { IMContext } from './orchestrator';
 import type { LLMAdapter } from '../llm/adapter';
+import { LLMError, formatLlmDisplayError } from '../llm/adapter';
 import { ClaudeAdapter } from '../llm/claude';
 import { OpenAICompatibleAdapter } from '../llm/openai-compatible';
 import { getAllTools, executeAnyTool, toolResultToString, type ConfirmationInfo, type FilePermissionCallback } from '../tools/registry';
@@ -687,7 +688,7 @@ export async function runSubagentLoop(options: SubagentLoopOptions): Promise<Sub
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
     const errorResult = new SubagentResult({
-      text: `Error: ${errMsg}`,
+      text: `Error: ${err instanceof LLMError ? formatLlmDisplayError(err, errMsg, getI18n().chat.errorEmptyBody) : errMsg}`,
       toolCallCount: totalToolCalls,
       turnCount: 0,
       tokenUsage: { input: totalInputTokens, output: totalOutputTokens },

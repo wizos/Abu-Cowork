@@ -391,6 +391,10 @@ export interface TranslationDict {
     usageChipCache: string;
     usageChipRequests: string;
     usageChipSubtitle: string;
+    /** Fallback when the API failed with an empty/opaque body (no error details). */
+    errorEmptyBody: string;
+    /** Hint appended to not_found errors: check endpoint URL / model capabilities. */
+    errorNotFoundHint: string;
   };
 
   // Share (conversation export / import)
@@ -878,6 +882,8 @@ export interface TranslationDict {
     aiServicesNoProvider: string;
     aiServicesNoProviderHint: string;
     aiServicesNoKey: string;
+    /** Probe passed but a recent real call failed — {detail} = error code. */
+    aiRecentFailure: string;
     // Permissions check
     permAppData: string;
     permWorkspace: string;

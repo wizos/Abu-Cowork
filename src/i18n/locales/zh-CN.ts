@@ -386,6 +386,8 @@ const zhCN: TranslationDict = {
     usageChipCache: 'cache',
     usageChipRequests: '次请求',
     usageChipSubtitle: '累计调用 · 模型上报',
+    errorEmptyBody: '请求失败，但服务未返回错误详情。',
+    errorNotFoundHint: '未找到该模型或接口地址，或该接口不支持本次请求携带的参数（如思考 / 工具调用）。请到「设置 → 模型」检查服务地址与该模型的能力设置，或更换模型。',
   },
 
   share: {
@@ -778,6 +780,7 @@ const zhCN: TranslationDict = {
     aiServicesNoProvider: '未配置任何 AI 服务',
     aiServicesNoProviderHint: '至少启用一个 provider 才能跟阿布对话',
     aiServicesNoKey: '未填 API Key',
+    aiRecentFailure: '连通正常，但最近一次真实调用失败（{detail}）。真机对话可能报错，请检查该模型的地址 / 能力设置或更换模型。',
     permAppData: '应用数据目录可写',
     permWorkspace: '当前工作区可读写',
     permWorkspaceAbu: '工作区 .abu 子目录可读写',
