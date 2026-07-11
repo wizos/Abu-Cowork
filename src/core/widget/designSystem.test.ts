@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   WIDGET_THEME_VARS,
   WIDGET_UTILITY_CLASSES,
+  WIDGET_THEME_VAR_ALIASES,
   buildWidgetDesignCss,
   getDesignSystemGuideText,
 } from './designSystem';
@@ -106,6 +107,50 @@ describe('getDesignSystemGuideText', () => {
 
   it('is reasonably sized (a few KB, not a sprawling doc)', () => {
     expect(guide.length).toBeLessThan(6000);
+  });
+});
+
+describe('WIDGET_THEME_VAR_ALIASES (forgiving safety net for conventional names)', () => {
+  const css = buildWidgetDesignCss();
+
+  it('every alias resolves to a canonical var that exists in WIDGET_THEME_VARS', () => {
+    const canonicalNames = new Set(WIDGET_THEME_VARS.map((v) => v.name));
+    for (const alias of WIDGET_THEME_VAR_ALIASES) {
+      expect(canonicalNames.has(alias.canonical)).toBe(true);
+    }
+  });
+
+  it('no alias name collides with a canonical theme variable name', () => {
+    const canonicalNames = new Set(WIDGET_THEME_VARS.map((v) => v.name));
+    for (const alias of WIDGET_THEME_VAR_ALIASES) {
+      expect(canonicalNames.has(alias.name)).toBe(false);
+    }
+  });
+
+  it('every alias name appears in buildWidgetDesignCss() output as a var() reference to its canonical', () => {
+    for (const alias of WIDGET_THEME_VAR_ALIASES) {
+      expect(css).toContain(`${alias.name}: var(${alias.canonical});`);
+    }
+  });
+
+  it('emits the alias block once (theme-agnostic — not duplicated in .dark)', () => {
+    for (const alias of WIDGET_THEME_VAR_ALIASES) {
+      const occurrences = css.split(`${alias.name}: var(`).length - 1;
+      expect(occurrences).toBe(1);
+    }
+  });
+
+  it('covers the exact conventional names guessed in the live-test bug (glm-5.2, no read_me)', () => {
+    for (const name of ['--w-text-primary', '--w-text-secondary', '--w-bg-primary', '--w-bg-tertiary']) {
+      expect(css).toContain(`${name}: var(`);
+    }
+  });
+
+  it('is NOT documented in the guide text (aliases are a safety net, not the contract)', () => {
+    const guide = getDesignSystemGuideText();
+    for (const alias of WIDGET_THEME_VAR_ALIASES) {
+      expect(guide).not.toContain(alias.name);
+    }
   });
 });
 

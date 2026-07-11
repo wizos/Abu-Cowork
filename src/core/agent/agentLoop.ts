@@ -241,7 +241,7 @@ export function getDefaultSoul(): string {
  * rules in full) — this is what stops the white-screen failure class at the
  * prompt layer, before a single widget is ever rendered.
  */
-const VISUAL_TRIGGER_TIERS = `**When to make a visual** — explicit ask (show/visualize/diagram/chart/draw/graph/plot, "what does X look like"); proactive (teaching/explain requests, "compare A vs B" data, architecture/process/flow); or implied by the noun phrase ("comparison table of A vs B", "settings panel mockup", "state machine for …") — a markdown table is NOT a substitute when a visual is what's actually being asked for. (Mockups use plain inputs/buttons, never a real <form>.)`;
+const VISUAL_TRIGGER_TIERS = `**When to make a visual** — explicit ask (show/visualize/diagram/chart/draw/graph/plot, "what does X look like"); proactively make a visual — don't answer in prose alone — for how-does-X-work / teaching / process / architecture / "compare A vs B" requests; or implied by the noun phrase ("comparison table of A vs B", "settings panel mockup", "state machine for …") — a markdown table is NOT a substitute when a visual is what's actually being asked for. (Mockups use plain inputs/buttons, never a real <form>.)`;
 
 // Shared blocks — identical in both variants, factored out so the ban list
 // and the CDN allowlist can't drift between the tool and fence prompts.

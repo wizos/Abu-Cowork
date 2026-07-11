@@ -146,9 +146,64 @@ export const WIDGET_UTILITY_CLASSES: readonly UtilityClassSpec[] = [
   },
 ];
 
+/** One conventional-name → canonical-var alias. */
+interface ThemeVarAlias {
+  /** The conventional/guessed custom-property name (never documented as the API). */
+  readonly name: string;
+  /** The canonical `WIDGET_THEME_VARS[].name` this alias resolves to. */
+  readonly canonical: string;
+}
+
+/**
+ * Forgiving aliases for conventional variable names models reach for by
+ * muscle memory (shadcn/Tailwind-style `--text-primary`, `--bg-secondary`,
+ * etc.) when they skip `read_me` and never see the real (terse) vocabulary.
+ * This is NOT part of the documented contract — `getDesignSystemGuideText()`
+ * deliberately does not list these; they exist purely so an undefined
+ * `var()` reference doesn't silently produce a blank/broken render. Mirrors
+ * ChatGPT's visualize.css "legacy aliases — not part of the agent contract"
+ * stance. Each alias is just a `var()` indirection to the canonical
+ * property, so it inherits that property's light/dark value automatically
+ * and only needs to be emitted once (in `:root`), not per-theme.
+ *
+ * Confirmed root cause (live test, glm-5.2): a model that skipped `read_me`
+ * produced an SVG with 34 refs to `var(--w-text-primary)` /
+ * `var(--w-text-secondary)` / `var(--w-bg-primary)` / `var(--w-bg-tertiary)`
+ * — none of which existed, so the SVG rendered blank. The `--w-*`-prefixed
+ * entries below cover exactly those; the non-prefixed entries are a bonus
+ * safety net for models that drop the prefix entirely.
+ */
+export const WIDGET_THEME_VAR_ALIASES: readonly ThemeVarAlias[] = [
+  { name: '--w-text-primary', canonical: '--w-fg' },
+  { name: '--w-text-secondary', canonical: '--w-muted-fg' },
+  { name: '--w-text-muted', canonical: '--w-muted-fg' },
+  { name: '--w-bg-primary', canonical: '--w-bg' },
+  { name: '--w-bg-secondary', canonical: '--w-card' },
+  { name: '--w-bg-tertiary', canonical: '--w-muted' },
+  { name: '--w-border-color', canonical: '--w-border' },
+  { name: '--w-accent-color', canonical: '--w-accent' },
+  { name: '--w-primary-color', canonical: '--w-primary' },
+  // Non-prefixed bonus safety net — some models drop the `--w-` prefix too.
+  { name: '--text-primary', canonical: '--w-fg' },
+  { name: '--text-secondary', canonical: '--w-muted-fg' },
+  { name: '--text-muted', canonical: '--w-muted-fg' },
+  { name: '--bg-primary', canonical: '--w-bg' },
+  { name: '--bg-secondary', canonical: '--w-card' },
+  { name: '--bg-tertiary', canonical: '--w-muted' },
+  { name: '--border-color', canonical: '--w-border' },
+  { name: '--accent-color', canonical: '--w-accent' },
+  { name: '--primary-color', canonical: '--w-primary' },
+];
+
 /** Render one `{ name: value; ... }` custom-property block body, indented. */
 function renderVarBlock(pick: (v: ThemeVarSpec) => string): string {
   return WIDGET_THEME_VARS.map((v) => `  ${v.name}: ${pick(v)};`).join('\n');
+}
+
+/** Render the alias block — each entry is a `var()` indirection to its
+ *  canonical property, so it's theme-agnostic and emitted once. */
+function renderAliasBlock(): string {
+  return WIDGET_THEME_VAR_ALIASES.map((a) => `  ${a.name}: var(${a.canonical});`).join('\n');
 }
 
 /**
@@ -177,6 +232,7 @@ export function buildWidgetDesignCss(): string {
   return `/* Abu widget design system — semantic theme vars + compact utility kit */
 :root {
 ${renderVarBlock((v) => v.light)}
+${renderAliasBlock()}
 }
 
 .dark {

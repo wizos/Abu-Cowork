@@ -267,6 +267,21 @@ describe('getCapabilityPrompt — visual-output variant selection', () => {
     }
   });
 
+  it('makes the proactive tier an imperative directive, not a soft descriptive parenthetical (measured — scoped to teaching/how-it-works/compare/architecture, not "always")', () => {
+    for (const prompt of [getCapabilityPrompt(), getCapabilityPrompt({ supportsTools: false })]) {
+      // Imperative verb + explicit "don't fall back to prose alone" instruction —
+      // this is what makes it a directive rather than a descriptive aside.
+      expect(prompt).toContain('proactively make a visual');
+      expect(prompt).toContain("don't answer in prose alone");
+      // Scoped to the clear educational/comparison cases — not "for everything".
+      expect(prompt).toContain('how-does-X-work');
+      expect(prompt).toContain('teaching');
+      expect(prompt).toContain('architecture');
+      expect(prompt).toContain('compare A vs B');
+      expect(prompt).not.toContain('always make a visual');
+    }
+  });
+
   it('states the A/B routing boundary ("is this a file the user wants to keep?") for the tool variant', () => {
     const prompt = getCapabilityPrompt({ supportsTools: true });
     expect(prompt).toContain('is this a file the user wants to keep?');
