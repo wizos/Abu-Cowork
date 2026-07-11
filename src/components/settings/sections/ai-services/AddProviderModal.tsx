@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo, type SetStateAction } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo, type SetStateAction, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, Search, ExternalLink, Eye, EyeOff, Check, Plus, Loader2,
@@ -9,13 +9,16 @@ import { useI18n } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { Toggle } from '@/components/ui/toggle';
 import { checkProviderHealth } from '@/core/llm/healthCheck';
 import { buildFullChatUrl } from '@/core/llm/urlUtils';
+import { isKnownModel } from '@/core/llm/modelCapabilities';
 import { useSettingsStore, PROVIDER_CONFIGS } from '@/stores/settingsStore';
 import { PROVIDER_GUIDES } from './providerGuides';
 import { computeShowAdvanced, defaultModelDeclaredCapabilities } from './providerCapabilities';
 import { toModelInfo } from './modelInfoUtil';
+import { sortKnownFirst, computeFetchPreselection, SMALL_LIST_MAX } from './fetchModelUtils';
 import AdvancedCapabilitiesFields from './AdvancedCapabilitiesFields';
 import type { LLMProvider, ApiFormat } from '@/types';
 import type { ModelInfo, ProviderSource, ModelDeclaredCapabilities } from '@/types/provider';
@@ -53,17 +56,17 @@ type FetchModelsStatus = 'idle' | 'fetching' | 'success' | 'error';
 // ── Constants ────────────────────────────────────────────────────
 
 const CLOUD_PROVIDERS: { id: LLMProvider; label: string }[] = [
-  { id: 'anthropic', label: 'Anthropic' },
-  { id: 'openai', label: 'OpenAI' },
-  { id: 'deepseek', label: 'DeepSeek' },
-  { id: 'moonshot', label: 'Moonshot' },
-  { id: 'zhipu', label: 'Zhipu AI' },
-  { id: 'minimax', label: 'MiniMax' },
   { id: 'volcengine', label: 'Volcengine' },
+  { id: 'zhipu', label: 'Zhipu GLM' },
+  { id: 'deepseek', label: 'DeepSeek' },
+  { id: 'moonshot', label: 'Kimi' },
+  { id: 'minimax', label: 'MiniMax' },
   { id: 'bailian', label: 'Bailian' },
   { id: 'siliconflow', label: 'SiliconFlow' },
-  { id: 'qiniu', label: 'Qiniu' },
   { id: 'openrouter', label: 'OpenRouter' },
+  { id: 'anthropic', label: 'Anthropic' },
+  { id: 'openai', label: 'OpenAI' },
+  { id: 'qiniu', label: 'Qiniu' },
 ];
 
 const CUSTOM_OPENAI_ID = '__custom_openai__';
@@ -131,10 +134,13 @@ function isCustomId(id: string): boolean {
   return id === CUSTOM_OPENAI_ID || id === CUSTOM_ANTHROPIC_ID;
 }
 
+// Display order for a provider's config plans: recommended first, paygo last.
+const PLAN_ORDER: Record<string, number> = { agent: 0, tokenplan: 1, coding: 2, paygo: 3 };
+
 // ── Component ────────────────────────────────────────────────────
 
 export default function AddProviderModal({ open: isOpen, onClose }: AddProviderModalProps) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const providers = useSettingsStore((s) => s.providers);
   const addProvider = useSettingsStore((s) => s.addProvider);
   const updateProvider = useSettingsStore((s) => s.updateProvider);
@@ -147,6 +153,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
   const [apiKey, setApiKey] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [baseUrl, setBaseUrl] = useState('');
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [selectedModels, setSelectedModels] = useState<Set<string>>(new Set());
   const [manualModelInput, setManualModelInput] = useState('');
   const [showAddModelInput, setShowAddModelInput] = useState(false);
@@ -154,6 +161,34 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
   const [searchQuery, setSearchQuery] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  // Built-in cloud providers pick models from a multi-select dropdown. The panel
+  // is portaled to <body> with fixed positioning so opening it neither grows nor
+  // re-centers the modal (in-flow made the modal "jump"), and isn't clipped by
+  // the modal's overflow-y-auto content area.
+  const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
+  const modelDropdownRef = useRef<HTMLDivElement>(null);
+  const modelPanelRef = useRef<HTMLDivElement>(null);
+  const [modelPanelStyle, setModelPanelStyle] = useState<CSSProperties | null>(null);
+  // Position the fixed panel under the trigger — but flip above it and cap the
+  // height to the available space so it never spills past the viewport/modal.
+  const computeModelPanel = useCallback(() => {
+    const el = modelDropdownRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const gap = 4, margin = 12;
+    const spaceBelow = window.innerHeight - r.bottom - margin;
+    const spaceAbove = r.top - margin;
+    const openUp = spaceBelow < 240 && spaceAbove > spaceBelow;
+    const maxHeight = Math.max(160, Math.floor(openUp ? spaceAbove : spaceBelow));
+    setModelPanelStyle({
+      position: 'fixed', left: r.left, width: r.width, maxHeight, zIndex: 10000,
+      ...(openUp ? { bottom: window.innerHeight - r.top + gap } : { top: r.bottom + gap }),
+    });
+  }, []);
+  const toggleModelDropdown = useCallback(() => {
+    computeModelPanel();
+    setModelDropdownOpen((o) => !o);
+  }, [computeModelPanel]);
 
   // ── Ollama-specific state ──
   const [ollamaStatus, setOllamaStatus] = useState<OllamaConnectionStatus>('idle');
@@ -164,6 +199,9 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
   const [fetchModelsStatus, setFetchModelsStatus] = useState<FetchModelsStatus>('idle');
   const [fetchedModels, setFetchedModels] = useState<ModelInfo[]>([]);
   const [fetchModelsError, setFetchModelsError] = useState('');
+  // Scoped search over the fetched-models checklist below — distinct from
+  // `searchQuery` above, which filters the provider-type dropdown.
+  const [modelListFilter, setModelListFilter] = useState('');
 
   // ── Advanced capabilities (custom/local providers only) ──
   // Keyed by model id — populated as models are selected/added, independent of
@@ -200,6 +238,46 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
   const showAdvanced = computeShowAdvanced(isCustom, selectedOption?.provider, selectedOption?.format);
   const guide = selectedOption && !isCustom ? PROVIDER_GUIDES[selectedOption.provider] : null;
 
+  // ── Multi-endpoint config plans (e.g. volcengine paygo/coding/agent) ──
+  const providerPlans = useMemo(
+    () => (selectedOption && !isCustom ? (PROVIDER_CONFIGS[selectedOption.provider].plans ?? null) : null),
+    [selectedOption, isCustom],
+  );
+  const activePlan = useMemo(
+    () => providerPlans?.find(p => p.id === selectedPlanId) ?? null,
+    [providerPlans, selectedPlanId],
+  );
+  const effectiveFormat: ApiFormat = activePlan?.format ?? selectedOption?.format ?? 'openai-compatible';
+  // Built-in cloud providers ship a curated model list and a fixed endpoint, so
+  // they hide the API-address field and the fetch/add-model affordances (those
+  // are only for custom endpoints and local providers that must discover models).
+  const isBuiltinCloud = !!selectedOption && !isCustom && !isOllama && !isLMStudio;
+  // OpenRouter / SiliconFlow are built-in providers (fixed endpoint, hidden URL)
+  // but aggregate too many models to curate — the user supplies models like a
+  // custom endpoint (fetch from /models + manual add), so they use the checklist
+  // flow, not the curated multi-select dropdown.
+  const usesFetchedModels = selectedOption?.provider === 'openrouter' || selectedOption?.provider === 'siliconflow';
+  const isBuiltinCurated = isBuiltinCloud && !usesFetchedModels;
+  const hasPlanRow = !!(providerPlans && providerPlans.length > 1);
+
+  // Curated model list a built-in provider offers for the current selection:
+  // the active plan's models when it has its own (e.g. volcengine coding vs
+  // agent expose different models), otherwise the provider's top-level list.
+  const builtinModelOptions = useMemo(
+    () => (isBuiltinCurated && selectedOption
+      ? (activePlan?.models ?? PROVIDER_CONFIGS[selectedOption.provider].models ?? [])
+      : []),
+    [isBuiltinCurated, selectedOption, activePlan],
+  );
+  // Curated options plus any ids the user typed via the dropdown's add-model
+  // input that aren't curated — so they render as checked rows and show in the
+  // trigger summary.
+  const builtinModelList = useMemo(() => {
+    const ids = new Set(builtinModelOptions.map((m) => m.id));
+    const extra = [...selectedModels].filter((id) => !ids.has(id)).map((id) => ({ id, label: id }));
+    return [...builtinModelOptions, ...extra];
+  }, [builtinModelOptions, selectedModels]);
+
   // knownModels removed — models are fetched from API or added manually
 
   // ── Filtered dropdown options ──
@@ -229,12 +307,29 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
 
       // Auto-fill base URL for known providers
       if (!isCustomId(option.id)) {
-        const config = PROVIDER_CONFIGS[option.provider];
-        setBaseUrl(config.baseUrl);
-
-        // Don't pre-select models — user fetches from API or adds manually
-        setSelectedModels(new Set());
+        const cfg = PROVIDER_CONFIGS[option.provider];
+        if (cfg.plans && cfg.plans.length > 0) {
+          // Multi-endpoint provider — default to the recommended (non-paygo)
+          // plan: prefer Agent Plan, then Token Plan, then Coding Plan, then
+          // whatever matches the top-level baseUrl, finally the first plan.
+          // Paygo is never the default.
+          const def = cfg.plans.find(p => p.id === 'agent')
+            ?? cfg.plans.find(p => p.id === 'tokenplan')
+            ?? cfg.plans.find(p => p.id === 'coding')
+            ?? cfg.plans.find(p => p.baseUrl === cfg.baseUrl)
+            ?? cfg.plans[0];
+          setSelectedPlanId(def.id);
+          setBaseUrl(def.baseUrl);
+          // No pre-selection: the user picks models from the multi-select
+          // dropdown. (They must choose at least one before Save is enabled.)
+          setSelectedModels(new Set());
+        } else {
+          setSelectedPlanId(null);
+          setBaseUrl(cfg.baseUrl);
+          setSelectedModels(new Set());
+        }
       } else {
+        setSelectedPlanId(null);
         setBaseUrl('');
         setSelectedModels(new Set());
       }
@@ -246,6 +341,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
       const existingP = providers.find(p => p.id === option.provider);
       setPerModelDeclared({});
       setExpandedModelIds(new Set());
+      setModelDropdownOpen(false);
       setUseRawUrl(existingP?.declaredCapabilities?.useRawUrl ?? false);
 
       // Reset Ollama state
@@ -257,6 +353,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
       setFetchModelsStatus('idle');
       setFetchedModels([]);
       setFetchModelsError('');
+      setModelListFilter('');
       setApiKey('');
       setShowApiKey(false);
       // (fetch removed)
@@ -266,6 +363,28 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
     },
     [nameManuallyEdited, providers]
   );
+
+  // Switching config plan (e.g. paygo → coding) swaps the whole endpoint
+  // preset: baseUrl + format change together, and the key/models selected
+  // under the old plan aren't valid under the new one, so downstream
+  // selection/fetch state is cleared.
+  const handleSelectPlan = useCallback((planId: string) => {
+    const plan = providerPlans?.find(p => p.id === planId);
+    if (!plan) return;
+    setSelectedPlanId(planId);
+    setBaseUrl(plan.baseUrl);
+    setApiKey('');
+    // Switching plans swaps the model list (e.g. volcengine coding vs agent),
+    // so clear the selection — the user re-picks from the dropdown.
+    setSelectedModels(new Set());
+    setPerModelDeclared({});
+    setExpandedModelIds(new Set());
+    setModelDropdownOpen(false);
+    setFetchModelsStatus('idle');
+    setFetchedModels([]);
+    setFetchModelsError('');
+    setModelListFilter('');
+  }, [providerPlans]);
 
   const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setServiceName(e.target.value);
@@ -283,7 +402,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
       const toAdd = ids.filter(id => !prev[id]);
       if (toAdd.length === 0) return prev;
       const next = { ...prev };
-      for (const id of toAdd) next[id] = defaultModelDeclaredCapabilities();
+      for (const id of toAdd) next[id] = defaultModelDeclaredCapabilities(id);
       return next;
     });
   }, []);
@@ -342,6 +461,58 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
     if (showAddModelInput) addModelInputRef.current?.focus();
   }, [showAddModelInput]);
 
+  // Close the provider dropdown when clicking outside it or pressing Escape.
+  // Mirrors the ui/Select outside-click behavior — without this, opening the
+  // config-plan Select (or any other control) leaves this dropdown stacked on
+  // top of it, since only Select had a mousedown listener.
+  // Capture phase: the modal backdrop stopPropagation()s mousedown in the
+  // bubble phase, so a bubble-phase document listener here never fires.
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDropdownOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside, true);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside, true);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [dropdownOpen]);
+
+  // Same capture-phase outside-click/Escape close for the built-in model
+  // multi-select dropdown (see the provider dropdown effect above).
+  useEffect(() => {
+    if (!modelDropdownOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const t = e.target as Node;
+      // The panel is portaled outside modelDropdownRef, so check it too.
+      const inTrigger = modelDropdownRef.current?.contains(t);
+      const inPanel = modelPanelRef.current?.contains(t);
+      if (!inTrigger && !inPanel) setModelDropdownOpen(false);
+    };
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setModelDropdownOpen(false);
+    };
+    // Reposition if the layout shifts while open (window resize, or the modal's
+    // content area scrolling), so the fixed panel can't detach.
+    document.addEventListener('mousedown', handleClickOutside, true);
+    document.addEventListener('keydown', handleEscape);
+    window.addEventListener('resize', computeModelPanel);
+    window.addEventListener('scroll', computeModelPanel, true);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside, true);
+      document.removeEventListener('keydown', handleEscape);
+      window.removeEventListener('resize', computeModelPanel);
+      window.removeEventListener('scroll', computeModelPanel, true);
+    };
+  }, [modelDropdownOpen, computeModelPanel]);
+
   // ── Fix 3 dedup: shared per-model "advanced caps" expand affordance ──
   // Used by all three model-list branches (fetched checklist / manual no-fetch
   // list / Ollama list) so the chevron toggle + expanded panel isn't
@@ -381,18 +552,25 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
     setFetchModelsStatus('fetching');
     setFetchedModels([]);
     setFetchModelsError('');
+    setModelListFilter('');
 
     const result = await fetchProviderModels(
       baseUrl,
       apiKey,
-      selectedOption?.format ?? 'openai-compatible',
+      effectiveFormat,
     );
 
     if (result.success && result.models.length > 0) {
-      setFetchedModels(result.models);
-      setSelectedModels(new Set(result.models.map((m) => m.id)));
+      // Known-first ordering + convergence: for a large (aggregator-style)
+      // result, pre-check only ids the local capability table recognizes,
+      // union'd with whatever was already selected (e.g. a plan's curated
+      // preset) so Fetch never silently wipes it. Small direct-provider
+      // results still pre-check everything (see fetchModelUtils.ts).
+      const sorted = sortKnownFirst(result.models, isKnownModel);
+      setFetchedModels(sorted);
+      setSelectedModels((prev) => computeFetchPreselection(sorted, isKnownModel, prev));
       if (showAdvanced) {
-        seedDeclaredDefaults(result.models.map((m) => m.id));
+        seedDeclaredDefaults(sorted.map((m) => m.id));
       }
       setFetchModelsStatus('success');
     } else if (result.success) {
@@ -402,7 +580,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
       setFetchModelsStatus('error');
       setFetchModelsError(result.error ?? t.settings.fetchModelsFailed);
     }
-  }, [baseUrl, apiKey, selectedOption?.format, t, showAdvanced, seedDeclaredDefaults]);
+  }, [baseUrl, apiKey, effectiveFormat, t, showAdvanced, seedDeclaredDefaults]);
 
   // ── Ollama handlers ──
 
@@ -429,8 +607,11 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
       }));
       setOllamaModels(modelInfos);
 
-      // Auto-select all fetched models
-      setSelectedModels(new Set(modelInfos.map((m) => m.id)));
+      // Auto-select fetched models — Ollama catalogs are local pulls, always
+      // well under SMALL_LIST_MAX, so this stays "select everything" in
+      // practice; still union'd with whatever was already selected (e.g. a
+      // manually-added id) so re-checking Ollama can't silently drop it.
+      setSelectedModels((prev) => computeFetchPreselection(modelInfos, isKnownModel, prev));
       if (showAdvanced) {
         seedDeclaredDefaults(modelInfos.map((m) => m.id));
       }
@@ -456,7 +637,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
         source: 'custom',
         name: '',
         enabled: true,
-        apiFormat: selectedOption?.format ?? 'openai-compatible',
+        apiFormat: effectiveFormat,
         baseUrl,
         apiKey,
         models: testModel ? [{ id: testModel, label: testModel }] : [],
@@ -474,7 +655,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
     } finally {
       setValidating(false);
     }
-  }, [baseUrl, apiKey, selectedModels, selectedOption, t]);
+  }, [baseUrl, apiKey, selectedModels, effectiveFormat, t]);
 
   // ── Save ──
 
@@ -491,14 +672,19 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
     });
 
     const apiFormat: ApiFormat = selectedOption
-      ? selectedOption.format
+      ? effectiveFormat
       : 'openai-compatible';
 
     const resolvedBaseUrl = baseUrl || (selectedOption && !isCustom
-      ? PROVIDER_CONFIGS[selectedOption.provider].baseUrl
+      ? (activePlan?.baseUrl ?? PROVIDER_CONFIGS[selectedOption.provider].baseUrl)
       : '');
+    // When a plan is active, use ONLY the plan's own capabilities (no fallback
+    // to the provider-family top-level capabilities) — anthropic-format plans
+    // deliberately have no builtin webSearch, and falling back would both show
+    // a misleading web-search badge and store the wrong capabilities for the
+    // runtime to act on (see getBuiltinSearchConfig in core/capabilities.ts).
     const capabilities = selectedOption && !isCustom
-      ? PROVIDER_CONFIGS[selectedOption.provider].capabilities
+      ? (activePlan ? activePlan.capabilities : PROVIDER_CONFIGS[selectedOption.provider].capabilities)
       : undefined;
     const declaredCapabilities = showAdvanced ? { useRawUrl } : undefined;
 
@@ -514,6 +700,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
         enabled: true,
         apiKey,
         baseUrl: resolvedBaseUrl,
+        apiFormat: effectiveFormat,
         models: modelInfos,
         capabilities,
         userAdded: true,
@@ -545,6 +732,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
   }, [
     serviceName, selectedModels, ollamaModels, selectedOption,
     isCustom, showAdvanced, perModelDeclared, useRawUrl, baseUrl, apiKey, providers,
+    effectiveFormat, activePlan,
     addProvider, updateProvider, selectModel, onClose,
   ]);
 
@@ -556,17 +744,20 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
     setApiKey('');
     setShowApiKey(false);
     setBaseUrl('');
+    setSelectedPlanId(null);
     setSelectedModels(new Set());
     setManualModelInput('');
     setShowAddModelInput(false);
     setSearchQuery('');
     setDropdownOpen(false);
+    setModelDropdownOpen(false);
     setOllamaStatus('idle');
     setOllamaError('');
     setOllamaModels([]);
     setFetchModelsStatus('idle');
     setFetchedModels([]);
     setFetchModelsError('');
+    setModelListFilter('');
     setPerModelDeclared({});
     setExpandedModelIds(new Set());
     setUseRawUrl(false);
@@ -693,35 +884,67 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
               )}
             </div>
           </div>
+
+          {/* 2b. Config Plan (multi-endpoint providers only, e.g. volcengine) */}
+          {hasPlanRow && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-[var(--abu-text-primary)]">
+                  {t.settings.configPlan}
+                </label>
+                {guide && (
+                  <button
+                    type="button"
+                    onClick={() => open(guide.url)}
+                    className="inline-flex items-center gap-1 text-xs text-[var(--abu-clay)] hover:underline"
+                  >
+                    {t.settings.viewDocs}
+                    <ExternalLink className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+              <Select
+                value={selectedPlanId ?? ''}
+                options={[...providerPlans!]
+                  .sort((a, b) => (PLAN_ORDER[a.id] ?? 99) - (PLAN_ORDER[b.id] ?? 99))
+                  .map(p => ({
+                    value: p.id,
+                    label: p.label ?? (
+                      p.id === 'paygo' ? t.settings.billingPaygo
+                      : p.id === 'coding' ? t.settings.billingCoding
+                      : p.id === 'tokenplan' ? t.settings.billingTokenPlan
+                      : t.settings.billingAgent),
+                  }))}
+                onChange={handleSelectPlan}
+              />
+            </div>
+          )}
         </div>
 
         {/* Scrollable content area: guide, API key, models, etc. */}
         <div className="flex-1 overflow-y-auto px-6 pb-5 space-y-2.5">
-          {/* 3. Usage Guide Card */}
-          {guide && (
-            <p className="text-xs text-[var(--abu-text-muted)]">
-              {locale.startsWith('zh') ? guide.hint : guide.hintEn}
-              <button
-                type="button"
-                onClick={() => open(guide.url)}
-                className="inline-flex items-center gap-1 ml-1.5 text-[var(--abu-clay)] hover:underline"
-              >
-                {locale.startsWith('zh') ? guide.urlLabel : (guide.urlLabelEn ?? guide.urlLabel)}
-                <ExternalLink className="h-3 w-3" />
-              </button>
-            </p>
-          )}
-
           {/* 4. API Key (hidden for keyless local providers) */}
           {selectedId && !isOllama && !isLMStudio && (
             <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-medium text-[var(--abu-text-primary)]">
-                  {t.settings.apiKey}
-                </label>
-                <span className="text-xs text-[var(--abu-text-tertiary)]">
-                  {isCustom ? t.settings.apiKeyOptional : t.settings.apiKeyRequired}
-                </span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-medium text-[var(--abu-text-primary)]">
+                    {t.settings.apiKey}
+                  </label>
+                  <span className="text-xs text-[var(--abu-text-tertiary)]">
+                    {isCustom ? t.settings.apiKeyOptional : t.settings.apiKeyRequired}
+                  </span>
+                </div>
+                {!hasPlanRow && guide && (
+                  <button
+                    type="button"
+                    onClick={() => open(guide.url)}
+                    className="inline-flex items-center gap-1 text-xs text-[var(--abu-clay)] hover:underline"
+                  >
+                    {t.settings.viewDocs}
+                    <ExternalLink className="h-3 w-3" />
+                  </button>
+                )}
               </div>
               <div className="relative">
                 <Input
@@ -744,14 +967,14 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
             </div>
           )}
 
-          {/* 5. API Address */}
-          {selectedId && (
+          {/* 5. API Address — hidden for built-in cloud providers (fixed preset endpoint) */}
+          {selectedId && !isBuiltinCloud && (
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-medium text-[var(--abu-text-primary)]">
                   {isOllama ? t.settings.ollamaUrlLabel : isLMStudio ? t.settings.lmstudioUrlLabel : t.settings.apiUrl}
                 </label>
-                {showAdvanced && selectedOption?.format !== 'anthropic' && (
+                {showAdvanced && effectiveFormat !== 'anthropic' && (
                   <div className="flex items-center gap-2" title={t.settings.capRawUrlHint}>
                     <span className="text-xs text-[var(--abu-text-secondary)]">{t.settings.capRawUrl}</span>
                     <Toggle checked={useRawUrl} onChange={() => setUseRawUrl(v => !v)} size="sm" />
@@ -774,7 +997,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
               {/* Final request URL preview — hidden for local providers which have their own status UI */}
               {!isOllama && !isLMStudio && baseUrl.trim() && selectedOption && (
                 <p className="text-[11px] font-mono text-[var(--abu-text-muted)] break-all">
-                  ↳ {t.settings.apiUrlPreview}: POST {buildFullChatUrl(baseUrl, selectedOption.format, { useRawUrl })}
+                  ↳ {t.settings.apiUrlPreview}: POST {buildFullChatUrl(baseUrl, effectiveFormat, { useRawUrl })}
                 </p>
               )}
 
@@ -817,8 +1040,10 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
                   {t.settings.models}
                 </label>
                 <div className="flex items-center gap-3">
-                  {/* Fetch/refresh models button — only when baseUrl is filled */}
-                  {!isOllama && selectedOption?.format !== 'anthropic' && baseUrl.trim() && (
+                  {/* Fetch/refresh models button — custom, LM Studio, and the
+                      aggregator built-ins (OpenRouter/SiliconFlow) that ship no
+                      curated list; curated built-ins don't need it. */}
+                  {(isCustom || isLMStudio || usesFetchedModels) && effectiveFormat !== 'anthropic' && baseUrl.trim() && (
                     <button
                       type="button"
                       onClick={handleFetchModels}
@@ -844,7 +1069,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
                       {ollamaStatus === 'checking' ? t.settings.fetchingModels : t.settings.fetchModels}
                     </button>
                   )}
-                  {!isOllama && (
+                  {(isCustom || isLMStudio || usesFetchedModels) && (
                     <button
                       type="button"
                       onClick={toggleAddModelInput}
@@ -869,9 +1094,79 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
                 </p>
               )}
 
+              {/* Curated built-in providers — multi-select dropdown over the
+                  curated model list, plus an add-model input for ids not listed.
+                  Nothing is pre-selected; the user checks what to add. */}
+              {isBuiltinCurated && (
+                <div className="relative" ref={modelDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={toggleModelDropdown}
+                    className={cn(
+                      'w-full min-h-9 px-3 py-1.5 flex items-center justify-between gap-2',
+                      'bg-[var(--abu-bg-muted)] border border-[var(--abu-border)] rounded-lg',
+                      'text-sm text-[var(--abu-text-primary)]',
+                      'hover:border-[var(--abu-clay)] transition-colors',
+                    )}
+                  >
+                    <span className={cn('text-left truncate', selectedModels.size === 0 && 'text-[var(--abu-text-placeholder)]')}>
+                      {selectedModels.size === 0
+                        ? t.settings.selectModel
+                        : builtinModelList.filter((m) => selectedModels.has(m.id)).map((m) => m.label).join('、')}
+                    </span>
+                    <ChevronDown className={cn('h-4 w-4 text-[var(--abu-text-secondary)] shrink-0 transition-transform', modelDropdownOpen && 'rotate-180')} />
+                  </button>
+
+                  {modelDropdownOpen && modelPanelStyle && createPortal(
+                    <div
+                      ref={modelPanelRef}
+                      style={modelPanelStyle}
+                      className="flex flex-col rounded-lg border border-[var(--abu-border)] bg-[var(--abu-bg-base)] shadow-lg overflow-hidden"
+                    >
+                      <div className="flex-1 min-h-0 overflow-y-auto py-1">
+                        {builtinModelList.map((model) => {
+                          const checked = selectedModels.has(model.id);
+                          return (
+                            <button
+                              key={model.id}
+                              type="button"
+                              onClick={() => handleToggleModel(model.id)}
+                              className="w-full px-3 py-2 flex items-center gap-2.5 text-sm hover:bg-[var(--abu-bg-hover)] transition-colors"
+                            >
+                              <span className={cn('flex-1 text-left truncate', checked ? 'text-[var(--abu-clay)]' : 'text-[var(--abu-text-primary)]')}>{model.label}</span>
+                              {checked && <Check className="h-4 w-4 text-[var(--abu-clay)] shrink-0" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {/* Add a model id the curated list doesn't have */}
+                      <div className="shrink-0 flex items-center gap-1.5 p-2 border-t border-[var(--abu-border)]">
+                        <Input
+                          value={manualModelInput}
+                          onChange={(e) => setManualModelInput(e.target.value)}
+                          placeholder={t.settings.addModelPlaceholder}
+                          className="h-7 px-2 text-xs flex-1"
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddManualModel(); } }}
+                        />
+                        <Button
+                          type="button"
+                          size="icon-xs"
+                          variant="outline"
+                          onClick={handleAddManualModel}
+                          disabled={!manualModelInput.trim()}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>,
+                    document.body
+                  )}
+                </div>
+              )}
+
               {/* Non-Ollama models — fetched checklist (checkbox select/deselect) merged
                   with manually-added ids (remove via X); one card per model. */}
-              {!isOllama && (() => {
+              {!isOllama && !isBuiltinCurated && (() => {
                 const hasFetched = fetchedModels.length > 0;
                 const displayList: ModelInfo[] = hasFetched
                   ? [
@@ -884,8 +1179,28 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
 
                 if (!showAddModelInput && displayList.length === 0) return null;
 
+                // Only surface the scoped search once the checklist is large enough
+                // that scrolling through it to find one model is actually annoying
+                // (aggregator/gateway fetches) — a handful of models doesn't need it.
+                const showModelListFilter = displayList.length > SMALL_LIST_MAX;
+                const filteredList = showModelListFilter && modelListFilter.trim()
+                  ? displayList.filter((m) => m.id.toLowerCase().includes(modelListFilter.trim().toLowerCase()))
+                  : displayList;
+
                 return (
-                  <div className="max-h-48 overflow-y-auto space-y-2">
+                  <div className="space-y-2">
+                    {showModelListFilter && (
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--abu-text-placeholder)]" />
+                        <Input
+                          value={modelListFilter}
+                          onChange={(e) => setModelListFilter(e.target.value)}
+                          placeholder={t.settings.filterModelsPlaceholder}
+                          className="pl-8 h-7 text-xs"
+                        />
+                      </div>
+                    )}
+                    <div className="max-h-48 overflow-y-auto space-y-2">
                     {/* Inline add-model input, revealed at the top of the model list */}
                     {showAddModelInput && (
                       <div className="flex items-center gap-1.5">
@@ -912,7 +1227,12 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
                       </div>
                     )}
 
-                    {displayList.map((model) => {
+                    {showModelListFilter && filteredList.length === 0 && (
+                      <p className="text-xs text-[var(--abu-text-tertiary)] px-1 py-2">
+                        {t.settings.filterModelsNoResults}
+                      </p>
+                    )}
+                    {filteredList.map((model) => {
                       const isSelected = hasFetched ? selectedModels.has(model.id) : true;
                       return (
                         <div key={model.id} className="rounded-lg border border-[var(--abu-border)] p-2">
@@ -944,6 +1264,7 @@ export default function AddProviderModal({ open: isOpen, onClose }: AddProviderM
                         </div>
                       );
                     })}
+                    </div>
                   </div>
                 );
               })()}
