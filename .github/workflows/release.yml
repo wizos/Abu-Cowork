@@ -169,12 +169,16 @@ jobs:
             NOTES="See the assets below for download links."
           fi
           printf '%s\n' "$NOTES" > /tmp/release-notes.md
+          # Tags with a hyphen (v1.2.3-rc1) are pre-releases: mark them so they
+          # never show up as the repo's "Latest release".
+          PRERELEASE_FLAG=""
+          [[ "$TAG" == *-* ]] && PRERELEASE_FLAG="--prerelease"
           gh release create "$TAG" --repo "${{ github.repository }}" \
-            --title "$TAG" --notes-file /tmp/release-notes.md || true
+            --title "$TAG" --notes-file /tmp/release-notes.md $PRERELEASE_FLAG || true
           # Idempotent re-runs: ensure title/notes are applied even if the
           # release already existed.
           gh release edit "$TAG" --repo "${{ github.repository }}" \
-            --title "$TAG" --notes-file /tmp/release-notes.md || true
+            --title "$TAG" --notes-file /tmp/release-notes.md $PRERELEASE_FLAG || true
 
       - name: Upload release assets
         env:
@@ -213,6 +217,10 @@ jobs:
 
   publish:
     needs: build
+    # Skip the OSS/updater publish for pre-release tags (e.g. v1.2.3-rc1).
+    # Those are for exercising the signing+notarization build only and must
+    # never overwrite the production latest.json served to real users.
+    if: ${{ !contains(github.ref_name, '-') }}
     runs-on: ubuntu-latest
 
     steps:
