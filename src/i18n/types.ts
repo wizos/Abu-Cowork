@@ -278,6 +278,10 @@ export interface TranslationDict {
     htmlWidgetLabel: string;
     htmlWidgetLoading: string;
     htmlWidgetRenderError: string;
+    /** P3 — one-line muted row shown beneath a widget after it reports a
+     *  runtime error (window.onerror / unhandledrejection), so a widget
+     *  that broke mid-script doesn't just look mysteriously blank. */
+    htmlWidgetErrorRow: string;
     htmlWidgetExpand: string;
     htmlWidgetCollapse: string;
     htmlWidgetFullscreen: string;

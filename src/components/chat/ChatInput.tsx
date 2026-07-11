@@ -35,6 +35,15 @@ import type { ChatReference } from '@/types/chatReference';
 /** Max reference chips per message — guards against prompt bloat. */
 const MAX_REFERENCES = 20;
 
+/** Merge a widget-provided follow-up (window.sendPrompt) into the current
+ *  composer draft: append with a newline separator when the draft is
+ *  non-empty, else use the addition verbatim. Pure so the append-vs-empty
+ *  behavior is unit-testable without rendering the component. */
+// eslint-disable-next-line react-refresh/only-export-components
+export function mergeComposerAppend(prev: string, addition: string): string {
+  return prev.trim().length > 0 ? `${prev}\n${addition}` : addition;
+}
+
 interface ChatInputProps {
   variant: 'welcome' | 'chat';
   onSend: (message: string, images?: ImageAttachment[], workspacePath?: string | null) => void;
@@ -140,6 +149,8 @@ export default function ChatInput({ variant, onSend, disabled, scenarioPlacehold
   const cancelStreaming = useChatStore((s) => s.cancelStreaming);
   const pendingInput = useChatStore((s) => s.pendingInput);
   const setPendingInput = useChatStore((s) => s.setPendingInput);
+  const pendingInputAppend = useChatStore((s) => s.pendingInputAppend);
+  const appendPendingInput = useChatStore((s) => s.appendPendingInput);
   const pendingReferences = useChatStore((s) => s.pendingReferences);
   const clearPendingReferences = useChatStore((s) => s.clearPendingReferences);
   const activeConv = useActiveConversation();
@@ -344,6 +355,18 @@ export default function ChatInput({ variant, onSend, disabled, scenarioPlacehold
       textareaRef.current?.focus();
     }
   }, [pendingInput, setPendingInput]);
+
+  // Consume APPEND pending input (inline-widget window.sendPrompt bridge):
+  // append to the current draft with a newline separator instead of
+  // replacing it, so a widget follow-up never clobbers what the user was
+  // typing. Empty draft → no leading newline.
+  useEffect(() => {
+    if (pendingInputAppend) {
+      setText((prev) => mergeComposerAppend(prev, pendingInputAppend));
+      appendPendingInput(null);
+      textareaRef.current?.focus();
+    }
+  }, [pendingInputAppend, appendPendingInput]);
 
   // Drain references injected by the doc preview selection toolbar into local
   // state, then clear the store buffer (mirrors pendingInput consumption).

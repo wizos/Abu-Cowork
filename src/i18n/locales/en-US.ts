@@ -247,6 +247,7 @@ const enUS: TranslationDict = {
     htmlWidgetLabel: 'Widget',
     htmlWidgetLoading: 'Rendering widget...',
     htmlWidgetRenderError: 'Widget render failed, showing source',
+    htmlWidgetErrorRow: 'Widget encountered an error',
     htmlWidgetExpand: 'Expand widget',
     htmlWidgetCollapse: 'Collapse widget',
     htmlWidgetFullscreen: 'Fullscreen',

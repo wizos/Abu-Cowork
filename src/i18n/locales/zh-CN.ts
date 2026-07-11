@@ -247,6 +247,7 @@ const zhCN: TranslationDict = {
     htmlWidgetLabel: '可视化',
     htmlWidgetLoading: '正在渲染组件...',
     htmlWidgetRenderError: '组件渲染失败，已显示源码',
+    htmlWidgetErrorRow: '组件运行出错',
     htmlWidgetExpand: '展开组件',
     htmlWidgetCollapse: '收起组件',
     htmlWidgetFullscreen: '全屏查看',

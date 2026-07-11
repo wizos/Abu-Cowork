@@ -1,3 +1,4 @@
+import { useState, useCallback, useEffect } from 'react';
 import { useI18n, getI18n } from '@/i18n';
 import RenderableCodeBlock, { type CodeBlockRendererConfig } from './RenderableCodeBlock';
 import {
@@ -8,6 +9,7 @@ import {
 } from './widgetNormalize';
 import { WIDGET_RECEIVER_DOM_JS } from './widgetReceiverDom';
 import { buildWidgetDesignCss } from '@/core/widget/designSystem';
+import { useChatStore } from '@/stores/chatStore';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -51,18 +53,24 @@ button:active { transform: scale(0.98); }
 input[type="range"] { accent-color: var(--abu-primary); }
 `;
 
-// Receiver page loaded once into iframe.srcdoc — all updates come via postMessage.
-const RECEIVER_HTML = `<!DOCTYPE html><html><head>
+// Receiver srcdoc, split into two STATIC halves computed ONCE at module load
+// (the design CSS, neutralizer CSS and receiver JS are non-trivial to build,
+// and getOrCreateIframe runs per widget). buildReceiverHtml only picks the
+// `<body>` open tag (theme stamp) and concatenates — no per-iframe rebuild.
+const RECEIVER_HTML_HEAD = `<!DOCTYPE html><html><head>
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' ${CDN_ALLOWLIST}; style-src 'unsafe-inline' ${CDN_ALLOWLIST}; img-src data: blob: ${CDN_ALLOWLIST}; media-src data: blob: ${CDN_ALLOWLIST}; connect-src ${CDN_ALLOWLIST}; font-src data: ${CDN_ALLOWLIST};">
 <style>${BASE_STYLES}
 ${buildWidgetDesignCss()}
 ${buildPreviewNeutralizeCss()}
 </style>
-</head><body>
+</head>`;
+
+const RECEIVER_HTML_BODY_TAIL = `
 <script>
 (function(){
-  // Shared DOM logic (DOMParser injection, morph, blank fallback) — sourced
-  // from widgetReceiverDom.ts so vitest can exercise the exact same code.
+  // Shared DOM logic (DOMParser injection, morph, blank fallback, P3 theme/
+  // sendPrompt/error/canvas helpers) — sourced from widgetReceiverDom.ts so
+  // vitest can exercise the exact same code.
 ${WIDGET_RECEIVER_DOM_JS}
   var lastH=0, first=true;
   function reportHeight(){
@@ -83,8 +91,34 @@ ${WIDGET_RECEIVER_DOM_JS}
     }
   });
 
+  // P3: widget -> chat bridge, capped at 500 chars (WorkBuddy parity).
+  window.sendPrompt=function(text){
+    abuSendPrompt(function(m){window.parent.postMessage(m,'*');},text);
+  };
+
+  // P3: structured crash reporting — RECORD the last error instead of posting
+  // it eagerly. A benign post-render rejection (a CDN lib's background fetch,
+  // one non-fatal ReferenceError after the chart already drew) must NOT raise
+  // a scary error row under a fully-working widget. The recorded error is only
+  // surfaced to the host when the blank fallback (below) confirms the widget
+  // actually rendered nothing visible — i.e. the user really sees a broken
+  // widget. abuReportError still owns truncation/swallowing; the record
+  // callback just captures its (already-shaped) message.
+  var abuCapturedError=null;
+  function abuRecordErr(m){abuCapturedError=m.message;}
+  window.onerror=function(message,source,line,col,error){
+    abuReportError(abuRecordErr,message,source,line,col,error&&error.stack);
+    return false;
+  };
+  window.addEventListener('unhandledrejection',function(e){
+    var reason=e&&e.reason;
+    var msg=reason&&reason.message?reason.message:String(reason);
+    abuReportError(abuRecordErr,msg,undefined,undefined,undefined,reason&&reason.stack);
+  });
+
   window.addEventListener('message',function(e){
     if(!e.data)return;
+    if(e.data.type==='widget:theme'){abuToggleTheme(e.data.isDark);}
     if(e.data.type==='widget:update'){
       // Platform parser handles fragments AND full documents (missing <body>,
       // '</body>' inside script strings, '<html' in comments, ...) uniformly.
@@ -119,6 +153,9 @@ ${WIDGET_RECEIVER_DOM_JS}
       // Finalize receives the RAW author code — head scripts (e.g. a CDN
       // <script src>) arrive here for the first time and must run before
       // body scripts, in document order.
+      // Fresh finalize — clear any error captured from a prior run so a stale
+      // message can't surface under newly-rendered content.
+      abuCapturedError=null;
       var fdoc=abuParseHtml(e.data.html);
       var scripts=abuCollectScripts(fdoc);
       abuInjectHeadAssets(fdoc);
@@ -138,14 +175,26 @@ ${WIDGET_RECEIVER_DOM_JS}
           // listeners fire too (the native event bubbles to window).
           document.dispatchEvent(new Event('DOMContentLoaded',{bubbles:true}));
           window.dispatchEvent(new Event('load'));
+          // Zero-height canvas guard — lib-agnostic: only canvases that
+          // rendered at ~0px in the auto-height iframe (the actual defect,
+          // e.g. a Chart.js responsive canvas with no resolvable height) get
+          // a fallback height. Properly-sized canvases (sparklines, compact
+          // charts) are left untouched.
+          abuStabilizeCanvas();
           document.body.classList.remove('${WIDGET_PREVIEW_PHASE_CLASS}');
           setTimeout(reportHeight,100);
           // Whole-widget blank fallback (see widgetReceiverDom.ts): if
           // lifting the neutralizer leaves EVERY body child invisible,
           // re-add the class. rAF + delay lets author reveal effects settle.
+          // Only when the widget is genuinely blank AND an error was captured
+          // do we surface the host error row — a working widget shows NO row
+          // regardless of async errors.
           requestAnimationFrame(function(){
             setTimeout(function(){
-              if(abuApplyBlankFallback()){reportHeight();}
+              if(abuApplyBlankFallback()){
+                reportHeight();
+                if(abuCapturedError){window.parent.postMessage({type:'widget:error',message:abuCapturedError},'*');}
+              }
             },150);
           });
           return;
@@ -188,6 +237,14 @@ ${WIDGET_RECEIVER_DOM_JS}
 </script>
 </body></html>`;
 
+// Assemble the receiver srcdoc — only the `<body>` open tag varies (theme
+// stamp). Exported (like buildFullHtml below) so the initial-theme stamping
+// can be unit-tested without an actual iframe/DOM environment.
+// eslint-disable-next-line react-refresh/only-export-components
+export function buildReceiverHtml(isDark: boolean): string {
+  return `${RECEIVER_HTML_HEAD}<body${isDark ? ' class="dark"' : ''}>${RECEIVER_HTML_BODY_TAIL}`;
+}
+
 // ---------------------------------------------------------------------------
 // Module-level state (shared across instances, survives remount)
 // ---------------------------------------------------------------------------
@@ -203,6 +260,56 @@ type PendingWidgetMessage = Record<string, unknown> & { type: string; html: stri
 // chain runs.
 const bufferMap = new WeakMap<HTMLIFrameElement, { update?: PendingWidgetMessage; finalize?: PendingWidgetMessage }>();
 const listenerMap = new WeakMap<HTMLDivElement, (e: MessageEvent) => void>();
+/** Per-container widget:error callback — wired by HtmlWidgetBlock so a
+ *  crash reported from inside the iframe reaches that instance's React
+ *  state (see registerWidgetErrorHandler / cleanupHtmlWidget). */
+const errorHandlerMap = new WeakMap<HTMLDivElement, (message: string) => void>();
+
+// ---------------------------------------------------------------------------
+// P3 — live host->widget theme sync
+// ---------------------------------------------------------------------------
+
+/** Host theme source of truth. Mirrors the class App.tsx toggles on
+ *  `<html>` (driven by settingsStore's `theme` field, resolving 'system' via
+ *  matchMedia) — reading the class here instead of re-deriving the
+ *  light/dark/system resolution keeps that logic in the single place that
+ *  already owns it. */
+function isHostDark(): boolean {
+  return document.documentElement.classList.contains('dark');
+}
+
+/** Iframes currently subscribed to host theme changes. A single shared
+ *  MutationObserver (not one per iframe) watches `<html class>` and
+ *  broadcasts to every live subscriber that has finished loading — created
+ *  lazily on first subscription and disconnected once the last widget goes
+ *  away, so an idle chat (no widgets on screen) has no observer running. */
+const themeSubscribers = new Set<HTMLIFrameElement>();
+let themeObserver: MutationObserver | undefined;
+
+function broadcastTheme() {
+  const isDark = isHostDark();
+  themeSubscribers.forEach((iframe) => {
+    if (readyMap.get(iframe)) {
+      iframe.contentWindow?.postMessage({ type: 'widget:theme', isDark }, '*');
+    }
+  });
+}
+
+function subscribeToThemeChanges(iframe: HTMLIFrameElement) {
+  themeSubscribers.add(iframe);
+  if (!themeObserver) {
+    themeObserver = new MutationObserver(broadcastTheme);
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  }
+}
+
+function unsubscribeFromThemeChanges(iframe: HTMLIFrameElement) {
+  themeSubscribers.delete(iframe);
+  if (themeSubscribers.size === 0 && themeObserver) {
+    themeObserver.disconnect();
+    themeObserver = undefined;
+  }
+}
 
 /** Height cache — survives component remount, prevents 0→actual height jump. */
 const heightCache = new Map<string, number>();
@@ -269,12 +376,20 @@ function getOrCreateIframe(container: HTMLDivElement, code: string): HTMLIFrameE
       window.removeEventListener('message', oldListener);
       listenerMap.delete(container);
     }
+    unsubscribeFromThemeChanges(existing);
     iframeMap.delete(container);
   }
 
   const iframe = document.createElement('iframe');
   iframe.setAttribute('sandbox', 'allow-scripts');
-  iframe.srcdoc = RECEIVER_HTML;
+  // Stamp the initial theme onto <body> at creation time — the srcdoc iframe
+  // has no other way to know Abu's current theme before its first message
+  // round-trip, so without this a dark-theme user would see a one-frame
+  // light flash. The shared observer (subscribeToThemeChanges) covers all
+  // later changes; onload only re-posts if the theme shifted between this
+  // stamp and load (see below), so the common case is zero redundant posts.
+  const stampedDark = isHostDark();
+  iframe.srcdoc = buildReceiverHtml(stampedDark);
   iframe.style.cssText = 'width:100%;border:none;overflow:hidden;display:block;';
 
   // Initial height from cache (prevents 0→actual jump on remount).
@@ -298,13 +413,37 @@ function getOrCreateIframe(container: HTMLDivElement, code: string): HTMLIFrameE
     if (d?.type === 'abu-widget-link' && typeof d.url === 'string') {
       window.open(d.url, '_blank', 'noopener');
     }
+    // P3 — window.sendPrompt(text) bridge: insert (don't auto-send) into the
+    // chat composer by APPENDING to the current draft (appendPendingInput),
+    // so a widget follow-up never clobbers what the user was typing. Re-sliced
+    // to 500 chars defensively — the receiver already truncates, but a
+    // widget could call postMessage directly and bypass its own wrapper.
+    if (d?.type === 'widget:sendMessage' && typeof d.text === 'string') {
+      const trimmed = d.text.trim().slice(0, 500);
+      if (trimmed) useChatStore.getState().appendPendingInput(trimmed);
+    }
+    // P3 — structured crash reporting: forward to this container's
+    // registered React error-state callback, if any (see
+    // registerWidgetErrorHandler / HtmlWidgetBlock).
+    if (d?.type === 'widget:error' && typeof d.message === 'string') {
+      errorHandlerMap.get(container)?.(d.message);
+    }
   };
   window.addEventListener('message', onMessage);
   listenerMap.set(container, onMessage);
+  subscribeToThemeChanges(iframe);
 
   // onLoad fallback for iframe ready race
   iframe.onload = () => {
     readyMap.set(iframe, true);
+    // Only re-send the theme if it changed between the srcdoc stamp and load
+    // — the stamp already got first paint right and the shared observer owns
+    // subsequent changes, so an unconditional post here would be a redundant
+    // round-trip on every widget.
+    const nowDark = isHostDark();
+    if (nowDark !== stampedDark) {
+      iframe.contentWindow?.postMessage({ type: 'widget:theme', isDark: nowDark }, '*');
+    }
     const buf = bufferMap.get(iframe);
     if (buf) {
       // Flush update first so the preview phase class is applied before
@@ -395,12 +534,24 @@ async function renderHtmlWidget(code: string, container: HTMLDivElement): Promis
   return '';
 }
 
+/** Register (or replace) the widget:error callback for a given widget's
+ *  container — called from HtmlWidgetBlock's render/preview wrappers so the
+ *  module-level message listener (which only has the container, not the
+ *  React component instance) can route a crash report back into that
+ *  instance's state. Idempotent — safe to call on every render/preview tick. */
+function registerWidgetErrorHandler(container: HTMLDivElement, handler: (message: string) => void) {
+  errorHandlerMap.set(container, handler);
+}
+
 function cleanupHtmlWidget(container: HTMLDivElement) {
   const onMessage = listenerMap.get(container);
   if (onMessage) {
     window.removeEventListener('message', onMessage);
     listenerMap.delete(container);
   }
+  const iframe = iframeMap.get(container);
+  if (iframe) unsubscribeFromThemeChanges(iframe);
+  errorHandlerMap.delete(container);
   iframeMap.delete(container);
 }
 
@@ -467,6 +618,18 @@ body { overflow: auto; }</style>
 
 export default function HtmlWidgetBlock({ code, title }: { code: string; title?: string }) {
   const { t } = useI18n();
+  // P3 — structured crash reporting: the widget:error message reaches us via
+  // errorHandlerMap (module-level, keyed by RenderableCodeBlock's container
+  // div — see registerWidgetErrorHandler), because this component never sees
+  // that div directly. The receiver only posts widget:error when the widget
+  // actually rendered blank (see the finalize blank-fallback path), so a
+  // working widget never sets this even if it logged an async error.
+  const [lastError, setLastError] = useState<string | null>(null);
+  const handleWidgetError = useCallback((message: string) => setLastError(message), []);
+  // Clear the error row whenever new content arrives — a fresh render gets a
+  // clean slate, and the receiver re-evaluates blankness for the new content.
+  // Cheap: setLastError(null) is a no-op re-render when already null.
+  useEffect(() => { setLastError(null); }, [code]);
 
   const config: CodeBlockRendererConfig = {
     // Per-instance title (from show_widget's `title` input) disambiguates
@@ -475,7 +638,10 @@ export default function HtmlWidgetBlock({ code, title }: { code: string; title?:
     label: title ?? t.chat.htmlWidgetLabel,
     fallbackLanguage: 'html',
     seamless: true,
-    render: renderHtmlWidget,
+    render: (renderCode, container) => {
+      registerWidgetErrorHandler(container, handleWidgetError);
+      return renderHtmlWidget(renderCode, container);
+    },
     captureImage: captureHtmlWidgetImage,
     cleanup: cleanupHtmlWidget,
     buildFullscreenHtml: buildFullHtml,
@@ -483,7 +649,10 @@ export default function HtmlWidgetBlock({ code, title }: { code: string; title?:
     errorSettleMs: 1000,
     maxHeight: 600,
     preview: {
-      render: previewHtmlWidget,
+      render: (previewCode, container) => {
+        registerWidgetErrorHandler(container, handleWidgetError);
+        return previewHtmlWidget(previewCode, container);
+      },
     },
     i18n: {
       loading: t.chat.htmlWidgetLoading,
@@ -499,5 +668,17 @@ export default function HtmlWidgetBlock({ code, title }: { code: string; title?:
     },
   };
 
-  return <RenderableCodeBlock code={code} config={config} />;
+  return (
+    <>
+      <RenderableCodeBlock code={code} config={config} />
+      {lastError && (
+        <div
+          className="-mt-2 mb-3 px-1 text-[11px] text-[var(--abu-text-muted)]"
+          title={lastError}
+        >
+          {t.chat.htmlWidgetErrorRow}
+        </div>
+      )}
+    </>
+  );
 }

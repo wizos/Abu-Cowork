@@ -21,6 +21,17 @@ const fixture = fs.readFileSync(FIXTURE_PATH, 'utf-8');
  * inside the widget iframe.
  */
 interface CollectedScript { src: string; text: string; attrs: Array<{ name: string; value: string }> }
+/** Shape posted for widget:sendMessage / widget:error — mirrors what
+ *  HtmlWidgetBlock.tsx's receiver wiring passes as the `post` callback. */
+interface PostedMessage {
+  type: string;
+  text?: string;
+  message?: string;
+  source?: string;
+  line?: number;
+  col?: number;
+  stack?: string;
+}
 interface ReceiverDomApi {
   parseHtml: (html: string) => Document;
   injectHeadAssets: (doc: Document) => void;
@@ -30,6 +41,17 @@ interface ReceiverDomApi {
   morphChildren: (target: Element, source: Element) => void;
   isWidgetBlank: () => boolean;
   applyBlankFallback: () => boolean;
+  toggleTheme: (isDark: boolean) => void;
+  sendPrompt: (post: (msg: PostedMessage) => void, text: unknown) => void;
+  reportError: (
+    post: (msg: PostedMessage) => void,
+    message: unknown,
+    source?: unknown,
+    line?: unknown,
+    col?: unknown,
+    stack?: unknown,
+  ) => void;
+  stabilizeCanvas: () => void;
 }
 
 const buildApi = new Function(`${WIDGET_RECEIVER_DOM_JS}
@@ -42,6 +64,10 @@ const buildApi = new Function(`${WIDGET_RECEIVER_DOM_JS}
     morphChildren: abuMorphChildren,
     isWidgetBlank: abuIsWidgetBlank,
     applyBlankFallback: abuApplyBlankFallback,
+    toggleTheme: abuToggleTheme,
+    sendPrompt: abuSendPrompt,
+    reportError: abuReportError,
+    stabilizeCanvas: abuStabilizeCanvas,
   };`) as () => ReceiverDomApi;
 const api = buildApi();
 
@@ -340,5 +366,168 @@ describe('blank fallback (abuIsWidgetBlank / abuApplyBlankFallback)', () => {
     // The element keeps its author style untouched; visibility comes from
     // the class-gated stylesheet rule, so removing the class restores state.
     expect(el.getAttribute('style')).toBe('opacity:0');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// P3 — host-runtime capabilities (theme sync, sendPrompt bridge, structured
+// crash reporting, canvas stabilization)
+// ---------------------------------------------------------------------------
+
+describe('abuToggleTheme', () => {
+  it('adds .dark on body when isDark is true', () => {
+    api.toggleTheme(true);
+    expect(document.body.classList.contains('dark')).toBe(true);
+  });
+
+  it('removes .dark on body when isDark is false', () => {
+    document.body.classList.add('dark');
+    api.toggleTheme(false);
+    expect(document.body.classList.contains('dark')).toBe(false);
+  });
+
+  it('is idempotent — toggling the same value twice keeps a single class occurrence', () => {
+    api.toggleTheme(true);
+    api.toggleTheme(true);
+    expect(document.body.className.split(/\s+/).filter((c) => c === 'dark').length).toBe(1);
+  });
+});
+
+describe('abuSendPrompt', () => {
+  it('posts a widget:sendMessage with the given text', () => {
+    const posted: unknown[] = [];
+    api.sendPrompt((msg) => posted.push(msg), 'Refresh the chart with Q3 data');
+    expect(posted).toEqual([{ type: 'widget:sendMessage', text: 'Refresh the chart with Q3 data' }]);
+  });
+
+  it('truncates text longer than 500 chars (WorkBuddy parity)', () => {
+    const posted: Array<{ text?: string }> = [];
+    const long = 'x'.repeat(600);
+    api.sendPrompt((msg) => posted.push(msg), long);
+    expect(posted[0].text).toHaveLength(500);
+    expect(posted[0].text).toBe('x'.repeat(500));
+  });
+
+  it('coerces non-string input (e.g. a number) instead of throwing', () => {
+    const posted: Array<{ text?: string }> = [];
+    api.sendPrompt((msg) => posted.push(msg), 42);
+    expect(posted[0].text).toBe('42');
+  });
+
+  it('coerces null/undefined to an empty string', () => {
+    const posted: Array<{ text?: string }> = [];
+    api.sendPrompt((msg) => posted.push(msg), null);
+    expect(posted[0].text).toBe('');
+  });
+});
+
+describe('abuReportError', () => {
+  it('posts a widget:error shape with message/source/line/col/stack', () => {
+    const posted: unknown[] = [];
+    api.reportError((msg) => posted.push(msg), 'Chart is not defined', 'inline', 12, 4, 'Error: Chart is not defined\n  at <anonymous>');
+    expect(posted).toEqual([{
+      type: 'widget:error',
+      message: 'Chart is not defined',
+      source: 'inline',
+      line: 12,
+      col: 4,
+      stack: 'Error: Chart is not defined\n  at <anonymous>',
+    }]);
+  });
+
+  it('truncates an oversized message/stack so the payload stays small', () => {
+    const posted: Array<{ message?: string; stack?: string }> = [];
+    api.reportError((msg) => posted.push(msg), 'm'.repeat(600), undefined, undefined, undefined, 's'.repeat(1200));
+    expect(posted[0].message).toHaveLength(500);
+    expect(posted[0].stack).toHaveLength(1000);
+  });
+
+  it('swallows a throwing post callback instead of propagating', () => {
+    expect(() => {
+      api.reportError(() => { throw new Error('post failed'); }, 'boom');
+    }).not.toThrow();
+  });
+
+  it('handles a missing/undefined message without throwing', () => {
+    const posted: Array<{ message?: string }> = [];
+    expect(() => api.reportError((msg) => posted.push(msg), undefined)).not.toThrow();
+    expect(posted[0].message).toBe('');
+  });
+});
+
+describe('error surfaces ONLY when the widget rendered blank (C2)', () => {
+  // Codifies the receiver's glue: onerror RECORDS via abuReportError(recordCb),
+  // and the finalize blank-fallback path posts widget:error only when the
+  // widget is actually blank AND an error was captured. A working widget with
+  // a benign async error must show NO row.
+  it('surfaces the captured error when the widget is blank', () => {
+    let captured: string | null = null;
+    api.reportError((m) => { captured = m.message; }, 'Chart is not defined');
+    document.body.innerHTML = '<section style="opacity:0">a</section>'; // blank
+    const posted: unknown[] = [];
+    if (api.applyBlankFallback() && captured) {
+      posted.push({ type: 'widget:error', message: captured });
+    }
+    expect(posted).toEqual([{ type: 'widget:error', message: 'Chart is not defined' }]);
+  });
+
+  it('does NOT surface a captured error when the widget rendered visible content', () => {
+    let captured: string | null = null;
+    api.reportError((m) => { captured = m.message; }, 'benign async rejection');
+    document.body.innerHTML = '<main>fully rendered chart</main>'; // visible
+    const posted: unknown[] = [];
+    if (api.applyBlankFallback() && captured) {
+      posted.push({ type: 'widget:error', message: captured });
+    }
+    expect(posted).toEqual([]);
+    // The error was still recorded — just never surfaced to the host.
+    expect(captured).toBe('benign async rejection');
+  });
+});
+
+describe('abuStabilizeCanvas (zero-height-only)', () => {
+  it('gives a fallback min-height to a canvas that rendered at ~0px', () => {
+    // The broken case: a responsive canvas whose computed height is 0.
+    document.body.innerHTML = '<div><canvas height="240" style="height:0px"></canvas></div>';
+    api.stabilizeCanvas();
+    const parent = document.body.querySelector('div')!;
+    // Derived (clamped) from the height attribute since it's usable.
+    expect(parent.style.minHeight).toBe('240px');
+  });
+
+  it('falls back to ~320px for a zero-height canvas with no usable height attribute', () => {
+    document.body.innerHTML = '<div><canvas style="height:0px"></canvas></div>';
+    api.stabilizeCanvas();
+    const parent = document.body.querySelector('div')!;
+    expect(parent.style.minHeight).toBe('320px');
+  });
+
+  it('clamps an oversized height attribute to the sane range', () => {
+    document.body.innerHTML = '<div><canvas height="4000" style="height:0px"></canvas></div>';
+    api.stabilizeCanvas();
+    const parent = document.body.querySelector('div')!;
+    expect(parent.style.minHeight).toBe('600px');
+  });
+
+  it('leaves a properly-sized canvas UNTOUCHED (no whitespace on sparklines/compact charts)', () => {
+    document.body.innerHTML = '<div><canvas height="240" style="height:240px"></canvas></div>';
+    api.stabilizeCanvas();
+    const parent = document.body.querySelector('div')!;
+    expect(parent.style.minHeight).toBe('');
+  });
+
+  it('does nothing when there is no canvas', () => {
+    document.body.innerHTML = '<div><p>no canvas here</p></div>';
+    expect(() => api.stabilizeCanvas()).not.toThrow();
+    const parent = document.body.querySelector('div')!;
+    expect(parent.style.minHeight).toBe('');
+  });
+
+  it('does not overwrite an already-stabilized parent (idempotent across repeated finalize calls)', () => {
+    document.body.innerHTML = '<div><canvas height="240" style="height:0px"></canvas></div>';
+    const parent = document.body.querySelector('div')!;
+    parent.style.minHeight = '999px';
+    api.stabilizeCanvas();
+    expect(parent.style.minHeight).toBe('999px');
   });
 });

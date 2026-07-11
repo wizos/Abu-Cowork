@@ -84,6 +84,17 @@ function abuInjectHeadAssets(doc){
 function abuApplyBodyAttributes(doc){
   var body=document.body;
   var phase=body.classList.contains('${WIDGET_PREVIEW_PHASE_CLASS}');
+  // NOTE (P3): deliberately NOT preserving a host-driven '.dark' class here
+  // the way the phase class is preserved below — 'dark' is a plain class
+  // name authors are documented (and tested) to use themselves for their
+  // own body-scoped CSS (e.g. body.dark), so "was dark before this call"
+  // can't distinguish "host set it via widget:theme" from "author's own
+  // previous doc had class=dark". In practice this is a non-issue: widgets
+  // are fragment-only (HARD_RULES), so doc.body carries no attributes at
+  // all and this function never touches 'class' — the widget:theme-set
+  // '.dark' class is untouched. Only a defensively-parsed full-document
+  // widget with an explicit <body class=...> could lose it, which is
+  // already out of contract.
   var prev=window.__abuAuthorBodyAttrs||[];
   for(var i=0;i<prev.length;i++){body.removeAttribute(prev[i]);}
   var applied=[];
@@ -212,5 +223,68 @@ function abuApplyBlankFallback(){
     return true;
   }
   return false;
+}
+
+// --- P3 host-runtime capabilities ---------------------------------------
+// Kept as small, dependency-injected pure functions (a 'post' callback
+// instead of a hardcoded window.parent.postMessage) so they're unit-
+// testable the same way as the P0 DOM helpers above, without needing to
+// fight happy-dom's window.parent semantics. RECEIVER_HTML wires these to
+// the real postMessage channel (see HtmlWidgetBlock.tsx).
+
+// --- Toggle the '.dark' class that activates designSystem.ts's dormant
+// dark-theme CSS block, driven by a host 'widget:theme' postMessage.
+function abuToggleTheme(isDark){
+  document.body.classList.toggle('dark',!!isDark);
+}
+
+// --- window.sendPrompt(text) bridge: widget -> chat composer. Truncated to
+// 500 chars (mirrors WorkBuddy's cap) so a runaway widget can't dump an
+// enormous string into the user's input box.
+function abuSendPrompt(post,text){
+  var s=String(text==null?'':text).slice(0,500);
+  post({type:'widget:sendMessage',text:s});
+}
+
+// --- Structured crash reporting: window.onerror / unhandledrejection wire
+// into this so a broken widget surfaces a signal instead of silently
+// rendering blank. Payload kept small (truncated) and the call itself is
+// wrapped so a failure in reporting can never throw back into the caller.
+function abuReportError(post,message,source,line,col,stack){
+  try{
+    post({
+      type:'widget:error',
+      message:String(message==null?'':message).slice(0,500),
+      source:source?String(source).slice(0,200):undefined,
+      line:line,
+      col:col,
+      stack:stack?String(stack).slice(0,1000):undefined,
+    });
+  }catch(e){ /* swallow — error reporting must never itself throw */ }
+}
+
+// --- Zero-height canvas guard (lib-agnostic). The real defect: a responsive
+// canvas (e.g. a Chart.js chart with no resolvable container height) renders
+// at ~0px inside the auto-height iframe, showing dead space or an invisible
+// chart. Fix ONLY that case: give a fallback min-height to canvases whose
+// computed height is effectively zero (< ~8px) after finalize. Properly-
+// sized canvases (sparklines, compact charts) are left completely untouched,
+// so no whitespace is injected under a chart that already sized itself. The
+// fallback derives from the canvas's height attribute when usable (clamped
+// to a sane range), else ~320px.
+function abuStabilizeCanvas(){
+  var canvases=document.querySelectorAll('canvas');
+  for(var i=0;i<canvases.length;i++){
+    var c=canvases[i];
+    var parent=c.parentElement;
+    if(!parent||parent.style.minHeight){continue;}
+    var h;
+    try{h=parseFloat(getComputedStyle(c).height);}catch(e){continue;}
+    // Only the broken near-zero case. Unknown height (NaN) is left alone.
+    if(!(h<8)){continue;}
+    var attrH=parseFloat(c.getAttribute('height')||'');
+    var target=(attrH&&attrH>0)?Math.max(120,Math.min(attrH,600)):320;
+    parent.style.minHeight=target+'px';
+  }
 }
 `;

@@ -57,7 +57,8 @@ const HARD_RULES = `## Hard rules (apply to every widget)
 - **No initial-hidden reveal animations** — patterns like \`opacity: 0\` + scroll/IntersectionObserver reveal leave content permanently blank if the observer never fires in the preview context. Content must be visible on first paint; animate other properties (transform, color) if you want motion.
 - **No \`100vh\` / viewport-height layouts and no internal scrolling** — the widget grows to fit its content in the conversation flow; it is not a standalone viewport.
 - **CDN allowlist** — only load scripts from ${WIDGET_CDN_HOSTS.map((h) => `\`${h}\``).join(', ')}.
-- **Size budget** — keep the fragment under ~1MB.`;
+- **Size budget** — keep the fragment under ~1MB.
+- **Optional \`window.sendPrompt(text)\`** — call this to send a short follow-up into the chat composer (max 500 characters; longer text is truncated). It fills the input box for the user to review, it does NOT auto-send — use it for things like a button that proposes a next question or action, not for anything the widget needs to happen silently.`;
 
 /** Per-module guidance — brief, general-purpose pointers. Shared styling
  *  vocabulary (vars/classes) lives in the always-present design-system
