@@ -229,8 +229,13 @@ interface ChatState {
   retryInfo: RetryInfo | null;
   // Token usage tracking
   currentUsage: TokenUsage | null;
-  // Pending input for prefilling the chat input
+  // Pending input for prefilling the chat input (REPLACES the current draft)
   pendingInput: string | null;
+  // Pending input to APPEND to the current draft (does not clobber an
+  // in-progress composer draft). Ephemeral one-shot buffer drained by
+  // ChatInput. Used only by the inline-widget `window.sendPrompt` bridge —
+  // kept separate from pendingInput so other callers keep replace-semantics.
+  pendingInputAppend: string | null;
   // Pending agent name — set when starting a chat from an agent surface (toolbox
   // detail panel, agent selector, etc.) so the welcome screen can render an
   // agent-themed intro. Cleared on next startNewConversation or when a real
@@ -317,6 +322,7 @@ interface ChatActions {
   removeActiveAgent: (agentName: string) => void;
   setCurrentUsage: (usage: TokenUsage | null) => void;
   setPendingInput: (text: string | null) => void;
+  appendPendingInput: (text: string | null) => void;
   addPendingReference: (ref: ChatReference) => void;
   clearPendingReferences: () => void;
   setPendingAgent: (agentName: string | null) => void;
@@ -372,6 +378,7 @@ export const useChatStore = create<ChatStore>()(
       currentUsage: null,
       outputsRev: {} as Record<string, number>,
       pendingInput: null,
+      pendingInputAppend: null,
       pendingAgentName: null,
       pendingReferences: [],
       pendingPermissionMode: undefined,
@@ -1185,6 +1192,12 @@ export const useChatStore = create<ChatStore>()(
       setPendingInput: (text) => {
         set((state) => {
           state.pendingInput = text;
+        });
+      },
+
+      appendPendingInput: (text) => {
+        set((state) => {
+          state.pendingInputAppend = text;
         });
       },
 

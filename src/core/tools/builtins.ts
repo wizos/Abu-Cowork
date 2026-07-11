@@ -19,6 +19,9 @@ import { manageScheduledTaskTool, manageTriggerTool, manageFileWatchTool } from 
 // --- Media tools ---
 import { generateImageTool, processImageTool } from './definitions/mediaTools';
 
+// --- Widget tools (inline visualization) ---
+import { showWidgetTool, readMeTool } from './definitions/widgetTools';
+
 // --- Web tools ---
 import { webSearchTool, httpFetchTool } from './definitions/webTools';
 
@@ -63,6 +66,8 @@ export function registerBuiltinTools(): void {
   toolRegistry.register(reportPlanTool);
   toolRegistry.register(generateImageTool);
   toolRegistry.register(processImageTool);
+  toolRegistry.register(showWidgetTool);
+  toolRegistry.register(readMeTool);
   toolRegistry.register(httpFetchTool);
   toolRegistry.register(webSearchTool);
   toolRegistry.register(delegateToAgentTool);

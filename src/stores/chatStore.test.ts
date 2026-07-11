@@ -49,6 +49,7 @@ describe('chatStore', () => {
       currentTool: null,
       currentUsage: null,
       pendingInput: null,
+      pendingInputAppend: null,
       thinkingStartTime: null,
     });
   });
@@ -880,6 +881,18 @@ describe('chatStore', () => {
       expect(useChatStore.getState().pendingInput).toBe('test input');
       useChatStore.getState().setPendingInput(null);
       expect(useChatStore.getState().pendingInput).toBeNull();
+    });
+  });
+
+  // ── appendPendingInput (inline-widget window.sendPrompt bridge) ──
+  describe('appendPendingInput', () => {
+    it('sets and clears the append buffer independently of pendingInput', () => {
+      useChatStore.getState().appendPendingInput('widget follow-up');
+      expect(useChatStore.getState().pendingInputAppend).toBe('widget follow-up');
+      // Does not touch the replace-semantics pendingInput buffer.
+      expect(useChatStore.getState().pendingInput).toBeNull();
+      useChatStore.getState().appendPendingInput(null);
+      expect(useChatStore.getState().pendingInputAppend).toBeNull();
     });
   });
 

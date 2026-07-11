@@ -158,6 +158,81 @@ describe('buildRenderSegments', () => {
     expect(stepSegs[2].executionSteps.map((s) => s.id)).toEqual(['listdir']);
   });
 
+  it('show_widget becomes a dedicated widget segment at its real position (text → widget)', () => {
+    const msg: Message = {
+      id: 'a1',
+      role: 'assistant',
+      content: 'here is your chart',
+      timestamp: 0,
+      loopId: 'loop-1',
+      toolCalls: [{
+        id: 'tc-widget-1',
+        name: 'show_widget',
+        input: { title: 'Chart', widget_code: '<div>x</div>', loading_messages: ['loading'] },
+        hidden: true,
+        result: 'Widget rendered: Chart',
+      }],
+    };
+    const segs = buildRenderSegments([makeUser('u1', 'chart please'), msg], [], []);
+    expect(segs.map((s) => s.kind)).toEqual(['text', 'widget']);
+    const widgetSeg = segs[1] as Extract<ReturnType<typeof buildRenderSegments>[0], { kind: 'widget' }>;
+    expect(widgetSeg.toolCall.id).toBe('tc-widget-1');
+  });
+
+  it('multiple show_widget calls in one turn each get their own widget segment', () => {
+    const msg: Message = {
+      id: 'a1',
+      role: 'assistant',
+      content: 'two charts',
+      timestamp: 0,
+      loopId: 'loop-1',
+      toolCalls: [
+        { id: 'w1', name: 'show_widget', input: { widget_code: '<div>1</div>' }, hidden: true, result: 'ok' },
+        { id: 'w2', name: 'show_widget', input: { widget_code: '<div>2</div>' }, hidden: true, result: 'ok' },
+      ],
+    };
+    const segs = buildRenderSegments([makeUser('u1', 'go'), msg], [], []);
+    expect(segs.map((s) => s.kind)).toEqual(['text', 'widget', 'widget']);
+  });
+
+  it('show_widget steps are counted in slicing (step bookkeeping runs) but filtered from the timeline', () => {
+    // show_widget is hidden for DISPLAY only — agentLoop creates an execution
+    // step for it (so planned-step advance counts widget calls). Slicing must
+    // consume that step slot, filter it from the visible timeline, and keep
+    // later messages' steps correctly aligned.
+    const a1: Message = {
+      id: 'a1',
+      role: 'assistant',
+      content: '',
+      timestamp: 0,
+      loopId: 'loop-1',
+      toolCalls: [
+        { id: 'tc-read', name: 'read_file', input: {}, result: 'ok' },
+        { id: 'tc-w', name: 'show_widget', input: { widget_code: '<div>x</div>' }, hidden: true, result: 'ok' },
+      ],
+    };
+    const a2: Message = {
+      id: 'a2',
+      role: 'assistant',
+      content: 'done',
+      timestamp: 0,
+      loopId: 'loop-1',
+      toolCalls: [{ id: 'tc-list', name: 'list_directory', input: {}, result: 'ok' }],
+    };
+    const widgetStep: ExecutionStep = { ...makeExecStep('step-widget'), toolName: 'show_widget' };
+    const segs = buildRenderSegments(
+      [makeUser('u1', 'go'), a1, a2],
+      [makeExecStep('step-read'), widgetStep, makeExecStep('step-list')],
+      [],
+    );
+    // a1 → widget segment + steps(step-read, widget step filtered out);
+    // a2 → text + steps(step-list) — alignment preserved across the widget slot.
+    expect(segs.map((s) => s.kind)).toEqual(['widget', 'steps', 'text', 'steps']);
+    const stepSegs = segs.filter((s) => s.kind === 'steps') as Extract<ReturnType<typeof buildRenderSegments>[0], { kind: 'steps' }>[];
+    expect(stepSegs[0].executionSteps.map((s) => s.id)).toEqual(['step-read']);
+    expect(stepSegs[1].executionSteps.map((s) => s.id)).toEqual(['step-list']);
+  });
+
   it('a thinking-typed step in allExecSteps is discarded; msg thinking merges with the tool', () => {
     const msgs: Message[] = [makeUser('u1', 'x'), makeThinkingAssistant('a1', { thinking: 'from msg', thinkingDuration: 1, toolCount: 1 })];
     const thinkingExec: ExecutionStep = { ...makeExecStep('ghost'), type: 'thinking' };
