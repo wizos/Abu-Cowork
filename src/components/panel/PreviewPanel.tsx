@@ -4,6 +4,7 @@ import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import { getBaseName, loadLocalImage } from '@/utils/pathUtils';
 import { buildPreviewUrl } from '@/utils/previewUrl';
 import { usePreviewStore } from '@/stores/previewStore';
+import { usePreviewFileWatch } from '@/hooks/usePreviewFileWatch';
 import { useI18n } from '@/i18n';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import MarkdownRenderer from '@/components/chat/MarkdownRenderer';
@@ -77,7 +78,8 @@ function LazyFallback() {
 }
 
 export default function PreviewPanel() {
-  const { previewFilePath, closePreview } = usePreviewStore();
+  const { previewFilePath, closePreview, reloadNonce } = usePreviewStore();
+  usePreviewFileWatch(previewFilePath);
   const { t } = useI18n();
   const [content, setContent] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -161,8 +163,10 @@ export default function PreviewPanel() {
 
     loadFile();
     return () => { cancelled = true; if (blobUrl) URL.revokeObjectURL(blobUrl); };
+  // reloadNonce is a fs-watch/manual refresh signal: re-run to re-read content
+  // (and, for images, re-fetch the blob) when the file changes on disk.
   // eslint-disable-next-line react-hooks/exhaustive-deps -- t is stable from i18n singleton
-  }, [previewFilePath, rendererType]);
+  }, [previewFilePath, rendererType, reloadNonce]);
 
   const handleOpenInFinder = async () => {
     if (previewFilePath) {
@@ -280,7 +284,14 @@ export default function PreviewPanel() {
           htmlViewMode === 'preview' ? (
             htmlPreviewUrl ? (
               <iframe
-                src={htmlPreviewUrl}
+                // Query-string nonce (not a `key` remount) forces the iframe to
+                // re-navigate on refresh: axum's Path extractor only matches the
+                // path portion of the URL (see src-tauri/src/preview_server.rs
+                // `serve_file`'s `axum::extract::Path<(token, root_id, rel_path)>`
+                // — rel_path is the wildcard `*rel_path` segment, which never
+                // includes a query string), so `?v=` is inert server-side while
+                // still changing the `src` string enough for the webview to reload.
+                src={`${htmlPreviewUrl}?v=${reloadNonce}`}
                 title={fileName}
                 sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
                 className="w-full h-full border-0 bg-white"
