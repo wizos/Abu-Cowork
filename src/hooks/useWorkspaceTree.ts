@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { readDir, type DirEntry } from '@tauri-apps/plugin-fs';
+import { readDir, watch, exists, type DirEntry, type UnwatchFn } from '@tauri-apps/plugin-fs';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { joinPath } from '@/utils/pathUtils';
 
@@ -189,6 +189,39 @@ export function useWorkspaceTree(): UseWorkspaceTreeResult {
       return prev;
     });
   }, [rootPath, loadDir]);
+
+  // Keep a ref to the latest refresh so the watch effect (keyed only on
+  // rootPath) can invoke it without re-subscribing on every refresh-identity change.
+  const refreshRef = useRef(refresh);
+  useEffect(() => { refreshRef.current = refresh; }, [refresh]);
+
+  // Auto-refresh the tree when files are created/renamed/deleted anywhere under
+  // the workspace root (e.g. the agent writes output files, or the user edits in
+  // the preview). Recursive, debounced watch → refresh(); without this the tree
+  // goes stale until a manual collapse/expand (F3). exists() guard mirrors
+  // fileWatcher.ts to avoid plugin-fs "resource id is invalid" on missing paths.
+  useEffect(() => {
+    if (!rootPath) return;
+    let unwatch: UnwatchFn | null = null;
+    let disposed = false;
+    (async () => {
+      try {
+        if (!(await exists(rootPath))) return;
+        const fn = await watch(rootPath, () => refreshRef.current(), {
+          recursive: true,
+          delayMs: 300,
+        });
+        if (disposed) { fn(); return; }
+        unwatch = fn;
+      } catch (err) {
+        console.error('[useWorkspaceTree] workspace watch failed:', rootPath, err);
+      }
+    })();
+    return () => {
+      disposed = true;
+      if (unwatch) unwatch();
+    };
+  }, [rootPath]);
 
   return {
     rootPath,

@@ -217,9 +217,26 @@ export default function PreviewPanel() {
               });
               if (result.nextDraft !== draftRef.current) setDraft(result.nextDraft);
               // Self-echoes don't move the baseline forward — it was already
-              // set (to this same content) at save time.
-              if (!isSelfEcho) lastSavedRef.current = text;
+              // set (to this same content) at save time. A genuine external
+              // change moves the baseline AND clears any stale self-echo
+              // expectation, else a later revert back to our last self-saved
+              // content would be misread as an echo and shown as stale (F2).
+              if (!isSelfEcho) {
+                lastSavedRef.current = text;
+                selfEchoRef.current = null;
+              }
               if (result.conflict) {
+                // The user's unsaved draft diverges from a fresh external
+                // write. Cancel the still-pending autosave so it can't
+                // silently clobber that external write ~1s later (F1): the
+                // draft stays in the editor (nothing lost) and the toast
+                // informs the user. Further typing reschedules a save, which
+                // is then the user's explicit choice to overwrite.
+                if (saveTimerRef.current) {
+                  clearTimeout(saveTimerRef.current);
+                  saveTimerRef.current = null;
+                }
+                pendingSaveRef.current = null;
                 useToastStore.getState().addToast({
                   type: 'warning',
                   title: t.panel.externalChangeTitle,
@@ -249,6 +266,12 @@ export default function PreviewPanel() {
   // (and, for images, re-fetch the blob) when the file changes on disk.
   // eslint-disable-next-line react-hooks/exhaustive-deps -- t is stable from i18n singleton
   }, [previewFilePath, rendererType, reloadNonce]);
+
+  // Reset to rendered-preview mode on each file switch so a document never
+  // inherits the previously-viewed file's source/edit mode (F4). Keyed on
+  // previewFilePath only — a same-file watch reload (reloadNonce) must not
+  // flip the user out of source mode while they're editing.
+  useEffect(() => { setViewMode('preview'); }, [previewFilePath]);
 
   // Debounced autosave: write the editable buffer to disk 1s after the user
   // stops typing. `selfEchoRef` is set right before the write so the fs-watch
@@ -426,7 +449,11 @@ export default function PreviewPanel() {
             <ScrollArea className="h-full">
               <DocSelectionLayer filePath={previewFilePath}>
                 <div className="p-4">
-                  <MarkdownRenderer content={content} />
+                  {/* Render the live draft (kept in sync with disk on load /
+                      reconcile) so toggling to preview mid-edit reflects the
+                      user's just-typed changes immediately, not only after the
+                      ~1s autosave+watch round-trip (F5). */}
+                  <MarkdownRenderer content={draft} />
                 </div>
               </DocSelectionLayer>
             </ScrollArea>

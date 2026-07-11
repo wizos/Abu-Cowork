@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { readDir, type DirEntry } from '@tauri-apps/plugin-fs';
+import { readDir, watch, exists, type DirEntry, type UnwatchFn } from '@tauri-apps/plugin-fs';
 import { useWorkspaceTree } from './useWorkspaceTree';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 
@@ -50,6 +50,31 @@ describe('useWorkspaceTree', () => {
     expect(mockReadDir).toHaveBeenCalledWith('/proj');
     expect(result.current.rootEntries.map((e) => e.name)).toEqual(['src', 'package.json']);
     expect(result.current.rootEntries.find((e) => e.name === 'src')?.path).toBe('/proj/src');
+  });
+
+  it('re-reads the root listing when the workspace watch fires (auto-refresh / F3)', async () => {
+    let watchCb: (() => void) | null = null;
+    vi.mocked(exists).mockResolvedValue(true);
+    vi.mocked(watch).mockImplementation(async (_paths, cb) => {
+      watchCb = cb as () => void;
+      return vi.fn() as unknown as UnwatchFn;
+    });
+    stubFs({ '/proj': [fileEntry('a.md')] });
+    useWorkspaceStore.setState({ currentPath: '/proj' });
+
+    const { result } = renderHook(() => useWorkspaceTree());
+    await waitFor(() => expect(result.current.isRootLoading).toBe(false));
+    await waitFor(() => expect(watchCb).not.toBeNull());
+    const callsBefore = mockReadDir.mock.calls.length;
+
+    // Agent creates a file → recursive watch fires → refresh() re-reads root.
+    stubFs({ '/proj': [fileEntry('a.md'), fileEntry('b.md')] });
+    await act(async () => { watchCb!(); await Promise.resolve(); });
+
+    await waitFor(() => expect(mockReadDir.mock.calls.length).toBeGreaterThan(callsBefore));
+    await waitFor(() =>
+      expect(result.current.rootEntries.map((e) => e.name)).toEqual(['a.md', 'b.md']),
+    );
   });
 
   it('folders sort before files, each group locale-aware by name', async () => {
