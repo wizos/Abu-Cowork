@@ -252,7 +252,15 @@ export function getDefaultSoul(): string {
  * builtin skill's type table — the two mermaid strengths svg-diagram can't
  * match — see guidelines.ts's file-header note on the wider skill fold-in.)
  * The carve-out must be worded as scoping DOWN the show_widget/html default,
- * not replacing it, so the two rules don't read as contradictory.
+ * not replacing it, so the two rules don't read as contradictory. It
+ * distinguishes BY PURPOSE, not keyword: a project-scheduling Gantt (tasks
+ * with start/end dates) stays on Mermaid, but a reading-oriented timeline of
+ * milestones/history ("大事记", dated events for a reader) routes to
+ * show_widget's `poster` Timeline recipe (guidelines.ts) instead — otherwise
+ * the model over-generalizes "timeline" -> mermaid's own `timeline` diagram
+ * type, which is plain and underwhelming compared to the poster rendering.
+ * Qualifying Gantt this way also prevents the timeline exclusion from
+ * contradicting the retained "Gantt chart" entry in the same mermaid list.
  */
 const VISUAL_TRIGGER_TIERS = `**When to make a visual** — explicit ask (show/visualize/diagram/chart/draw/graph/plot, "what does X look like"); proactively make a visual — don't answer in prose alone — for how-does-X-work / teaching / process / architecture / "compare A vs B" requests; or implied by the noun phrase ("comparison table of A vs B", "settings panel mockup", "state machine for …") — a markdown table is NOT a substitute when a visual is what's actually being asked for. (Mockups use plain inputs/buttons, never a real <form>.)`;
 
@@ -267,7 +275,7 @@ const VISUAL_OUTPUT_TOOL_VARIANT = `${VISUAL_TRIGGER_TIERS}
 
 **Routing — the deciding question is "is this a file the user wants to keep?"** Ephemeral, part of this reply → **call the show_widget tool**, right where you need it — this is the default (call read_me once before your first call each conversation, don't narrate it). A page the user wants to **save, export, download, or keep as a real file** → write_file a COMPLETE self-contained \`.html\` document (doctype + html/head/body; inline CSS/JS or the CDN allowlist below) — it can then be opened in the side preview panel. Only escalate to write_file on an explicit save/export intent.
 
-**Static structure diagrams — carve-out**: when labeled nodes and edges fully explain a STATIC structure — flowchart, tree, sequence diagram, state machine, org chart, node/edge graph, ER diagram, Gantt chart — output a \`\`\`mermaid code block instead (rendered by the built-in Mermaid engine, no sandbox). This narrows, not replaces, the show_widget default above: show_widget stays the default for everything dynamic, interactive, data-driven, or chart-like.
+**Static structure diagrams — carve-out**: when labeled nodes and edges fully explain a STATIC structure — flowchart, tree, sequence diagram, state machine, org chart, node/edge graph, ER diagram, Gantt chart (project scheduling — tasks with start/end dates) — output a \`\`\`mermaid code block instead (rendered by the built-in Mermaid engine, no sandbox). A reading-oriented timeline of milestones/history ("大事记", dated events for a reader) is not a structure graph — use show_widget (poster-style timeline). (Project-scheduling Gantt charts still use Mermaid, above.) This narrows, not replaces, the show_widget default above: show_widget stays the default for everything dynamic, interactive, data-driven, or chart-like.
 
 ${VISUAL_HARD_BANS_BLOCK}
 
@@ -279,7 +287,7 @@ const VISUAL_OUTPUT_FENCE_VARIANT = `${VISUAL_TRIGGER_TIERS}
 
 **Rendering**: no tools here — every visual, including a "save"/"download" ask, goes through **a \`\`\`html code block in your reply**; there's no separate saved-file path, so say so if the user needs a real downloadable file.
 
-**Static structure diagrams — carve-out**: when labeled nodes and edges fully explain a STATIC structure — flowchart, tree, sequence diagram, state machine, org chart, node/edge graph, ER diagram, Gantt chart — output a \`\`\`mermaid code block instead (rendered by the built-in Mermaid engine, no sandbox). Use an \`\`\`html fragment for everything dynamic, interactive, data-driven, or chart-like.
+**Static structure diagrams — carve-out**: when labeled nodes and edges fully explain a STATIC structure — flowchart, tree, sequence diagram, state machine, org chart, node/edge graph, ER diagram, Gantt chart (project scheduling — tasks with start/end dates) — output a \`\`\`mermaid code block instead (rendered by the built-in Mermaid engine, no sandbox). A reading-oriented timeline of milestones/history ("大事记", dated events for a reader) is not a structure graph — use an \`\`\`html poster-style timeline. (Project-scheduling Gantt charts still use Mermaid, above.) Use an \`\`\`html fragment for everything dynamic, interactive, data-driven, or chart-like.
 
 ${VISUAL_HARD_BANS_BLOCK}
 

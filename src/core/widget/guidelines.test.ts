@@ -61,6 +61,16 @@ describe('getWidgetGuidelines', () => {
     expect(text).not.toContain('Prefer inline SVG for flowcharts');
   });
 
+  it('the chart module requires a fixed-height container for Chart.js (prevents the responsive growth loop → blank render)', () => {
+    const text = getWidgetGuidelines(['chart']);
+    // The canonical Chart.js contract: a bounded, positioned container + no
+    // aspect-ratio lock, otherwise a responsive chart grows unbounded in the
+    // auto-sized widget frame and renders blank.
+    expect(text).toContain('position:relative;height:360px');
+    expect(text).toContain('maintainAspectRatio:false');
+    expect(text).toContain('grows unbounded and renders blank');
+  });
+
   it('filters to a single requested module', () => {
     const text = getWidgetGuidelines(['diagram']);
     expect(text).toContain('## Diagrams');

@@ -362,6 +362,17 @@ describe('getCapabilityPrompt — visual-output variant selection', () => {
     expect(prompt).toContain('narrows, not replaces');
     // The carve-out still routes everything else back to show_widget.
     expect(prompt).toContain('show_widget stays the default for everything dynamic, interactive, data-driven, or chart-like');
+    // A reading-oriented milestones/history timeline is EXCLUDED from the mermaid
+    // carve-out (routes to show_widget's poster-style timeline instead) — it is
+    // not node/edge structure, and the model over-generalizes "timeline" ->
+    // mermaid's own (underwhelming) `timeline` diagram type without this clause.
+    expect(prompt).toContain('reading-oriented timeline of milestones/history');
+    expect(prompt).toContain('is not a structure graph');
+    expect(prompt).toContain('use show_widget (poster-style timeline)');
+    // The distinction is BY PURPOSE, not keyword: a project-scheduling Gantt
+    // stays on Mermaid, so the timeline exclusion must NOT contradict it.
+    expect(prompt).toContain('Gantt chart (project scheduling — tasks with start/end dates)');
+    expect(prompt).toContain('Project-scheduling Gantt charts still use Mermaid');
     // Names concrete static-structure diagram kinds so a weak model can pattern-match.
     // ER diagram / Gantt chart were folded in from the mermaid-diagram builtin skill's
     // type table once that skill's auto-invoke was disabled (see guidelines.ts).
@@ -378,6 +389,14 @@ describe('getCapabilityPrompt — visual-output variant selection', () => {
     expect(prompt).toContain('```mermaid');
     expect(prompt).toContain('STATIC structure');
     expect(prompt).toContain('built-in Mermaid engine');
+    // A reading-oriented milestones/history timeline is excluded here too, pointed
+    // at an ```html poster-style timeline (this mode has no show_widget tool at all).
+    expect(prompt).toContain('reading-oriented timeline of milestones/history');
+    expect(prompt).toContain('is not a structure graph');
+    expect(prompt).toContain('```html poster-style timeline');
+    // The project-scheduling Gantt qualifier keeps the two rules non-contradictory.
+    expect(prompt).toContain('Gantt chart (project scheduling — tasks with start/end dates)');
+    expect(prompt).toContain('Project-scheduling Gantt charts still use Mermaid');
     // Everything else stays on the ```html fragment path (no tools in this mode).
     expect(prompt).toContain('Use an ```html fragment for everything dynamic, interactive, data-driven, or chart-like');
   });
