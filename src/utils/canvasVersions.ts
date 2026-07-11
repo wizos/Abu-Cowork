@@ -18,7 +18,7 @@
  * directory name.
  */
 
-import { exists, mkdir, readTextFile, writeTextFile, remove } from '@tauri-apps/plugin-fs';
+import { exists, mkdir, readTextFile, remove } from '@tauri-apps/plugin-fs';
 import { homeDir } from '@tauri-apps/api/path';
 import { joinPath, normalizeSeparators } from '@/utils/pathUtils';
 import { atomicWrite } from '@/utils/atomicFs';
@@ -98,7 +98,11 @@ async function loadIndex(dir: string, filePath: string): Promise<VersionIndex> {
 }
 
 async function saveIndex(dir: string, index: VersionIndex): Promise<void> {
-  await writeTextFile(getIndexPath(dir), JSON.stringify(index, null, 2));
+  // Atomic (temp + rename) so a crash mid-write can't corrupt index.json and
+  // lose the whole file's history; also makes the lock-free read in
+  // listVersions torn-read-safe (a reader sees the complete old or new file,
+  // never a partial one).
+  await atomicWrite(getIndexPath(dir), JSON.stringify(index, null, 2));
 }
 
 async function readSnapshotContent(dir: string, id: string): Promise<string | null> {
@@ -119,7 +123,14 @@ const dirLocks = new Map<string, Promise<unknown>>();
 async function withDirLock<T>(dir: string, fn: () => Promise<T>): Promise<T> {
   const prev = dirLocks.get(dir) ?? Promise.resolve();
   const next = prev.then(fn, fn);
-  dirLocks.set(dir, next.catch(() => undefined));
+  const guarded = next.catch(() => undefined);
+  dirLocks.set(dir, guarded);
+  // Drop the map entry once this op settles if nothing else queued behind it,
+  // so the map doesn't grow one permanent entry per distinct edited file over
+  // a long session.
+  void guarded.then(() => {
+    if (dirLocks.get(dir) === guarded) dirLocks.delete(dir);
+  });
   return next;
 }
 
@@ -139,18 +150,24 @@ export async function snapshotVersion(filePath: string, content: string): Promis
 
     const index = await loadIndex(dir, filePath);
     const latest = index.versions[index.versions.length - 1];
+    const byteSize = new TextEncoder().encode(content).length;
 
-    if (latest) {
+    // Dedupe against the most recent snapshot. Compare the cheap byteSize
+    // first (already tracked in the index) and only read the full previous
+    // .snap back from disk when the sizes actually match — avoids a full-file
+    // read on every autosave of changed content.
+    if (latest && latest.byteSize === byteSize) {
       const latestContent = await readSnapshotContent(dir, latest.id);
-      if (latestContent !== null && latestContent === content) return; // dedupe
+      if (latestContent !== null && latestContent === content) return;
     }
 
     const ts = Date.now();
     const seq = index.seq;
     const id = `${ts}-${seq}`;
-    const byteSize = new TextEncoder().encode(content).length;
 
-    await writeTextFile(joinPath(dir, snapFileName(id)), content);
+    // Atomic so a crash mid-write can't leave a truncated .snap that a later
+    // revert would atomicWrite verbatim over the user's live document.
+    await atomicWrite(joinPath(dir, snapFileName(id)), content);
 
     index.seq = seq + 1;
     index.path = filePath;

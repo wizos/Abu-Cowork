@@ -5,7 +5,7 @@ import { getBaseName, loadLocalImage } from '@/utils/pathUtils';
 import { buildPreviewUrl } from '@/utils/previewUrl';
 import { atomicWrite } from '@/utils/atomicFs';
 import { reconcileEditorContent } from '@/utils/editorReconcile';
-import { snapshotVersion } from '@/utils/canvasVersions';
+import { snapshotVersion, revertToVersion } from '@/utils/canvasVersions';
 import { usePreviewStore } from '@/stores/previewStore';
 import { usePreviewFileWatch } from '@/hooks/usePreviewFileWatch';
 import { useToastStore } from '@/stores/toastStore';
@@ -366,6 +366,27 @@ export default function PreviewPanel() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft]);
 
+  // Authoritative revert: write the snapshot to disk AND adopt it into the
+  // editor buffer directly. A revert is an explicit user action, so it must
+  // override any unsaved draft — otherwise the fs-watch reload would hit the
+  // reconcile "conflict" branch (disk != draft, draft != lastSaved), keep the
+  // draft, and the revert would silently do nothing on screen while the file
+  // on disk diverged. Cancelling the pending autosave also stops it from
+  // clobbering the just-reverted file (R1/R2). selfEchoRef makes the revert
+  // write's own fs-watch echo recognizable as self, not an external change.
+  const handleRevertVersion = async (id: string) => {
+    if (!previewFilePath) return;
+    const content = await revertToVersion(previewFilePath, id);
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    pendingSaveRef.current = null;
+    selfEchoRef.current = content;
+    lastSavedRef.current = content;
+    setDraft(content);
+  };
+
   const handleOpenInFinder = async () => {
     if (previewFilePath) {
       try {
@@ -442,6 +463,7 @@ export default function PreviewPanel() {
               open={showVersionHistory}
               onClose={() => setShowVersionHistory(false)}
               anchorRef={versionHistoryRef}
+              onRevert={handleRevertVersion}
             />
           </div>
         )}

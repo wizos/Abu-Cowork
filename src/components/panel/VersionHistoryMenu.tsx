@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Clock } from 'lucide-react';
-import { listVersions, revertToVersion, type VersionMeta } from '@/utils/canvasVersions';
+import { listVersions, type VersionMeta } from '@/utils/canvasVersions';
 import { formatRelativeTime } from '@/utils/messageTime';
 import { useToastStore } from '@/stores/toastStore';
 import { useI18n } from '@/i18n';
@@ -13,6 +13,14 @@ interface VersionHistoryMenuProps {
   onClose: () => void;
   /** Wrapping element (trigger button's container) — used for outside-click detection. */
   anchorRef: React.RefObject<HTMLElement | null>;
+  /**
+   * Perform the revert. Owned by the parent (PreviewPanel) because reverting
+   * must be authoritative over the live editor buffer — it writes disk AND
+   * adopts the content into the editor, cancelling any pending autosave, so
+   * the fs-watch reload can't be misread as an external conflict. Rejects on
+   * failure.
+   */
+  onRevert: (id: string) => Promise<void>;
 }
 
 function formatBytes(n: number): string {
@@ -26,7 +34,7 @@ function formatBytes(n: number): string {
  * `@/utils/canvasVersions`), with one-click revert. Mirrors the
  * open/close/outside-click/Escape conventions of `ModelSelector`.
  */
-export function VersionHistoryMenu({ filePath, open, onClose, anchorRef }: VersionHistoryMenuProps) {
+export function VersionHistoryMenu({ filePath, open, onClose, anchorRef, onRevert }: VersionHistoryMenuProps) {
   const { t } = useI18n();
   const [versions, setVersions] = useState<VersionMeta[]>([]);
   const [loading, setLoading] = useState(false);
@@ -103,10 +111,11 @@ export function VersionHistoryMenu({ filePath, open, onClose, anchorRef }: Versi
     if (revertingId) return;
     setRevertingId(id);
     try {
-      // The write lands on disk; usePreviewFileWatch's fs-watch + reloadNonce
-      // (already wired in PreviewPanel) picks it up and refreshes the editor
-      // / rendered preview — no direct store call needed here.
-      await revertToVersion(filePath, id);
+      // Delegate to the parent, which writes disk AND authoritatively adopts
+      // the reverted content into the editor (cancelling any pending autosave)
+      // so an unsaved draft can't turn the revert into a silently-dropped
+      // "external conflict".
+      await onRevert(id);
       useToastStore.getState().addToast({
         type: 'success',
         title: t.panel.versionHistoryReverted,
