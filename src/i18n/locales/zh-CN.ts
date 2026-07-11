@@ -1323,6 +1323,12 @@ const zhCN: TranslationDict = {
     saveFailedTitle: '保存失败',
     externalChangeTitle: '文件已被外部修改',
     externalChangeMessage: '磁盘上的内容已更新，你的未保存修改已保留',
+    versionHistory: '历史版本',
+    versionHistoryEmpty: '暂无历史版本',
+    versionHistoryRevert: '恢复到此版本',
+    versionHistoryReverted: '已恢复到该版本',
+    versionHistoryRevertFailedTitle: '恢复失败',
+    versionHistoryLoadFailed: '加载历史版本失败',
     // FilesSection
     operationRead: '读取',
     operationModify: '修改',

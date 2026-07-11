@@ -1448,6 +1448,13 @@ export interface TranslationDict {
     saveFailedTitle: string;
     externalChangeTitle: string;
     externalChangeMessage: string;
+    // Version history (P4): per-file snapshot list + revert
+    versionHistory: string;
+    versionHistoryEmpty: string;
+    versionHistoryRevert: string;
+    versionHistoryReverted: string;
+    versionHistoryRevertFailedTitle: string;
+    versionHistoryLoadFailed: string;
     // FilesSection
     operationRead: string;
     operationModify: string;

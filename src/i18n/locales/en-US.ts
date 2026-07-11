@@ -1322,6 +1322,12 @@ const enUS: TranslationDict = {
     saveFailedTitle: 'Save failed',
     externalChangeTitle: 'File changed externally',
     externalChangeMessage: 'The file on disk was updated; your unsaved edits were kept',
+    versionHistory: 'Version history',
+    versionHistoryEmpty: 'No versions yet',
+    versionHistoryRevert: 'Revert to this version',
+    versionHistoryReverted: 'Reverted to this version',
+    versionHistoryRevertFailedTitle: 'Revert failed',
+    versionHistoryLoadFailed: 'Failed to load version history',
     // FilesSection
     operationRead: 'Read',
     operationModify: 'Modify',

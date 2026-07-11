@@ -5,6 +5,7 @@ import { getBaseName, loadLocalImage } from '@/utils/pathUtils';
 import { buildPreviewUrl } from '@/utils/previewUrl';
 import { atomicWrite } from '@/utils/atomicFs';
 import { reconcileEditorContent } from '@/utils/editorReconcile';
+import { snapshotVersion } from '@/utils/canvasVersions';
 import { usePreviewStore } from '@/stores/previewStore';
 import { usePreviewFileWatch } from '@/hooks/usePreviewFileWatch';
 import { useToastStore } from '@/stores/toastStore';
@@ -12,7 +13,8 @@ import { useI18n, getI18n } from '@/i18n';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import MarkdownRenderer from '@/components/chat/MarkdownRenderer';
 import CodeMirrorEditor from './CodeMirrorEditor';
-import { Loader2, X, FolderOpen, Code, Eye, Globe, FileCode, FileText, FileImage, FileSpreadsheet, FileType, File } from 'lucide-react';
+import { VersionHistoryMenu } from './VersionHistoryMenu';
+import { Loader2, X, FolderOpen, Code, Eye, Globe, History, FileCode, FileText, FileImage, FileSpreadsheet, FileType, File } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DocSelectionLayer } from '@/features/reference/DocSelectionLayer';
 
@@ -94,6 +96,11 @@ export default function PreviewPanel() {
   // markdown (rendered vs editable source). code/text have no rendered form
   // and are always shown via the editable source view regardless of this.
   const [viewMode, setViewMode] = useState<'preview' | 'source'>('preview');
+  // Version history (P4) dropdown — trigger button + panel share this ref
+  // for outside-click detection (see ModelSelector's modelPickerRef for the
+  // same pattern).
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const versionHistoryRef = useRef<HTMLDivElement>(null);
 
   // Editable buffer for code/text/html/markdown (P2). `draft` is what
   // CodeMirror shows and edits; it's debounce-autosaved to disk below.
@@ -205,6 +212,14 @@ export default function PreviewPanel() {
               lastSavedRef.current = text;
               setDraft(text);
               establishedEditablePathRef.current = previewFilePath;
+              // Version history (P4) baseline: snapshot the pre-edit original
+              // so it's always recoverable, even before the user's first edit
+              // autosaves. Fire-and-forget — a history-write failure must
+              // never block the editor from loading. snapshotVersion's own
+              // dedupe means re-opening an already-snapshotted file is a no-op.
+              snapshotVersion(previewFilePath, text).catch((err) => {
+                console.warn('[PreviewPanel] Failed to snapshot baseline version:', previewFilePath, err);
+              });
             } else {
               // Reload of a file we're already editing — reconcile instead
               // of blindly overwriting the user's in-progress draft.
@@ -273,6 +288,10 @@ export default function PreviewPanel() {
   // flip the user out of source mode while they're editing.
   useEffect(() => { setViewMode('preview'); }, [previewFilePath]);
 
+  // Close the version history dropdown on file switch — it's scoped to
+  // whatever file was previously open, not the newly selected one.
+  useEffect(() => { setShowVersionHistory(false); }, [previewFilePath]);
+
   // Debounced autosave: write the editable buffer to disk 1s after the user
   // stops typing. `selfEchoRef` is set right before the write so the fs-watch
   // reload it triggers (handled above) can recognize its own echo instead of
@@ -293,6 +312,13 @@ export default function PreviewPanel() {
       atomicWrite(targetPath, contentToSave)
         .then(() => {
           lastSavedRef.current = contentToSave;
+          // Version history (P4): keep a full-content snapshot of every
+          // autosaved revision. Fire-and-forget — a history-write failure
+          // must never surface as a save failure (the actual save already
+          // succeeded above).
+          snapshotVersion(targetPath, contentToSave).catch((snapErr) => {
+            console.warn('[PreviewPanel] Failed to snapshot version after autosave:', targetPath, snapErr);
+          });
         })
         .catch((err) => {
           console.error('[PreviewPanel] Failed to autosave:', targetPath, err);
@@ -398,6 +424,25 @@ export default function PreviewPanel() {
             >
               <Code className="w-3 h-3" />
             </button>
+          </div>
+        )}
+        {EDITABLE_TYPES.has(rendererType) && (
+          <div className="relative" ref={versionHistoryRef}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowVersionHistory((v) => !v)}
+              className="h-6 w-6 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-clay)]"
+              title={t.panel.versionHistory}
+            >
+              <History className="h-3.5 w-3.5" />
+            </Button>
+            <VersionHistoryMenu
+              filePath={previewFilePath}
+              open={showVersionHistory}
+              onClose={() => setShowVersionHistory(false)}
+              anchorRef={versionHistoryRef}
+            />
           </div>
         )}
         {rendererType === 'html' && (
