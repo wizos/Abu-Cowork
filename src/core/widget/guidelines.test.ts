@@ -47,6 +47,19 @@ describe('getWidgetGuidelines', () => {
     expect(text).toContain('## Charts');
   });
 
+  it('the diagram module prefers ```mermaid for static structure, positioning inline SVG as the exception', () => {
+    const text = getWidgetGuidelines(['diagram']);
+    // Prefers mermaid for static structure diagrams (kept consistent with the
+    // capability-prompt carve-out in agentLoop.ts — single mental model).
+    expect(text).toContain('```mermaid');
+    expect(text).toContain('Static structure diagrams');
+    expect(text).toContain('prefer that over drawing one here');
+    // Inline SVG is now the exception (custom layout / annotations / interactivity),
+    // not the default recommendation.
+    expect(text).toContain('only when you need custom spatial layout, annotations, or interactivity');
+    expect(text).not.toContain('Prefer inline SVG for flowcharts');
+  });
+
   it('filters to a single requested module', () => {
     const text = getWidgetGuidelines(['diagram']);
     expect(text).toContain('## Diagrams');

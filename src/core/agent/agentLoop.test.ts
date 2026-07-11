@@ -348,6 +348,37 @@ describe('getCapabilityPrompt — visual-output variant selection', () => {
     expect(tool).toContain(allowedLine);
     expect(fence).toContain(allowedLine);
   });
+
+  it('routes static structure diagrams to ```mermaid without contradicting the show_widget default (tool variant)', () => {
+    const prompt = getCapabilityPrompt({ supportsTools: true });
+    // The show_widget default is still present and unchanged.
+    expect(prompt).toContain('call the show_widget tool');
+    // The mermaid carve-out is present, named as a carve-out (scoping down, not replacing).
+    expect(prompt).toContain('```mermaid');
+    expect(prompt).toContain('STATIC structure');
+    expect(prompt).toContain('built-in Mermaid engine');
+    expect(prompt).toContain('no sandbox');
+    // Explicit non-contradiction language: this narrows the default, doesn't override it.
+    expect(prompt).toContain('narrows, not replaces');
+    // The carve-out still routes everything else back to show_widget.
+    expect(prompt).toContain('show_widget stays the default for everything dynamic, interactive, data-driven, or chart-like');
+    // Names concrete static-structure diagram kinds so a weak model can pattern-match.
+    for (const kind of ['flowchart', 'tree', 'sequence diagram', 'state machine', 'org chart', 'node/edge graph']) {
+      expect(prompt).toContain(kind);
+    }
+  });
+
+  it('routes static structure diagrams to ```mermaid without contradicting the ```html default (fence variant)', () => {
+    const prompt = getCapabilityPrompt({ supportsTools: false });
+    // The ```html default is still present and unchanged.
+    expect(prompt).toContain('```html code block');
+    // The mermaid carve-out is present, scoped to static structure.
+    expect(prompt).toContain('```mermaid');
+    expect(prompt).toContain('STATIC structure');
+    expect(prompt).toContain('built-in Mermaid engine');
+    // Everything else stays on the ```html fragment path (no tools in this mode).
+    expect(prompt).toContain('Use an ```html fragment for everything dynamic, interactive, data-driven, or chart-like');
+  });
 });
 
 // Single-source consistency: the capability prompt's hard-ban bullets must be

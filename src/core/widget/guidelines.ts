@@ -135,7 +135,8 @@ To save a visualization as a real webpage the user can keep/reopen (as opposed t
  *  section instead of being duplicated per module. */
 const MODULE_SECTIONS: Record<WidgetGuidelineModule, string> = {
   diagram: `## Diagrams
-- Prefer inline SVG for flowcharts, trees, and simple node/edge graphics — it's crisp at any size and needs no CDN dependency.
+- Static structure diagrams (flowchart, tree, sequence, state machine) are better as a \`\`\`mermaid code block outside the widget — prefer that over drawing one here.
+- Draw inline SVG in this widget only when you need custom spatial layout, annotations, or interactivity that Mermaid can't express.
 - Keep label text legible: minimum ~12px, sufficient contrast against the background.`,
   chart: `## Charts
 - Prefer inline SVG for simple charts (a handful of bars/points) — no library needed.
