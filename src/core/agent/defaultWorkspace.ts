@@ -1,20 +1,20 @@
 /**
- * Default workspace binding — when an interactive-desktop conversation has no
- * workspace, bind a managed default `~/Abu/<name>/` so the agent has a place to
- * save files instead of improvising (e.g. dumping onto the Desktop).
+ * Default workspace — when an interactive-desktop conversation has no workspace,
+ * point the agent at a managed default `~/Abu/<name>/` so it saves files there
+ * instead of improvising (e.g. dumping onto the Desktop).
  *
- * TRAE-style: the workspace is BOUND at loop start (so the system prompt points
- * the agent at it) but the folder is NOT created here — write_file's
- * ensureParentDir materializes it on the first write. A conversation that never
- * writes a file therefore leaves no empty folder on disk.
+ * LAZY binding: at loop start we only *suggest + authorize* the path (so the
+ * system prompt directs the agent and the write isn't blocked). We do NOT bind
+ * it to the conversation — a chat-only conversation must not show an empty,
+ * non-existent workspace. `write_file` calls `bindWorkspaceFromWrite` on the
+ * first successful write under `~/Abu/`, which is when the folder actually
+ * exists and the workspace becomes real (file tree / workspace card appear).
  *
  * Only interactive-desktop conversations get this — IM / scheduled / trigger
- * runs are headless and must not auto-create workspace directories. That gate
- * lives at the call site (agentLoop).
+ * runs are headless. That gate lives at the call sites.
  */
 
 import { homeDir } from '@tauri-apps/api/path';
-import { exists } from '@tauri-apps/plugin-fs';
 import { joinPath, normalizeSeparators } from '@/utils/pathUtils';
 import { authorizeWorkspace } from '@/core/tools/pathSafety';
 import { useChatStore } from '@/stores/chatStore';
@@ -68,52 +68,70 @@ export function computeDefaultWorkspaceName(title: string | undefined, date: Dat
   return fromTitle ?? timestampWorkspaceName(date);
 }
 
-/**
- * Ensure the conversation has a workspace. No-op (returns the existing path) if
- * it already has one. Otherwise binds a default `~/Abu/<name>/` and returns it.
- * Returns null only if the home directory can't be resolved.
- *
- * Binding mirrors the "add workspace" flow minus the folder picker + mkdir:
- * grant a persistent permission (this is Abu's own managed root), set it as the
- * conversation's workspace, and — when this conversation is the active one —
- * reflect it in the global current path so the UI (workspace card / file tree)
- * updates. The folder itself is created lazily by the first write.
- */
-export async function ensureDefaultWorkspace(conversationId: string): Promise<string | null> {
-  const chat = useChatStore.getState();
-  const conv = chat.conversations[conversationId];
-  if (conv?.workspacePath) return conv.workspacePath;
-
-  let home: string;
+/** `~/Abu`, or null if the home directory can't be resolved. */
+async function getAbuRoot(): Promise<string | null> {
   try {
-    home = await homeDir();
+    const home = await homeDir();
+    return joinPath(normalizeSeparators(home), ABU_ROOT_DIR);
   } catch {
     return null;
   }
-  const root = joinPath(normalizeSeparators(home), ABU_ROOT_DIR);
-  const base = computeDefaultWorkspaceName(conv?.title, new Date());
-  let candidate = joinPath(root, base);
+}
 
-  // Uniqueness: the folder is created lazily, so two conversations could
-  // otherwise bind the same path before either writes. Suffix with a short
-  // conversation id if another conversation already owns this path, or a folder
-  // already exists on disk from an earlier run.
-  const takenByOther = Object.values(chat.conversations).some(
-    (c) => c.id !== conversationId && c.workspacePath === candidate,
-  );
-  const onDisk = await exists(candidate).catch(() => false);
-  if (takenByOther || onDisk) {
-    candidate = joinPath(root, `${base}-${conversationId.slice(0, 6)}`);
-  }
+/**
+ * Suggest (and authorize) a managed default workspace `~/Abu/<name>/` for a
+ * conversation that has none, WITHOUT binding it. Returns the path to feed the
+ * system prompt so the agent saves there; the write is authorized so it isn't
+ * blocked. Binding happens later, in `bindWorkspaceFromWrite`, on the first
+ * write. Returns null if the home dir can't be resolved.
+ */
+export async function prepareSuggestedWorkspace(conversationId: string): Promise<string | null> {
+  const conv = useChatStore.getState().conversations[conversationId];
+  if (conv?.workspacePath) return conv.workspacePath;
 
-  usePermissionStore.getState().grantPermission(candidate, ['read', 'write', 'execute'], 'always');
-  chat.setConversationWorkspace(conversationId, candidate);
+  const root = await getAbuRoot();
+  if (!root) return null;
+  const suggested = joinPath(root, computeDefaultWorkspaceName(conv?.title, new Date()));
+
+  // Authorize + grant so the eventual write under this path isn't blocked by
+  // pathSafety / the permission gate. Not bound to the conversation yet.
+  usePermissionStore.getState().grantPermission(suggested, ['read', 'write', 'execute'], 'always');
+  authorizeWorkspace(suggested, ['read', 'write']);
+  return suggested;
+}
+
+/**
+ * Called after a successful `write_file`. If the conversation has no workspace
+ * and the file was written under `~/Abu/`, bind `~/Abu/<top-level-folder>/` as
+ * the conversation's workspace — this is the moment the default workspace
+ * becomes real (the folder now exists), so the UI (file tree / workspace card)
+ * can show it. No-op if already bound, or the write went elsewhere.
+ */
+export async function bindWorkspaceFromWrite(
+  conversationId: string | undefined,
+  writtenPath: string,
+): Promise<void> {
+  if (!conversationId) return;
+  const chat = useChatStore.getState();
+  const conv = chat.conversations[conversationId];
+  if (!conv || conv.workspacePath) return;
+
+  const root = await getAbuRoot();
+  if (!root) return;
+  const normPath = normalizeSeparators(writtenPath);
+  const prefix = `${root}/`;
+  if (!normPath.startsWith(prefix)) return; // only auto-bind writes under ~/Abu/
+
+  const firstSegment = normPath.slice(prefix.length).split('/')[0];
+  if (!firstSegment) return;
+  const workspace = joinPath(root, firstSegment);
+
+  usePermissionStore.getState().grantPermission(workspace, ['read', 'write', 'execute'], 'always');
+  chat.setConversationWorkspace(conversationId, workspace);
   if (useChatStore.getState().activeConversationId === conversationId) {
     // setWorkspace also authorizes the path via pathSafety + records it in recents.
-    useWorkspaceStore.getState().setWorkspace(candidate);
+    useWorkspaceStore.getState().setWorkspace(workspace);
   } else {
-    authorizeWorkspace(candidate);
+    authorizeWorkspace(workspace);
   }
-
-  return candidate;
 }

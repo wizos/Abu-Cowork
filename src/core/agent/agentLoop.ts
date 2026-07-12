@@ -31,7 +31,7 @@ import { runSubagentLoop, extractParentConversationSummary } from './subagentLoo
 import type { SubagentProgressEvent } from './subagentLoop';
 import { createSubagentController } from './subagentAbort';
 import { allToolsUnparseable, MAX_NO_PROGRESS_TURNS, resolveMaxTurns } from './loopGuards';
-import { ensureDefaultWorkspace } from './defaultWorkspace';
+import { prepareSuggestedWorkspace } from './defaultWorkspace';
 import { drainQueuedInputs, clearInputQueue, enqueueUserInput } from './userInputQueue';
 import { snapshotExecutionSteps } from './executionSnapshot';
 import { emitHook } from './lifecycleHooks';
@@ -820,13 +820,13 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
     options?.imContext?.workspacePath ??
     _convForContext?.workspacePath ??
     useWorkspaceStore.getState().currentPath;
-  if (
-    !options?.imContext?.workspacePath &&
-    !_convForContext?.workspacePath &&
-    isInteractiveDesktop(options, _convForContext)
-  ) {
-    const defaultWs = await ensureDefaultWorkspace(conversationId);
-    if (defaultWs) resolvedWorkspacePath = defaultWs;
+  if (!resolvedWorkspacePath && isInteractiveDesktop(options, _convForContext)) {
+    // No workspace anywhere: point the agent at a managed default ~/Abu/<name>/
+    // (authorized, but NOT bound — binding an empty workspace would show it for
+    // chat-only conversations). write_file binds it on the first write under
+    // ~/Abu/ (lazy), when the folder actually exists.
+    const suggested = await prepareSuggestedWorkspace(conversationId);
+    if (suggested) resolvedWorkspacePath = suggested;
   }
   const toolContext: ToolExecutionContext = {
     workspacePath: resolvedWorkspacePath,
