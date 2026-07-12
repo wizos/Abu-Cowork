@@ -68,6 +68,12 @@ export default function TaskProgressPanel() {
   });
   const plannedSteps = inMemoryPlannedSteps.length > 0 ? inMemoryPlannedSteps : messagePlannedSteps;
   const hasPlannedSteps = plannedSteps.length > 0;
+  // The plan is "live" only while a running execution still owns it. Once the
+  // loop ends (completed/stopped/errored) the execution is evicted and we fall
+  // back to the persisted message snapshot — at that point an in_progress step
+  // renders as a static marker instead of a spinner, so a stopped mid-flight
+  // step reads as "in progress, paused" rather than spinning forever.
+  const isLive = inMemoryPlannedSteps.length > 0;
   const { t } = useI18n();
 
   return (
@@ -101,7 +107,7 @@ export default function TaskProgressPanel() {
             // Steps list
             <div className="space-y-2">
               {plannedSteps.map((step) => (
-                <ProgressStepRow key={step.index} step={step} />
+                <ProgressStepRow key={step.index} step={step} isLive={isLive} />
               ))}
             </div>
           ) : (
@@ -129,9 +135,12 @@ export default function TaskProgressPanel() {
 
 interface ProgressStepRowProps {
   step: PlannedStep;
+  /** True only while a running execution still owns the plan. When false the
+   * loop has stopped, so an in_progress step is shown static (no spinner). */
+  isLive: boolean;
 }
 
-function ProgressStepRow({ step }: ProgressStepRowProps) {
+function ProgressStepRow({ step, isLive }: ProgressStepRowProps) {
   // Defensive/display-only normalization: plannedSteps snapshots get
   // persisted onto chat messages, so a history conversation can carry a
   // pre-narrowing status value ('running'/'error') that falls outside the
@@ -151,9 +160,16 @@ function ProgressStepRow({ step }: ProgressStepRowProps) {
           </div>
         );
       case 'in_progress':
+        // Spinner only while the run is live (active feedback). Once stopped,
+        // a static clay dot — the step stays "in progress" but no longer implies
+        // motion (mirrors TRAE's static in-progress marker).
         return (
           <div className="w-5 h-5 rounded-full border-2 border-[var(--abu-clay)] flex items-center justify-center">
-            <Loader2 className="h-3 w-3 text-[var(--abu-clay)] animate-spin" />
+            {isLive ? (
+              <Loader2 className="h-3 w-3 text-[var(--abu-clay)] animate-spin" />
+            ) : (
+              <div className="h-2 w-2 rounded-full bg-[var(--abu-clay)]" />
+            )}
           </div>
         );
       case 'error':

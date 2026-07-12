@@ -184,16 +184,12 @@ export function persistExecutionSnapshot(conversationId: string, loopId: string)
   if (exec.steps.length > 0) {
     useChatStore.getState().setExecutionStepsSnapshot(conversationId, loopId, snapshotExecutionSteps(exec.steps));
   }
-  // Persist planned steps so TaskProgressPanel survives loop eviction.
+  // Persist planned steps so TaskProgressPanel survives loop eviction. The
+  // panel renders an in_progress step statically (no spinner) once the live
+  // execution is gone, so a stopped mid-flight step reads as "in progress,
+  // paused" rather than a perpetual spinner — no status rewrite needed here.
   if (exec.plannedSteps.length > 0) {
-    // A loop that ended without completing (aborted/errored/still-running) may
-    // leave a step marked in_progress; persist it as pending so the panel does
-    // not show a perpetual spinner once the run has stopped. A completed run
-    // keeps its steps as-is (completeExecution already finalized them).
-    const stepsToPersist = exec.status === 'completed'
-      ? exec.plannedSteps
-      : exec.plannedSteps.map((s) => (s.status === 'in_progress' ? { ...s, status: 'pending' as const } : s));
-    useChatStore.getState().setPlannedStepsSnapshot(conversationId, loopId, stepsToPersist);
+    useChatStore.getState().setPlannedStepsSnapshot(conversationId, loopId, exec.plannedSteps);
   }
   store.evictExecution(exec.id);
 }

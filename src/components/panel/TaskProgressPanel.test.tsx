@@ -105,12 +105,34 @@ describe('TaskProgressPanel', () => {
     expect(screen.getByText('已持久化步骤B')).toBeInTheDocument();
   });
 
-  // Regression: plannedSteps snapshots are persisted onto chat messages, so a
-  // history conversation can carry a pre-narrowing status value ('running')
-  // that falls outside the current PlannedStep['status'] union. That used to
-  // fall through the icon switch's default branch and render as an empty
-  // "not started" circle — losing the fact the step was actually in-flight.
-  it('renders a legacy "running" status step as in-progress (spinner), not blank/pending', () => {
+  // An in_progress step spins ONLY while a running execution still owns the
+  // plan (active feedback). This is the "live" path.
+  it('spins an in_progress step while the execution is live', () => {
+    useTaskExecutionStore.setState({
+      executions: {
+        e1: {
+          id: 'e1',
+          conversationId: 'conv-1',
+          loopId: 'loop-e1',
+          status: 'running',
+          startTime: 100,
+          plannedSteps: [{ index: 1, description: '进行中步骤', status: 'in_progress' as const }],
+          planParsed: true,
+          steps: [],
+        } as TaskExecution,
+      },
+    });
+    render(<TaskProgressPanel />);
+    const row = screen.getByText('进行中步骤').closest('div.flex.items-start');
+    expect(row?.querySelector('.animate-spin')).toBeInTheDocument();
+  });
+
+  // Regression (smoke-test finding): after a task is stopped, the live
+  // execution is evicted and the panel falls back to the persisted message
+  // snapshot. An in_progress step there must render STATICALLY — no perpetual
+  // spinner. Also covers a legacy 'running' snapshot value that predates the
+  // status narrowing (it normalizes to in_progress, still static when stopped).
+  it('renders a stopped/persisted in-progress step statically (no perpetual spinner)', () => {
     useTaskExecutionStore.setState({ executions: {} });
     useChatStore.setState({
       activeConversationId: 'conv-1',
@@ -126,8 +148,8 @@ describe('TaskProgressPanel', () => {
               timestamp: 100,
               loopId: 'loop-1',
               plannedSteps: [
-                // Cast past the narrowed union — this simulates a legacy
-                // snapshot value that predates the status narrowing.
+                // Cast past the narrowed union — simulates a legacy snapshot
+                // value that predates the status narrowing.
                 { index: 1, description: '旧状态步骤', status: 'running' as unknown as 'in_progress' },
               ],
             },
@@ -140,6 +162,7 @@ describe('TaskProgressPanel', () => {
     });
     render(<TaskProgressPanel />);
     const row = screen.getByText('旧状态步骤').closest('div.flex.items-start');
-    expect(row?.querySelector('.animate-spin')).toBeInTheDocument();
+    expect(row).toBeInTheDocument();
+    expect(row?.querySelector('.animate-spin')).not.toBeInTheDocument();
   });
 });
