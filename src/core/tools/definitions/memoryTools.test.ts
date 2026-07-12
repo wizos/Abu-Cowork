@@ -486,3 +486,40 @@ describe('reportPlanTool — declarative full-replace', () => {
     expect(landed.every((s) => s.status === 'pending')).toBe(true);
   });
 });
+
+describe('reportPlanTool — write-side warnings', () => {
+  beforeEach(() => {
+    useTaskExecutionStore.setState({ executions: {}, activeExecutionId: null, loopIdIndex: {} });
+  });
+  const ctx = { conversationId: 'conv-1', loopId: 'loop-1', toolCallId: 'tc-1' } as never;
+
+  it('warns on a small plan (<3 steps)', async () => {
+    useTaskExecutionStore.getState().createExecution('conv-1', 'loop-1');
+    const out = (await reportPlanTool.execute({ steps: [{ content: 'a' }, { content: 'b' }] }, ctx)) as string;
+    expect(out).toContain('Small plan');
+  });
+
+  it('warns on a large plan (>10 steps)', async () => {
+    useTaskExecutionStore.getState().createExecution('conv-1', 'loop-1');
+    const steps = Array.from({ length: 11 }, (_, i) => ({ content: `s${i}` }));
+    const out = (await reportPlanTool.execute({ steps }, ctx)) as string;
+    expect(out).toContain('Large plan');
+  });
+
+  it('warns when more than 3 steps change at once', async () => {
+    const exec = useTaskExecutionStore.getState().createExecution('conv-1', 'loop-1');
+    useTaskExecutionStore.getState().setPlannedSteps(exec.id, [
+      { index: 1, description: 'a', status: 'pending' },
+      { index: 2, description: 'b', status: 'pending' },
+      { index: 3, description: 'c', status: 'pending' },
+      { index: 4, description: 'd', status: 'pending' },
+    ]);
+    const out = (await reportPlanTool.execute({ steps: [
+      { content: 'a', status: 'completed' },
+      { content: 'b', status: 'completed' },
+      { content: 'c', status: 'completed' },
+      { content: 'd', status: 'completed' },
+    ] }, ctx)) as string;
+    expect(out).toContain('Updated many steps');
+  });
+});

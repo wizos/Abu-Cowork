@@ -151,6 +151,27 @@ export const reportPlanTool: ToolDefinition = {
     const hasSteps = Array.isArray(steps) && steps.length > 0;
     const stepTexts = steps.map((s) => s.content);
 
+    // Write-side discipline warnings: compare the incoming steps against the
+    // PRIOR landed plan and append English self-correction hints to the tool
+    // result the model reads. Must run BEFORE landPlannedSteps() overwrites
+    // the prior plan, or the "changed" diff below would always read 0.
+    const buildWarnings = (): string => {
+      if (!hasSteps) return '';
+      const loopId = context?.loopId;
+      const exec = loopId ? useTaskExecutionStore.getState().getExecutionByLoopId(loopId) : undefined;
+      const priorByIndex = new Map((exec?.plannedSteps ?? []).map((s) => [s.index, s.status]));
+      const warnings: string[] = [];
+      if (steps.length < 3) warnings.push('Warning: Small plan (<3 steps). This task might not need a plan.');
+      else if (steps.length > 10) warnings.push('Warning: Large plan (>10 steps). Keep the plan focused and actionable.');
+      let changed = 0;
+      steps.forEach((s, i) => {
+        const status = (s.status as PlannedStep['status']) ?? 'pending';
+        if (priorByIndex.get(i + 1) !== status) changed++;
+      });
+      if (changed > 3) warnings.push('Warning: Updated many steps at once. Mark steps one at a time as you progress.');
+      return warnings.length ? '\n\n' + warnings.join('\n') : '';
+    };
+
     // Land the plan on the loop's execution so the progress panel shows it.
     // Called only for plans the user can act on — approved or approval-free.
     // A rejected/timed-out plan must NOT reach the panel (the user just said
@@ -191,8 +212,9 @@ export const reportPlanTool: ToolDefinition = {
       const result = await requestUserQuestion(context.toolCallId, convId, payload);
       if (interpretPlanApproval(result, approveLabel)) {
         setPlanMode(convId, 'approved');
+        const warnings = buildWarnings();
         landPlannedSteps();
-        return t.planApproved;
+        return t.planApproved + warnings;
       }
       if (result === null) {
         return t.planTimeout;
@@ -206,8 +228,9 @@ export const reportPlanTool: ToolDefinition = {
     if (!hasSteps) {
       return t.planRecorded;
     }
+    const warnings = buildWarnings();
     landPlannedSteps();
-    return format(t.planRecordedSteps, { count: steps.length });
+    return format(t.planRecordedSteps, { count: steps.length }) + warnings;
   },
   isConcurrencySafe: false,
 };
