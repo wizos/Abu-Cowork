@@ -2,6 +2,20 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <!-- Redirect to the visitor's preferred language (browser language by default,
+         overridden by an explicit manual choice remembered in localStorage). -->
+    <script>
+    (function () {
+      try {
+        var pref = localStorage.getItem('abu-lang');
+        var target = pref || ((navigator.language || 'en').toLowerCase().indexOf('zh') === 0 ? 'zh' : 'en');
+        if (target === 'en') location.replace('docs.html');
+      } catch (e) {}
+    })();
+    </script>
+    <link rel="alternate" hreflang="en" href="docs.html">
+    <link rel="alternate" hreflang="zh-CN" href="docs.zh-CN.html">
+    <link rel="alternate" hreflang="x-default" href="docs.html">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>文档 - Abu (阿布)</title>
     <meta name="description" content="Abu (阿布) 使用文档 — 使用指南、安装指南、浏览器桥接说明">
@@ -23,7 +37,7 @@
                 <a href="index.zh-CN.html#features" class="nav-link">功能</a>
                 <a href="index.zh-CN.html#screenshots" class="nav-link">预览</a>
                 <a href="docs.zh-CN.html" class="nav-link nav-link-active">文档</a>
-                <a href="docs.html" class="nav-lang" aria-label="Switch to English">
+                <a href="docs.html" class="nav-lang" aria-label="Switch to English" onclick="try{localStorage.setItem('abu-lang','en')}catch(e){}">
                     <svg class="nav-lang-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                     English
                 </a>
