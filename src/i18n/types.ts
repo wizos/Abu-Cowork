@@ -1527,8 +1527,10 @@ export interface TranslationDict {
       newFileFailed: string;
       delete: string;
       confirmDelete: string;
+      moveToTrash: string;
       deleteFailed: string;
       invalidName: string;
+      alreadyExists: string;
     };
   };
 

@@ -1399,9 +1399,11 @@ const enUS: TranslationDict = {
       newFilePlaceholder: 'File name',
       newFileFailed: 'Failed to create file',
       delete: 'Delete',
-      confirmDelete: 'Delete this item?',
+      confirmDelete: 'Move to Trash? You can restore it from the Trash.',
+      moveToTrash: 'Move to Trash',
       deleteFailed: 'Delete failed',
       invalidName: 'Name cannot be empty or contain /',
+      alreadyExists: 'A file or folder with this name already exists',
     },
   },
 

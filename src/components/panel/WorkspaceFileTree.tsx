@@ -19,7 +19,8 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react';
-import { mkdir, copyFile, rename, remove, writeTextFile, exists } from '@tauri-apps/plugin-fs';
+import { mkdir, copyFile, rename, writeTextFile, exists } from '@tauri-apps/plugin-fs';
+import { invoke } from '@tauri-apps/api/core';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import { useI18n, type TranslationDict } from '@/i18n';
@@ -326,8 +327,17 @@ export default function WorkspaceFileTree() {
     setCreatingFolder(false);
     const name = rawName.trim();
     if (!name || !rootPath) return;
+    const target = joinPath(rootPath, name);
     try {
-      await mkdir(joinPath(rootPath, name), { recursive: true });
+      // mkdir(recursive:true) silently succeeds on an existing dir — check first
+      // so a same-name folder gives feedback instead of a no-op.
+      if (await exists(target)) {
+        useToastStore.getState().addToast({
+          type: 'error', title: t.panel.fileTree.newFolderFailed, message: t.panel.fileTree.alreadyExists,
+        });
+        return;
+      }
+      await mkdir(target, { recursive: true });
       refresh();
     } catch (err) {
       useToastStore.getState().addToast({
@@ -499,6 +509,13 @@ export default function WorkspaceFileTree() {
     }
     const targetPath = joinPath(folderPath, name);
     try {
+      // Never clobber an existing entry: mkdir(recursive) is a silent no-op on an
+      // existing dir, and writeTextFile('') would truncate an existing file —
+      // both must surface "already exists" instead.
+      if (await exists(targetPath)) {
+        useToastStore.getState().addToast({ type: 'error', title: failTitle, message: t.panel.fileTree.alreadyExists });
+        return;
+      }
       if (kind === 'folder') {
         await mkdir(targetPath, { recursive: true });
       } else {
@@ -534,10 +551,13 @@ export default function WorkspaceFileTree() {
       return;
     }
     try {
-      await remove(entry.path, entry.isDirectory ? { recursive: true } : undefined);
-      // Close the preview if it was showing the deleted file OR any file under a
-      // deleted folder (recursive delete) — otherwise the preview panel keeps
-      // rendering a now-missing path.
+      // Move to the OS trash (Finder / Recycle Bin) instead of permanently
+      // deleting — recoverable, and it runs via our own Rust command so it
+      // doesn't depend on the fs:remove capability scope. Directories go whole.
+      await invoke('move_to_trash', { path: entry.path });
+      // Close the preview if it was showing the trashed file OR any file under a
+      // trashed folder — otherwise the preview panel keeps rendering a
+      // now-missing path.
       const previewed = usePreviewStore.getState().previewFilePath;
       if (previewed === entry.path || (previewed && previewed.startsWith(entry.path + '/'))) {
         usePreviewStore.getState().closePreview();
@@ -645,7 +665,7 @@ export default function WorkspaceFileTree() {
                   onClick={() => handleDeleteConfirmed(contextMenu.entry)}
                   className="px-2.5 py-1 rounded text-[12px] font-medium bg-red-500/10 text-red-500 hover:bg-red-500/20"
                 >
-                  {t.common.delete}
+                  {t.panel.fileTree.moveToTrash}
                 </button>
                 <button
                   onClick={() => setContextMenu(null)}

@@ -1400,9 +1400,11 @@ const zhCN: TranslationDict = {
       newFilePlaceholder: '文件名称',
       newFileFailed: '新建文件失败',
       delete: '删除',
-      confirmDelete: '确认删除？',
+      confirmDelete: '移动到废纸篓？可从废纸篓还原',
+      moveToTrash: '移动到废纸篓',
       deleteFailed: '删除失败',
       invalidName: '名称不能为空，且不能包含 /',
+      alreadyExists: '同名文件或文件夹已存在',
     },
   },
 
