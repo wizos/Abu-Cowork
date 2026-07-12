@@ -39,7 +39,7 @@ import { clearAllSkillHooks } from '../tools/builtins';
 import { executeToolBatch } from './toolExecutor';
 import { startConversationTrace, endConversationTrace, startGeneration } from '../observability/langfuse';
 import { calculateTurnCost } from '../llm/costTracker';
-import { formatTodosForPrompt } from './todoManager';
+import { formatPlannedStepsForPrompt } from './plannedStepsPrompt';
 import { isWindows } from '../../utils/platform';
 import { getBuiltinSearchConfig } from '../capabilities';
 import { resolveCapabilities, resolveEffectiveContextWindow, computeReasoningParams, type ModelCapabilities } from '../llm/modelCapabilities';
@@ -184,7 +184,10 @@ export function persistExecutionSnapshot(conversationId: string, loopId: string)
   if (exec.steps.length > 0) {
     useChatStore.getState().setExecutionStepsSnapshot(conversationId, loopId, snapshotExecutionSteps(exec.steps));
   }
-  // Persist planned steps so TaskProgressPanel survives loop eviction.
+  // Persist planned steps so TaskProgressPanel survives loop eviction. The
+  // panel renders an in_progress step statically (no spinner) once the live
+  // execution is gone, so a stopped mid-flight step reads as "in progress,
+  // paused" rather than a perpetual spinner — no status rewrite needed here.
   if (exec.plannedSteps.length > 0) {
     useChatStore.getState().setPlannedStepsSnapshot(conversationId, loopId, exec.plannedSteps);
   }
@@ -280,7 +283,7 @@ const VISUAL_OUTPUT_TOOL_VARIANT = `${VISUAL_TRIGGER_TIERS}
 
 ${VISUAL_HARD_BANS_BLOCK}
 
-**Strictly forbidden**: generate_image for a chart/diagram (show_widget draws those); todo_write before show_widget — just call show_widget.
+**Strictly forbidden**: generate_image for a chart/diagram (show_widget draws those) — just call show_widget.
 
 ${VISUAL_CDN_ALLOWED_LINE}`;
 
@@ -1341,7 +1344,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
       }
 
       // Build effective system prompt: static cached sections + dynamic per-turn sections
-      const todoState = formatTodosForPrompt(conversationId);
+      const todoState = formatPlannedStepsForPrompt(conversationId);
       const dynamicSections: PromptSection[] = [];
       if (dynamicCapabilities) {
         dynamicSections.push({ name: 'mcp-capabilities', text: dynamicCapabilities, cacheable: false });
@@ -1630,21 +1633,6 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
               // Store the mapping for later result update
               if (stepId) {
                 toolCallToStepId.set(event.id, stepId);
-
-                // Auto-link to next pending planned step
-                // Only advance when no planned step is currently running,
-                // so multiple tool calls in one turn don't consume all steps at once
-                const currentExec = useTaskExecutionStore.getState().executions[execution.id];
-                if (currentExec) {
-                  const hasRunning = currentExec.plannedSteps.some(s => s.status === 'running');
-                  if (!hasRunning) {
-                    const nextPending = currentExec.plannedSteps.find(s => s.status === 'pending');
-                    if (nextPending) {
-                      useTaskExecutionStore.getState().linkPlannedStep(execution.id, nextPending.index, stepId);
-                      useTaskExecutionStore.getState().updatePlannedStepStatus(execution.id, nextPending.index, 'running');
-                    }
-                  }
-                }
               }
 
               collectedToolCalls.push({
