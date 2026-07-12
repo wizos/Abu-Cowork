@@ -150,9 +150,17 @@
     {
       "identifier": "fs:allow-remove",
       "allow": [
+        { "path": "$HOME/**" },
         { "path": "$HOME/.abu/**" },
         { "path": "$HOME/.abu/**/.trash/**" },
-        { "path": "$HOME/**/.abu/**" }
+        { "path": "$HOME/**/.abu" },
+        { "path": "$HOME/**/.abu/**" },
+        { "path": "/tmp/**" },
+        { "path": "/private/tmp/**" },
+        { "path": "/Volumes/**" },
+        { "path": "/Volumes/**/.abu/**" },
+        { "path": "/Volumes/**/.abu/**/.trash/**" },
+        { "path": "$TEMP/**" }
       ]
     },
     {
