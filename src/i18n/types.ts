@@ -1514,6 +1514,21 @@ export interface TranslationDict {
       newFolderPlaceholder: string;
       newFolderFailed: string;
       addFileFailed: string;
+      // Per-node context menu (code-canvas P1)
+      revealInFinder: string;
+      addToChat: string;
+      addedToChat: string;
+      copyPath: string;
+      copyPathDone: string;
+      rename: string;
+      renameFailed: string;
+      newFile: string;
+      newFilePlaceholder: string;
+      newFileFailed: string;
+      delete: string;
+      confirmDelete: string;
+      deleteFailed: string;
+      invalidName: string;
     };
   };
 

@@ -246,6 +246,11 @@ interface ChatState {
   // one-shot buffer (mirrors pendingInput): ChatInput drains it into local
   // state then clears. NOT persisted.
   pendingReferences: ChatReference[];
+  // Pending file paths injected from the workspace file tree's "Add to chat"
+  // context menu item. Ephemeral one-shot buffer (mirrors pendingReferences):
+  // ChatInput drains it into its local files/images attachment state via
+  // processFilePaths, then clears. NOT persisted.
+  pendingAttachmentPaths: string[];
   // Thinking timer
   thinkingStartTime: number | null;
   // Track multiple concurrent active agents
@@ -325,6 +330,8 @@ interface ChatActions {
   appendPendingInput: (text: string | null) => void;
   addPendingReference: (ref: ChatReference) => void;
   clearPendingReferences: () => void;
+  addPendingAttachment: (path: string) => void;
+  clearPendingAttachments: () => void;
   setPendingAgent: (agentName: string | null) => void;
   setConversationStatus: (convId: string, status: ConversationStatus) => void;
   clearCompletedStatus: (convId: string) => void;
@@ -381,6 +388,7 @@ export const useChatStore = create<ChatStore>()(
       pendingInputAppend: null,
       pendingAgentName: null,
       pendingReferences: [],
+      pendingAttachmentPaths: [],
       pendingPermissionMode: undefined,
       thinkingStartTime: null,
       activeAgentNames: [],
@@ -1210,6 +1218,18 @@ export const useChatStore = create<ChatStore>()(
       clearPendingReferences: () => {
         set((state) => {
           state.pendingReferences = [];
+        });
+      },
+
+      addPendingAttachment: (path) => {
+        set((state) => {
+          state.pendingAttachmentPaths.push(path);
+        });
+      },
+
+      clearPendingAttachments: () => {
+        set((state) => {
+          state.pendingAttachmentPaths = [];
         });
       },
 
