@@ -1380,6 +1380,13 @@ const enUS: TranslationDict = {
       empty: 'Empty folder',
       loadError: 'Failed to read folder',
       loading: 'Loading...',
+      moreActions: 'More actions',
+      newFolder: 'New folder',
+      addFile: 'Add file',
+      refresh: 'Refresh',
+      newFolderPlaceholder: 'Folder name',
+      newFolderFailed: 'Failed to create folder',
+      addFileFailed: 'Failed to add file',
     },
   },
 

@@ -1507,6 +1507,13 @@ export interface TranslationDict {
       empty: string;
       loadError: string;
       loading: string;
+      moreActions: string;
+      newFolder: string;
+      addFile: string;
+      refresh: string;
+      newFolderPlaceholder: string;
+      newFolderFailed: string;
+      addFileFailed: string;
     };
   };
 

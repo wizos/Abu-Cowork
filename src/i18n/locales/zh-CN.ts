@@ -1381,6 +1381,13 @@ const zhCN: TranslationDict = {
       empty: '空文件夹',
       loadError: '读取文件夹失败',
       loading: '加载中...',
+      moreActions: '更多操作',
+      newFolder: '新建文件夹',
+      addFile: '添加文件',
+      refresh: '刷新',
+      newFolderPlaceholder: '文件夹名称',
+      newFolderFailed: '新建文件夹失败',
+      addFileFailed: '添加文件失败',
     },
   },
 

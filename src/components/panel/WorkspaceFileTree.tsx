@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import {
   ChevronRight,
   ChevronDown,
@@ -8,11 +9,19 @@ import {
   FileJson,
   FileText,
   FileImage,
+  MoreHorizontal,
+  FolderPlus,
+  FilePlus,
+  RefreshCw,
 } from 'lucide-react';
+import { mkdir, copyFile } from '@tauri-apps/plugin-fs';
+import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import { useI18n, type TranslationDict } from '@/i18n';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { usePreviewStore } from '@/stores/previewStore';
+import { useToastStore } from '@/stores/toastStore';
 import { useWorkspaceTree, type WorkspaceTreeEntry } from '@/hooks/useWorkspaceTree';
+import { joinPath, getBaseName } from '@/utils/pathUtils';
 
 // Extension → icon lookup. Deliberately simple (mirrors FilesSection's getFileIcon) —
 // this is a lightweight glance at the project, not a full IDE file-type registry.
@@ -169,7 +178,69 @@ export default function WorkspaceFileTree() {
     loadingPaths,
     errorsByPath,
     toggleExpand,
+    refresh,
   } = useWorkspaceTree();
+
+  // Header "more actions" menu (new folder / add file / refresh) — TRAE-style.
+  // New items land in the workspace root; the fs-watch auto-refresh + manual
+  // refresh keep the tree in sync.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [creatingFolder, setCreatingFolder] = useState(false);
+  const [folderName, setFolderName] = useState('');
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const timer = setTimeout(() => document.addEventListener('mousedown', onClick), 0);
+    return () => { clearTimeout(timer); document.removeEventListener('mousedown', onClick); };
+  }, [menuOpen]);
+
+  const handleRefresh = () => { setMenuOpen(false); refresh(); };
+
+  const handleNewFolder = () => {
+    setMenuOpen(false);
+    setFolderName('');
+    setCreatingFolder(true);
+  };
+
+  const submitNewFolder = async () => {
+    const name = folderName.trim();
+    setCreatingFolder(false);
+    if (!name || !rootPath) return;
+    try {
+      await mkdir(joinPath(rootPath, name), { recursive: true });
+      refresh();
+    } catch (err) {
+      useToastStore.getState().addToast({
+        type: 'error',
+        title: t.panel.fileTree.newFolderFailed,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+  };
+
+  const handleAddFile = async () => {
+    setMenuOpen(false);
+    if (!rootPath) return;
+    try {
+      const selected = await openFileDialog({ multiple: true });
+      if (!selected) return;
+      const files = Array.isArray(selected) ? selected : [selected];
+      for (const src of files) {
+        await copyFile(src, joinPath(rootPath, getBaseName(src)));
+      }
+      refresh();
+    } catch (err) {
+      useToastStore.getState().addToast({
+        type: 'error',
+        title: t.panel.fileTree.addFileFailed,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+  };
 
   return (
     <div className="flex flex-col h-full min-h-0 gap-2 mt-3">
@@ -177,7 +248,49 @@ export default function WorkspaceFileTree() {
         <h4 className="text-[11px] font-medium text-[var(--abu-text-muted)] uppercase tracking-wider">
           {t.panel.fileTree.title}
         </h4>
+        {rootPath && (
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setMenuOpen((v) => !v)}
+              className="p-1 rounded hover:bg-[var(--abu-bg-hover)] text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)]"
+              title={t.panel.fileTree.moreActions}
+            >
+              <MoreHorizontal className="h-3.5 w-3.5" />
+            </button>
+            {menuOpen && (
+              <div className="absolute top-full right-0 mt-1 z-50 w-36 bg-[var(--abu-bg-base)] border border-[var(--abu-border)] rounded-lg shadow-lg py-1">
+                <button onClick={handleNewFolder} className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]">
+                  <FolderPlus className="h-3.5 w-3.5 shrink-0" /> {t.panel.fileTree.newFolder}
+                </button>
+                <button onClick={handleAddFile} className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]">
+                  <FilePlus className="h-3.5 w-3.5 shrink-0" /> {t.panel.fileTree.addFile}
+                </button>
+                <button onClick={handleRefresh} className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]">
+                  <RefreshCw className="h-3.5 w-3.5 shrink-0" /> {t.panel.fileTree.refresh}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {creatingFolder && (
+        <div className="shrink-0 flex items-center gap-1.5 px-1">
+          <FolderPlus className="h-3.5 w-3.5 text-[var(--abu-text-muted)] shrink-0" />
+          <input
+            autoFocus
+            value={folderName}
+            onChange={(e) => setFolderName(e.target.value)}
+            onBlur={submitNewFolder}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') submitNewFolder();
+              if (e.key === 'Escape') setCreatingFolder(false);
+            }}
+            placeholder={t.panel.fileTree.newFolderPlaceholder}
+            className="flex-1 min-w-0 text-[12px] bg-transparent border-b border-[var(--abu-clay)] outline-none text-[var(--abu-text-primary)]"
+          />
+        </div>
+      )}
 
       {!rootPath ? (
         <p className="text-[12px] text-[var(--abu-text-muted)] py-1">{t.panel.fileTree.noWorkspace}</p>
