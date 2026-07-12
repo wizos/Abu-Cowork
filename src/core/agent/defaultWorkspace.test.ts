@@ -9,7 +9,18 @@ import {
 } from './defaultWorkspace';
 import { useChatStore } from '@/stores/chatStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
+import { usePermissionStore } from '@/stores/permissionStore';
 import { getI18n } from '@/i18n';
+
+/** Force a scheduled/trigger flag onto an existing conversation record. */
+function markHeadless(id: string, flag: 'scheduledTaskId' | 'triggerId') {
+  useChatStore.setState((state) => ({
+    conversations: {
+      ...state.conversations,
+      [id]: { ...state.conversations[id], [flag]: 'x' },
+    },
+  }));
+}
 
 describe('sanitizeWorkspaceName', () => {
   it('strips path-hostile characters', () => {
@@ -80,6 +91,15 @@ describe('prepareSuggestedWorkspace', () => {
     const id = useChatStore.getState().createConversation(null, { skipActivate: true });
     expect(await prepareSuggestedWorkspace(id)).toBeNull();
   });
+
+  it('does NOT persist an always-grant for the merely-suggested path (no ghost grants)', async () => {
+    usePermissionStore.setState({ persistedGrants: {}, sessionGrants: {} });
+    const id = useChatStore.getState().createConversation(null, { skipActivate: true });
+    await prepareSuggestedWorkspace(id);
+    // Suggestion only authorizes in-memory (pathSafety); persisting an 'always'
+    // grant per turn would accumulate ghost ~/Abu/<timestamp> entries.
+    expect(Object.keys(usePermissionStore.getState().persistedGrants)).toHaveLength(0);
+  });
 });
 
 describe('bindWorkspaceFromWrite', () => {
@@ -115,5 +135,28 @@ describe('bindWorkspaceFromWrite', () => {
     const id = useChatStore.getState().createConversation('/existing/ws', { skipActivate: true });
     await bindWorkspaceFromWrite(id, '/Users/test/Abu/other/x.txt');
     expect(useChatStore.getState().conversations[id]?.workspacePath).toBe('/existing/ws');
+  });
+
+  it('binds ~/Abu itself when the write lands directly under ~/Abu (a file, not a folder)', async () => {
+    const id = useChatStore.getState().createConversation(null, { skipActivate: true });
+    useChatStore.setState({ activeConversationId: id });
+    // Weaker model ignores the subfolder hint and writes ~/Abu/report.html.
+    await bindWorkspaceFromWrite(id, '/Users/test/Abu/report.html');
+    // Must bind the ~/Abu directory, NEVER the file (readDir on a file fails).
+    expect(useChatStore.getState().conversations[id]?.workspacePath).toBe('/Users/test/Abu');
+  });
+
+  it('is a no-op for headless scheduled runs (must not auto-create/bind ~/Abu)', async () => {
+    const id = useChatStore.getState().createConversation(null, { skipActivate: true });
+    markHeadless(id, 'scheduledTaskId');
+    await bindWorkspaceFromWrite(id, '/Users/test/Abu/proj/a.txt');
+    expect(useChatStore.getState().conversations[id]?.workspacePath).toBeFalsy();
+  });
+
+  it('is a no-op for headless trigger runs', async () => {
+    const id = useChatStore.getState().createConversation(null, { skipActivate: true });
+    markHeadless(id, 'triggerId');
+    await bindWorkspaceFromWrite(id, '/Users/test/Abu/proj/a.txt');
+    expect(useChatStore.getState().conversations[id]?.workspacePath).toBeFalsy();
   });
 });

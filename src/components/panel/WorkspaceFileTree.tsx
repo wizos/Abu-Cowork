@@ -19,7 +19,7 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react';
-import { mkdir, copyFile, rename, remove, writeTextFile } from '@tauri-apps/plugin-fs';
+import { mkdir, copyFile, rename, remove, writeTextFile, exists } from '@tauri-apps/plugin-fs';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import { useI18n, type TranslationDict } from '@/i18n';
@@ -28,7 +28,7 @@ import { usePreviewStore } from '@/stores/previewStore';
 import { useToastStore } from '@/stores/toastStore';
 import { useChatStore } from '@/stores/chatStore';
 import { useWorkspaceTree, type WorkspaceTreeEntry } from '@/hooks/useWorkspaceTree';
-import { joinPath, getBaseName, getParentDir } from '@/utils/pathUtils';
+import { joinPath, getBaseName, getParentDir, normalizeSeparators } from '@/utils/pathUtils';
 
 // Extension → icon lookup. Deliberately simple (mirrors FilesSection's getFileIcon) —
 // this is a lightweight glance at the project, not a full IDE file-type registry.
@@ -54,6 +54,22 @@ const INDENT_PX = 14;
 const BASE_PADDING_PX = 6;
 
 /**
+ * Resolve a destination path under `dir` for `fileName` that doesn't already
+ * exist, appending " (1)", " (2)", … before the extension on collision. Guards
+ * "Add file" against Tauri's copyFile silently overwriting an existing file.
+ */
+async function nonCollidingPath(dir: string, fileName: string): Promise<string> {
+  const dot = fileName.lastIndexOf('.');
+  const stem = dot > 0 ? fileName.slice(0, dot) : fileName;
+  const ext = dot > 0 ? fileName.slice(dot) : '';
+  let candidate = joinPath(dir, fileName);
+  for (let n = 1; await exists(candidate); n++) {
+    candidate = joinPath(dir, `${stem} (${n})${ext}`);
+  }
+  return candidate;
+}
+
+/**
  * Minimal reusable inline text input for the tree's "type a name" interactions
  * (rename, new file, new folder — both the per-row context menu and the
  * header's "..." menu). Caller supplies layout (icon/indentation) around it;
@@ -73,15 +89,21 @@ function InlineNameInput({
   onCancel: () => void;
 }) {
   const [value, setValue] = useState(initialValue);
+  // Fire commit/cancel at most once: Enter commits then unmounts the input, and
+  // a trailing blur (or a blur racing an Escape) must not re-run onSubmit against
+  // the already-renamed/removed path.
+  const settled = useRef(false);
+  const submit = (v: string) => { if (settled.current) return; settled.current = true; onSubmit(v); };
+  const cancel = () => { if (settled.current) return; settled.current = true; onCancel(); };
   return (
     <input
       autoFocus
       value={value}
       onChange={(e) => setValue(e.target.value)}
-      onBlur={() => onSubmit(value)}
+      onBlur={() => submit(value)}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') { e.preventDefault(); onSubmit(value); }
-        if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
+        if (e.key === 'Enter') { e.preventDefault(); submit(value); }
+        if (e.key === 'Escape') { e.preventDefault(); cancel(); }
       }}
       onClick={(e) => e.stopPropagation()}
       placeholder={placeholder}
@@ -324,7 +346,10 @@ export default function WorkspaceFileTree() {
       if (!selected) return;
       const files = Array.isArray(selected) ? selected : [selected];
       for (const src of files) {
-        await copyFile(src, joinPath(rootPath, getBaseName(src)));
+        // Tauri's copyFile overwrites the destination silently. Never clobber an
+        // existing same-named file — pick a non-colliding "name (n).ext" instead.
+        const dest = await nonCollidingPath(rootPath, getBaseName(src));
+        await copyFile(src, dest);
       }
       refresh();
     } catch (err) {
@@ -438,6 +463,16 @@ export default function WorkspaceFileTree() {
     const newPath = joinPath(getParentDir(entry.path), name);
     try {
       await rename(entry.path, newPath);
+      // Follow the rename in the preview: if the open file *is* the renamed
+      // entry, re-point it to the new path; if it lives *under* a renamed
+      // folder, re-point by swapping the path prefix. Otherwise the preview
+      // stays pinned to a now-missing path and shows a broken/stale render.
+      const previewed = usePreviewStore.getState().previewFilePath;
+      if (previewed === entry.path) {
+        openPreview(newPath);
+      } else if (previewed && previewed.startsWith(entry.path + '/')) {
+        openPreview(newPath + previewed.slice(entry.path.length));
+      }
       refresh();
     } catch (err) {
       useToastStore.getState().addToast({
@@ -483,11 +518,28 @@ export default function WorkspaceFileTree() {
   const handleDeleteConfirmed = async (entry: WorkspaceTreeEntry) => {
     setContextMenu(null);
     setConfirmingDelete(false);
+    // Defense in depth: the fs:allow-remove capability is broad ($HOME/**, to
+    // match write/rename), so the ONLY thing keeping this recursive delete from
+    // touching files outside the project is that the tree is rooted at the
+    // workspace. Enforce that explicitly — refuse to remove the root itself or
+    // anything not strictly under it, so a bad entry.path can never escape.
+    const root = rootPath ? normalizeSeparators(rootPath).replace(/\/+$/, '') : '';
+    const target = normalizeSeparators(entry.path).replace(/\/+$/, '');
+    if (!root || !target.startsWith(root + '/')) {
+      useToastStore.getState().addToast({
+        type: 'error',
+        title: t.panel.fileTree.deleteFailed,
+        message: t.panel.fileTree.invalidName,
+      });
+      return;
+    }
     try {
       await remove(entry.path, entry.isDirectory ? { recursive: true } : undefined);
-      // Close the preview if it was showing the file we just deleted —
-      // otherwise the preview panel keeps rendering a now-missing path.
-      if (usePreviewStore.getState().previewFilePath === entry.path) {
+      // Close the preview if it was showing the deleted file OR any file under a
+      // deleted folder (recursive delete) — otherwise the preview panel keeps
+      // rendering a now-missing path.
+      const previewed = usePreviewStore.getState().previewFilePath;
+      if (previewed === entry.path || (previewed && previewed.startsWith(entry.path + '/'))) {
         usePreviewStore.getState().closePreview();
       }
       refresh();

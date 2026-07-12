@@ -93,9 +93,14 @@ export async function prepareSuggestedWorkspace(conversationId: string): Promise
   if (!root) return null;
   const suggested = joinPath(root, computeDefaultWorkspaceName(conv?.title, new Date()));
 
-  // Authorize + grant so the eventual write under this path isn't blocked by
-  // pathSafety / the permission gate. Not bound to the conversation yet.
-  usePermissionStore.getState().grantPermission(suggested, ['read', 'write', 'execute'], 'always');
+  // Authorize (in-memory, session-scoped) so the eventual write under this path
+  // isn't blocked by pathSafety's checkWritePath (it honours authorizedWorkspaces).
+  // We deliberately do NOT persist an 'always' permission grant here: this path
+  // is only *suggested*, the folder doesn't exist yet, and the suggested name
+  // carries a fresh timestamp each turn for a generically-titled conversation —
+  // persisting a grant per turn would fill persistedGrants with ghost
+  // ~/Abu/<timestamp> entries the user never approved. The durable grant is
+  // written once the workspace actually binds, in bindWorkspaceFromWrite.
   authorizeWorkspace(suggested, ['read', 'write']);
   return suggested;
 }
@@ -115,6 +120,11 @@ export async function bindWorkspaceFromWrite(
   const chat = useChatStore.getState();
   const conv = chat.conversations[conversationId];
   if (!conv || conv.workspacePath) return;
+  // Headless runs (scheduled tasks / event triggers) must never auto-create or
+  // bind a workspace — matches the interactive-desktop gate on the suggestion
+  // side (orchestrator). IM runs never reach here unbound (they either have a
+  // preconfigured workspacePath or are told they can't do file ops).
+  if (conv.scheduledTaskId || conv.triggerId) return;
 
   const root = await getAbuRoot();
   if (!root) return;
@@ -122,9 +132,14 @@ export async function bindWorkspaceFromWrite(
   const prefix = `${root}/`;
   if (!normPath.startsWith(prefix)) return; // only auto-bind writes under ~/Abu/
 
-  const firstSegment = normPath.slice(prefix.length).split('/')[0];
-  if (!firstSegment) return;
-  const workspace = joinPath(root, firstSegment);
+  // Bind the top-level *directory* under ~/Abu. If the model wrote a file
+  // directly under ~/Abu (e.g. ~/Abu/report.html — no subfolder), the first
+  // segment IS the file, not a directory; binding it would set a non-directory
+  // as the workspace and break the file tree (readDir on a file fails). In that
+  // case bind ~/Abu itself.
+  const segments = normPath.slice(prefix.length).split('/').filter(Boolean);
+  if (segments.length === 0) return;
+  const workspace = segments.length > 1 ? joinPath(root, segments[0]) : root;
 
   usePermissionStore.getState().grantPermission(workspace, ['read', 'write', 'execute'], 'always');
   chat.setConversationWorkspace(conversationId, workspace);

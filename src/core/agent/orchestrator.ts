@@ -410,20 +410,24 @@ You are replying in an IM chat. Follow this style:
 Path: ${workspacePath}
 You can use file tools to read and write files in this directory. When the user mentions files or directories, operate under this workspace path by default.`, cacheable: true });
     } else {
-      // No workspace bound. Point the agent at a managed default (~/Abu/<name>/)
-      // so it can save files directly without popping a folder picker; the first
-      // write there binds it as this conversation's workspace (see
-      // bindWorkspaceFromWrite in fileTools). Falls back to the app-data session
-      // output dir only if ~/Abu can't be resolved.
-      const defaultDir = (await prepareSuggestedWorkspace(conversationId)) ?? (await getSessionOutputDir(conversationId));
+      // No workspace bound. Only interactive-desktop conversations get the
+      // managed default (~/Abu/<name>/) suggestion — headless scheduled/trigger
+      // runs (which reach this else-branch because it's gated only on imContext)
+      // must NOT auto-create/bind a ~/Abu workspace, so they fall back to the
+      // hidden app-data session output dir just as before.
+      const { useChatStore: chatStoreForWs } = await import('../../stores/chatStore');
+      const convRecord = chatStoreForWs.getState().conversations[conversationId];
+      const headless = !!(convRecord?.scheduledTaskId || convRecord?.triggerId);
+      const suggested = headless ? null : await prepareSuggestedWorkspace(conversationId);
+      const defaultDir = suggested ?? (await getSessionOutputDir(conversationId));
       sections.push({ name: 'workspace-hint', text: `\n## Workspace Notice
 No workspace folder is bound yet.${defaultDir ? `
 
-**When you need to create or save files** and the user has not specified a location, save them under this default project folder — write there directly, no need to ask first. It automatically becomes this task's workspace once you write to it:
+**When you need to create or save files** and the user has not specified a location, save them under this default project folder — write there directly, no need to ask first.${suggested ? ' It automatically becomes this task\'s workspace once you write to it:' : ''}
 Path: ${defaultDir}
 Always pass an absolute path under this folder to file tools (e.g. \`${defaultDir}/index.html\`).` : ''}
 
-Only call the request_workspace tool when the user explicitly wants to pick a folder themselves, or wants to operate on an existing directory such as Downloads / Desktop / Documents (pass the named folder in folder_hint). Other workspace-bound operations: \`skill_manage\` create / patch (workspace-auto scope), and project-level memory writes.
+Only call the request_workspace tool when the user explicitly wants to pick a folder themselves, or wants to operate on an existing directory such as Downloads / Desktop / Documents (pass the named folder in folder_hint). For workspace-bound operations that need a *bound* workspace — \`skill_manage\` create / patch (workspace-auto scope) and project-level memory writes — you must call request_workspace first, since the default folder above is only authorized for file writes, not yet bound as a workspace.
 
 Requests that need no files (casual chat, knowledge Q&A, search, writing, translation, calculation, global user-scope memory, etc.) can be answered directly.`, cacheable: true });
     }

@@ -1223,7 +1223,12 @@ export const useChatStore = create<ChatStore>()(
 
       addPendingAttachment: (path) => {
         set((state) => {
-          state.pendingAttachmentPaths.push(path);
+          // Dedup: "Add to chat" on the same file twice (before the drain runs)
+          // must not buffer it twice — images carry no path once decoded, so the
+          // ChatInput drain can't dedup them downstream.
+          if (!state.pendingAttachmentPaths.includes(path)) {
+            state.pendingAttachmentPaths.push(path);
+          }
         });
       },
 
