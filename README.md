@@ -39,9 +39,9 @@ Tell Abu what you need — it reads files, runs commands, writes docs, and build
 
 ## What's New
 
-**Latest release [v0.25.0](https://github.com/PM-Shawn/Abu-Cowork/releases/latest)** — Labs · desktop pet interaction upgrade · light / dark / system theme switching.
+**Latest release [v0.29.0](https://github.com/PM-Shawn/Abu-Cowork/releases/latest)** — workspace file tree + code canvas · declarative progress panel · multi-endpoint provider presets.
 
-Recent highlights: **Labs** experiment framework (currently hosting: Desktop Pet), **Desktop Pet** interaction upgrade + activity tray, **theme switching** (light / dark / system), **per-conversation settings** (pinned model + permission mode per conversation), **interactive question cards** (when Abu needs you to decide, it pops an option card above the composer — single or multi-select), **Plan Mode** (high-risk tasks show a step-by-step plan and wait for your approval before proceeding), **model capability badges + token usage stats** (backed by models.dev-maintained capability tables).
+Recent highlights: **Workspace file tree + code canvas** (browse / preview / edit files in the side panel, CodeMirror source editing with auto-save, preview auto-refresh, version snapshots with rollback), **declarative progress panel** (the model declares its own plan steps and status via `report_plan`), **inline visualization widgets** (charts / HTML / Mermaid rendered inline in chat), **multi-endpoint provider presets** (Volcengine / Bailian / Zhipu access plans as curated presets + a unified add/edit modal), **per-model capabilities** (vision / tools / reasoning / token limits declared per model), plus **doc comment-to-chat**, **full internationalization**, and **signed + notarized macOS builds**.
 
 > Full changelog per release: see [Releases](https://github.com/PM-Shawn/Abu-Cowork/releases).
 
@@ -396,22 +396,6 @@ Issues and Pull Requests are welcome!
 3. Commit your changes: `git commit -m 'feat: add my feature'`
 4. Push to the branch: `git push origin feat/my-feature`
 5. Open a Pull Request
-
-## Feedback & Community
-
-Got questions or ideas? Scan the QR code to join the WeChat group:
-
-<img src="src/assets/wechat-qr.png" width="200" />
-
-## Support
-
-If Abu has been helpful to you, feel free to buy the author a coffee:
-
-<img src="src/assets/sponsor-qr.png" width="200" />
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=PM-Shawn/Abu-Cowork&type=Date)](https://star-history.com/#PM-Shawn/Abu-Cowork&Date)
 
 ## License
 
