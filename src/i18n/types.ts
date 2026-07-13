@@ -2748,6 +2748,8 @@ export interface TranslationDict {
       movedToTrash: string;
       /** delete_file failed — fail-closed, nothing was deleted. {error} */
       trashFailed: string;
+      /** delete_file hard-refused a catastrophic target (filesystem root / home dir) — fail-closed, nothing was deleted. {path} */
+      deleteRefusedCatastrophic: string;
     };
     // show_widget / read_me — inline visualization tool
     widget: {

@@ -4,6 +4,7 @@ import type { ToolDefinition, ToolResultContent } from '../../../types';
 import { isWindows } from '../../../utils/platform';
 import { ensureParentDir } from '../../../utils/pathUtils';
 import { isSandboxEnabled, isNetworkIsolationEnabled } from '../../sandbox/config';
+import { isCatastrophicDeleteTarget } from '../pathSafety';
 import {
   getFileExtension,
   IMAGE_EXTENSIONS,
@@ -359,6 +360,12 @@ export const deleteFileTool: ToolDefinition = {
   },
   execute: async (input) => {
     const path = input.path as string;
+    // Hard block — enforced regardless of permission mode. checkWritePath alone only
+    // returns needsPermission:true for the filesystem root / home dir, which resolves
+    // to an automatic ALLOW in autonomous mode. Fail-closed: never call move_to_trash.
+    if (await isCatastrophicDeleteTarget(path)) {
+      return format(getI18n().toolResult.file.deleteRefusedCatastrophic, { path });
+    }
     try {
       await invoke('move_to_trash', { path });
       return format(getI18n().toolResult.file.movedToTrash, { path });

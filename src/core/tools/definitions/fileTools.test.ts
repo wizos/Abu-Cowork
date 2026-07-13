@@ -227,6 +227,46 @@ describe('deleteFileTool \u2014 move to trash (safe delete)', () => {
   });
 });
 
+describe('deleteFileTool — catastrophic target hard block', () => {
+  beforeEach(() => {
+    vi.mocked(invoke).mockReset();
+  });
+
+  it('refuses to delete the filesystem root and never calls invoke', async () => {
+    const result = await deleteFileTool.execute({ path: '/' }, {} as never);
+
+    expect(invoke).not.toHaveBeenCalled();
+    expect(result).toContain('/');
+  });
+
+  it('refuses to delete the home directory and never calls invoke', async () => {
+    // Home is mocked to '/Users/testuser' in src/test/setup.ts.
+    const result = await deleteFileTool.execute({ path: '/Users/testuser' }, {} as never);
+
+    expect(invoke).not.toHaveBeenCalled();
+    expect(result).toContain('/Users/testuser');
+  });
+
+  it('refuses to delete the home directory with a trailing slash', async () => {
+    await deleteFileTool.execute({ path: '/Users/testuser/' }, {} as never);
+
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
+  it('still moves a normal in-workspace path to Trash', async () => {
+    vi.mocked(invoke).mockResolvedValueOnce(undefined);
+
+    const target = '/Users/testuser/Projects/myapp/old-file.txt';
+    const result = await deleteFileTool.execute({ path: target }, {} as never);
+
+    expect(invoke).toHaveBeenCalledTimes(1);
+    const [cmd, payload] = vi.mocked(invoke).mock.calls[0] as unknown as [string, { path: string }];
+    expect(cmd).toBe('move_to_trash');
+    expect(payload.path).toBe(target);
+    expect(result).toContain(target);
+  });
+});
+
 describe('delete_file registration', () => {
   it('is registered as a builtin tool', () => {
     registerBuiltinTools();

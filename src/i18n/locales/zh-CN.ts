@@ -2434,6 +2434,7 @@ const zhCN: TranslationDict = {
       errFileLocked: 'Error: {path} 正在被其他代理编辑，请稍后重试。',
       movedToTrash: '已移入废纸篓（一般可恢复）：{path}',
       trashFailed: 'Error: 移入废纸篓失败：{error}（未删除，也未永久删除）',
+      deleteRefusedCatastrophic: 'Error: 拒绝将 {path} 移入废纸篓 —— 不允许删除文件系统根目录或用户主目录。',
     },
     widget: {
       errTitleEmpty: '参数错误：title 不能为空。',

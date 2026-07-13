@@ -2433,6 +2433,7 @@ const enUS: TranslationDict = {
       errFileLocked: 'Error: {path} is being edited by another agent — please retry later.',
       movedToTrash: 'Moved to Trash (usually recoverable): {path}',
       trashFailed: 'Error: could not move to Trash: {error} (nothing was deleted)',
+      deleteRefusedCatastrophic: 'Error: refused to move {path} to Trash — deleting the filesystem root or home directory is not allowed.',
     },
     widget: {
       errTitleEmpty: 'Parameter error: title cannot be empty.',
