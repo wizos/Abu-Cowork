@@ -24,6 +24,14 @@ async function resolveDisplayCount(convId: string, fallback: number): Promise<nu
   const authoritative = await catalogGetCount(convId);
   if (authoritative == null) return fallback; // catalog unavailable → optimistic fallback
   catalogCountCache.set(convId, { count: authoritative, at: now });
+  // Bound the cache: entries are only useful within the TTL, so sweep expired
+  // ones once the map grows past a small threshold. Without this the map keeps
+  // one entry per distinct conversation recalled for the whole session.
+  if (catalogCountCache.size > 64) {
+    for (const [id, entry] of catalogCountCache) {
+      if (now - entry.at >= CATALOG_COUNT_CACHE_TTL_MS) catalogCountCache.delete(id);
+    }
+  }
   return authoritative;
 }
 
