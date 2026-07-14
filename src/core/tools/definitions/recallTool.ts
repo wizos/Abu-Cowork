@@ -1,8 +1,31 @@
 import type { ToolDefinition } from '../../../types';
 import { useChatStore } from '../../../stores/chatStore';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
+import { catalogGetCount } from '../../session/conversationStorage';
 import { TOOL_NAMES } from '../toolNames';
 import { getI18n, format } from '../../../i18n';
+
+/**
+ * Light TTL cache for the catalog's authoritative message_count, keyed by
+ * conversation id. The recall tool displays a message count per listed
+ * conversation and prefers the catalog (authoritative) over the in-memory
+ * conversationIndex.messageCount, which can understate a windowed
+ * conversation (message-storage P1 step 3). Caching keeps a burst of recall
+ * calls from issuing one IPC per conversation per call. Misses (null) are NOT
+ * cached — we fall back to the optimistic index count and retry next time.
+ */
+const catalogCountCache = new Map<string, { count: number; at: number }>();
+const CATALOG_COUNT_CACHE_TTL_MS = 5000;
+
+async function resolveDisplayCount(convId: string, fallback: number): Promise<number> {
+  const now = Date.now();
+  const cached = catalogCountCache.get(convId);
+  if (cached && now - cached.at < CATALOG_COUNT_CACHE_TTL_MS) return cached.count;
+  const authoritative = await catalogGetCount(convId);
+  if (authoritative == null) return fallback; // catalog unavailable → optimistic fallback
+  catalogCountCache.set(convId, { count: authoritative, at: now });
+  return authoritative;
+}
 
 /**
  * Format a memory file's content for return. Strips frontmatter (already
@@ -160,6 +183,11 @@ Memories are snapshots from a point in the past and may be outdated. Before givi
     // --- 3. Conversation index (from chatStore) ---
     try {
       const conversationIndex = useChatStore.getState().conversationIndex;
+      // The `>= 2` gate and sort stay on the optimistic index count — it is the
+      // fast, pre-load value already in memory for every conversation, and the
+      // gate is coarse. Only the DISPLAYED count (below) is upgraded to the
+      // catalog's authoritative value (message-storage P1 step 3): read priority
+      // changes, write timing does not.
       const convList = Object.values(conversationIndex)
         .filter(c => c.messageCount >= 2)
         .sort((a, b) => b.updatedAt - a.updatedAt);
@@ -171,9 +199,13 @@ Memories are snapshots from a point in the past and may be outdated. Before givi
       matched = matched.slice(0, limit);
 
       if (matched.length > 0) {
-        const lines = matched.map(c =>
-          format(t.convLine, { title: c.title || t.untitled, count: c.messageCount, time: formatTime(c.updatedAt) })
-        );
+        // Prefer the catalog's authoritative count for display; fall back to the
+        // optimistic index count when the catalog is unavailable. Bounded to the
+        // <= limit matched rows and TTL-cached, so this is at most `limit` IPCs.
+        const lines = await Promise.all(matched.map(async c => {
+          const count = await resolveDisplayCount(c.id, c.messageCount);
+          return format(t.convLine, { title: c.title || t.untitled, count, time: formatTime(c.updatedAt) });
+        }));
         sections.push(`${format(t.sectionConversations, { count: matched.length })}\n${lines.join('\n')}`);
       }
     } catch {
