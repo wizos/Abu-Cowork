@@ -1,8 +1,7 @@
-import { useState, useCallback, useLayoutEffect, useSyncExternalStore } from 'react';
-import { Virtuoso, type Components } from 'react-virtuoso';
+import { useState, useCallback, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
+import { Virtuoso, type Components, type VirtuosoHandle } from 'react-virtuoso';
 import { useChatStore, useActiveConversation } from '@/stores/chatStore';
 import type { Message, ImageAttachment } from '@/types';
-import { useAutoScroll } from '@/hooks/useAutoScroll';
 import { runAgentLoop } from '@/core/agent/agentLoop';
 import { getPendingCommandConfirmation, resolveCommandConfirmation, subscribeToCommandConfirmation, getPendingFilePermission, resolveFilePermission, subscribeToFilePermission, getPendingWorkspaceRequest, resolveWorkspaceRequest, subscribeToWorkspaceRequest, getPendingUserQuestions, subscribeUserQuestion, findQuestionOwningMessage } from '@/core/agent/permissionBridge';
 import { useSettingsStore, getActiveApiKey, providerRequiresApiKey } from '@/stores/settingsStore';
@@ -249,30 +248,30 @@ export default function ChatView() {
     resolveWorkspaceRequest(null);
   };
 
-  const isFollowing = activeConv?.status === 'running';
-  const { containerRef, isAtBottom, scrollToBottom, resetToBottom } = useAutoScroll({ following: isFollowing });
   // Virtuoso needs the actual scrollable DOM node (via `customScrollParent`)
-  // to virtualize inside the existing scroll container instead of creating
-  // its own nested one. `containerRef` (from useAutoScroll) stays attached to
-  // the same node so the hook's MutationObserver/ResizeObserver-based
-  // auto-scroll keeps working unchanged in this step.
+  // to virtualize inside this container instead of creating its own nested
+  // scroller.
   const [scrollParentEl, setScrollParentEl] = useState<HTMLDivElement | null>(null);
-  const setScrollContainer = useCallback(
-    (node: HTMLDivElement | null) => {
-      containerRef(node);
-      setScrollParentEl(node);
-    },
-    [containerRef],
-  );
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
+  // Mirrors Virtuoso's own atBottomStateChange callback — drives the
+  // "jump to latest" floating button. Starts true so the button doesn't
+  // flash on first mount before Virtuoso reports its initial state.
+  const [isAtBottom, setIsAtBottom] = useState(true);
+
+  const scrollToLatest = useCallback((behavior: 'smooth' | 'auto' = 'smooth') => {
+    virtuosoRef.current?.scrollToIndex({ index: 'LAST', align: 'end', behavior });
+    // Optimistic — atBottomStateChange will confirm once the scroll settles.
+    setIsAtBottom(true);
+  }, []);
 
   // Scroll to bottom when switching conversations.
   // useLayoutEffect runs after DOM commit but before paint,
   // so the user never sees the wrong scroll position.
   useLayoutEffect(() => {
     if (activeConvId) {
-      scrollToBottom();
+      scrollToLatest('auto');
     }
-  }, [activeConvId, scrollToBottom]);
+  }, [activeConvId, scrollToLatest]);
 
   const handleSend = async (text: string, images?: ImageAttachment[], workspacePath?: string | null) => {
     // Block sending if API key is not configured (Ollama doesn't need one)
@@ -304,9 +303,10 @@ export default function ChatView() {
     if (isNewConversation && !useSettingsStore.getState().sidebarCollapsed) {
       useSettingsStore.getState().toggleSidebar();
     }
-    // Re-enable auto-scroll when user sends a message.
-    // Don't scroll immediately — let MutationObserver scroll after the new message renders.
-    resetToBottom();
+    // Re-enable follow + jump to the new message. Virtuoso measures the
+    // freshly-appended item on its own next render, so this doesn't need to
+    // wait for a DOM mutation callback the way the old MutationObserver did.
+    scrollToLatest('auto');
     await runAgentLoop(convId, text, { images });
   };
 
@@ -516,13 +516,23 @@ export default function ChatView() {
       <ComputerUseStatusBar onStop={() => useChatStore.getState().cancelStreaming(activeConv.id)} />
 
       {/* Messages Area */}
-      <div className="relative flex-1 min-h-0 overflow-y-auto" ref={setScrollContainer}>
+      <div className="relative flex-1 min-h-0 overflow-y-auto" ref={setScrollParentEl}>
         <div className="w-full max-w-4xl mx-auto px-6 md:px-10 pt-5 pb-16 overflow-hidden">
           <Virtuoso
+            ref={virtuosoRef}
             data={messageGroups}
             customScrollParent={scrollParentEl ?? undefined}
             computeItemKey={(index, group) => group[0]?.id ?? index}
             components={virtuosoComponents}
+            // Stick to bottom on new/growing content, but only while already
+            // at the bottom — Virtuoso pauses this itself once the user
+            // scrolls up. 'auto' (instant) rather than 'smooth': streamed
+            // text arrives in small, frequent chunks, so instant jumps read
+            // as continuous motion without fighting a CSS scroll animation
+            // that's still in flight when the next chunk lands.
+            followOutput="auto"
+            atBottomStateChange={setIsAtBottom}
+            atBottomThreshold={100}
             context={{
               // Typing indicator - brief flash before assistant message is created
               showTypingIndicator:
@@ -548,7 +558,7 @@ export default function ChatView() {
         {/* Scroll-to-bottom button */}
         {!isAtBottom && (
           <button
-            onClick={scrollToBottom}
+            onClick={() => scrollToLatest('smooth')}
             className="sticky bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--abu-bg-base)]/90 border border-[var(--abu-border)] text-[13px] text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-base)] transition-all backdrop-blur-sm"
           >
             <ChevronDown className="h-3.5 w-3.5" />
