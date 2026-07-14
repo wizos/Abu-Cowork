@@ -14,10 +14,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import MarkdownRenderer from '@/components/chat/MarkdownRenderer';
 import CodeMirrorEditor from './CodeMirrorEditor';
 import { VersionHistoryMenu } from './VersionHistoryMenu';
-import { Loader2, X, FolderOpen, Code, Eye, Globe, History, FileCode, FileText, FileImage, FileSpreadsheet, FileType, File, Maximize2, Minimize2 } from 'lucide-react';
+import { Loader2, X, FolderOpen, Code, Eye, ExternalLink, History, FileCode, FileText, FileImage, FileSpreadsheet, FileType, File, Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DocSelectionLayer } from '@/features/reference/DocSelectionLayer';
 import { cn } from '@/lib/utils';
+import { getToolbarButtons } from './previewToolbarConfig';
+import { openWithDefaultApp } from '@/utils/openWithDefaultApp';
 
 const PdfPreview = lazy(() => import('@/components/preview/PdfPreview'));
 const DocxPreview = lazy(() => import('@/components/preview/DocxPreview'));
@@ -133,6 +135,7 @@ export default function PreviewPanel() {
   const rendererType = previewFilePath ? getRendererType(previewFilePath) : 'unsupported';
   const fileName = previewFilePath && isDataUrl(previewFilePath) ? t.panel.imagePreview : (previewFilePath ? getBaseName(previewFilePath) : '');
   const Icon = previewFilePath ? (isDataUrl(previewFilePath) ? FileImage : getFileIcon(previewFilePath)) : File;
+  const toolbarButtons = getToolbarButtons(rendererType);
 
   useEffect(() => {
     if (!previewFilePath) {
@@ -409,25 +412,17 @@ export default function PreviewPanel() {
     }
   };
 
-  const handleOpenInBrowser = async () => {
+  const handleOpenInApp = async () => {
     if (!previewFilePath) return;
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      const platform = navigator.platform.toLowerCase();
-      const command = platform.includes('win')
-        ? `start "" "${previewFilePath}"`
-        : platform.includes('linux')
-          ? `xdg-open "${previewFilePath}"`
-          : `open "${previewFilePath}"`;
-      await invoke('run_shell_command', {
-        command,
-        cwd: null,
-        background: true,
-        timeout: 5,
-        sandboxEnabled: false,
-      });
+      await openWithDefaultApp(previewFilePath);
     } catch (err) {
-      console.error('[PreviewPanel] Failed to open in browser:', err);
+      console.error('[PreviewPanel] open in app failed:', err);
+      useToastStore.getState().addToast({
+        type: 'error',
+        title: t.chat.openFailed,
+        message: t.panel.openInAppFailed,
+      });
     }
   };
 
@@ -444,7 +439,7 @@ export default function PreviewPanel() {
         <span className="text-[13px] font-medium text-[var(--abu-text-primary)] truncate flex-1">
           {fileName}
         </span>
-        {(rendererType === 'html' || rendererType === 'markdown') && (
+        {toolbarButtons.viewToggle && (
           <div className="flex items-center bg-[var(--abu-bg-hover)] rounded p-0.5 mr-1">
             <button
               onClick={() => setViewMode('preview')}
@@ -462,7 +457,7 @@ export default function PreviewPanel() {
             </button>
           </div>
         )}
-        {EDITABLE_TYPES.has(rendererType) && (
+        {toolbarButtons.versionHistory && (
           <div className="relative" ref={versionHistoryRef}>
             <Button
               variant="ghost"
@@ -482,26 +477,28 @@ export default function PreviewPanel() {
             />
           </div>
         )}
-        {rendererType === 'html' && (
+        {toolbarButtons.openInApp && (
           <Button
             variant="ghost"
             size="icon"
-            onClick={handleOpenInBrowser}
+            onClick={handleOpenInApp}
             className="h-6 w-6 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-clay)]"
-            title={t.chat.openInBrowser}
+            title={t.panel.openInApp}
           >
-            <Globe className="h-3.5 w-3.5" />
+            <ExternalLink className="h-3.5 w-3.5" />
           </Button>
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsFullscreen((v) => !v)}
-          className="h-6 w-6 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-clay)]"
-          title={isFullscreen ? t.panel.exitFullscreen : t.panel.fullscreen}
-        >
-          {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-        </Button>
+        {toolbarButtons.fullscreen && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsFullscreen((v) => !v)}
+            className="h-6 w-6 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-clay)]"
+            title={isFullscreen ? t.panel.exitFullscreen : t.panel.fullscreen}
+          >
+            {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="icon"
