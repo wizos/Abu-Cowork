@@ -533,6 +533,12 @@ export default function ChatView() {
             followOutput="auto"
             atBottomStateChange={setIsAtBottom}
             atBottomThreshold={100}
+            // Keep ~one viewport of rows mounted above/below the visible window.
+            // Rows still virtualize (far-off messages stay unmounted), but this
+            // widens the live band so inline iframe widgets (HtmlWidgetBlock)
+            // survive the small scroll jitter of normal reading without the
+            // srcdoc reload + in-widget JS state reset that a bare unmount causes.
+            increaseViewportBy={{ top: 900, bottom: 900 }}
             context={{
               // Typing indicator - brief flash before assistant message is created
               showTypingIndicator:
