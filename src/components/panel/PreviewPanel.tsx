@@ -14,7 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import MarkdownRenderer from '@/components/chat/MarkdownRenderer';
 import CodeMirrorEditor from './CodeMirrorEditor';
 import { VersionHistoryMenu } from './VersionHistoryMenu';
-import { Loader2, X, FolderOpen, Code, Eye, ExternalLink, History, FileCode, FileText, FileImage, FileSpreadsheet, FileType, File, Maximize2, Minimize2 } from 'lucide-react';
+import { Loader2, X, FolderOpen, Code, Eye, AppWindow, History, FileCode, FileText, FileImage, FileSpreadsheet, FileType, File, Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DocSelectionLayer } from '@/features/reference/DocSelectionLayer';
 import { cn } from '@/lib/utils';
@@ -446,14 +446,14 @@ export default function PreviewPanel() {
               className={`p-1 rounded text-[10px] ${viewMode === 'preview' ? 'bg-white' : ''}`}
               title={t.panel.previewMode}
             >
-              <Eye className="w-3 h-3" />
+              <Eye className="w-3 h-3" strokeWidth={1.5} />
             </button>
             <button
               onClick={() => setViewMode('source')}
               className={`p-1 rounded text-[10px] ${viewMode === 'source' ? 'bg-white' : ''}`}
               title={t.panel.sourceMode}
             >
-              <Code className="w-3 h-3" />
+              <Code className="w-3 h-3" strokeWidth={1.5} />
             </button>
           </div>
         )}
@@ -466,7 +466,7 @@ export default function PreviewPanel() {
               className="h-6 w-6 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-clay)]"
               title={t.panel.versionHistory}
             >
-              <History className="h-3.5 w-3.5" />
+              <History className="h-3.5 w-3.5" strokeWidth={1.5} />
             </Button>
             <VersionHistoryMenu
               filePath={previewFilePath}
@@ -485,7 +485,7 @@ export default function PreviewPanel() {
             className="h-6 w-6 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-clay)]"
             title={t.panel.openInApp}
           >
-            <ExternalLink className="h-3.5 w-3.5" />
+            <AppWindow className="h-3.5 w-3.5" strokeWidth={1.5} />
           </Button>
         )}
         {toolbarButtons.fullscreen && (
@@ -496,7 +496,7 @@ export default function PreviewPanel() {
             className="h-6 w-6 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-clay)]"
             title={isFullscreen ? t.panel.exitFullscreen : t.panel.fullscreen}
           >
-            {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+            {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" strokeWidth={1.5} /> : <Maximize2 className="h-3.5 w-3.5" strokeWidth={1.5} />}
           </Button>
         )}
         <Button
@@ -506,7 +506,7 @@ export default function PreviewPanel() {
           className="h-6 w-6 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)]"
           title={t.panel.closePreview}
         >
-          <X className="h-3.5 w-3.5" />
+          <X className="h-3.5 w-3.5" strokeWidth={1.5} />
         </Button>
       </div>
 
