@@ -179,7 +179,6 @@ export interface TranslationDict {
     inbox: string;
     searchResults: string;
     searchNoResults: string;
-    searchMinChars: string;
   };
 
   // Todos

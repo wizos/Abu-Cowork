@@ -510,8 +510,9 @@ export interface SearchHit {
  * Best-effort conversation full-text search. Returns `[]` on any failure
  * (IPC error, DB not initialized, etc.) — callers must treat that the same as
  * "no results," never as a hard error. `limit` defaults to 50 on the Rust
- * side when omitted. Queries under 3 characters short-circuit to `[]` in
- * `search_core` (trigram tokenizer can't match anything shorter).
+ * side when omitted. `search_core` picks the strategy by length: 1-2 char
+ * queries use a LIKE substring fallback (the trigram tokenizer can't match
+ * anything shorter), 3+ char queries use the ranked FTS5 trigram index.
  */
 export async function catalogSearch(query: string, limit?: number): Promise<SearchHit[]> {
   try {

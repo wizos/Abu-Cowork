@@ -152,7 +152,6 @@ const enUS: TranslationDict = {
     inbox: 'Inbox',
     searchResults: 'Search results',
     searchNoResults: 'No matches found',
-    searchMinChars: 'Type at least 3 characters',
   },
 
   todos: {

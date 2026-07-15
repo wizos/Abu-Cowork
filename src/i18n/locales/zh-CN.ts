@@ -152,7 +152,6 @@ const zhCN: TranslationDict = {
     inbox: '收件箱',
     searchResults: '搜索结果',
     searchNoResults: '无匹配结果',
-    searchMinChars: '至少输入 3 个字',
   },
 
   todos: {

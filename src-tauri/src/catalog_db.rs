@@ -85,7 +85,9 @@ fn init_schema(conn: &Connection) -> Result<(), String> {
         -- A rebuildable projection, same invariant as conversation_catalog:
         -- catalog_reconcile repopulates it from JSONL, never authoritative.
         -- tokenize='trigram' gives substring matching (incl. CJK) without a
-        -- real tokenizer; requires >=3 chars per query (enforced in search_core).
+        -- real tokenizer; the trigram MATCH path only works for queries
+        -- >=3 chars, so search_core falls back to a manual LIKE scan for
+        -- shorter queries (see search_core / search_like_core).
         CREATE VIRTUAL TABLE IF NOT EXISTS conversation_fts USING fts5(
             conv_id UNINDEXED,
             title,
@@ -412,15 +414,178 @@ fn sanitize_match_query(query: &str) -> String {
     format!("\"{}\"", query.replace('"', "\"\""))
 }
 
-/// Search conversation titles+bodies. Short-circuits to `Ok(vec![])` for
-/// queries under 3 *characters* (not bytes, so CJK counts correctly) — the
-/// trigram tokenizer cannot match anything shorter than a trigram anyway.
-/// Joins back to `conversation_catalog` so soft-deleted (`missing = 1`)
-/// conversations never surface, and so `title` reflects the catalog's
-/// authoritative value rather than whatever was last indexed into FTS.
+/// Escapes the LIKE metacharacters `%`, `_`, and the escape character `\`
+/// itself, so a pattern built from raw user input matches literally —
+/// mirroring `sanitize_match_query`'s literal-substring guarantee for the
+/// trigram MATCH path, just for `LIKE ... ESCAPE '\'` instead of FTS5 MATCH
+/// syntax.
+fn escape_like_pattern(query: &str) -> String {
+    let mut escaped = String::with_capacity(query.len());
+    for c in query.chars() {
+        match c {
+            '\\' => escaped.push_str("\\\\"),
+            '%' => escaped.push_str("\\%"),
+            '_' => escaped.push_str("\\_"),
+            other => escaped.push(other),
+        }
+    }
+    escaped
+}
+
+/// Finds the first index (in `char` units) at which `needle_lower` matches
+/// `haystack` case-insensitively (ASCII-only, matching LIKE's default
+/// collation). Pure char-slice comparison — no byte offsets involved, so
+/// callers stay UTF-8-boundary-safe automatically.
+///
+/// `needle_lower` must already be lowercased by the caller. Each candidate
+/// window of `haystack` is lowercased on the fly (one char at a time,
+/// discarded immediately) rather than up front — this lets callers avoid
+/// allocating a lowercased copy of the *entire* haystack just to find one
+/// match, which matters when haystack is a long conversation body and this
+/// runs per search hit.
+fn find_char_subslice_ci(haystack: &[char], needle_lower: &[char]) -> Option<usize> {
+    if needle_lower.is_empty() || needle_lower.len() > haystack.len() {
+        return None;
+    }
+    haystack.windows(needle_lower.len()).position(|w| {
+        w.iter()
+            .zip(needle_lower)
+            .all(|(h, n)| h.to_ascii_lowercase() == *n)
+    })
+}
+
+/// Builds a highlight snippet for the LIKE fallback path (1-2 char queries),
+/// since `snippet()` only works alongside an FTS5 MATCH query. Mirrors the
+/// trigram path's `snippet()` shape: a ~32-char window on each side of the
+/// match, `…` truncation markers, and the same STX/ETX (`\u{2}`/`\u{3}`)
+/// highlight sentinels `renderMarkedText` (src/utils/searchHighlight.tsx)
+/// expects.
+///
+/// All indexing operates on `Vec<char>` (never raw byte offsets), so a
+/// window boundary landing mid-CJK-run can't split a multi-byte character.
+/// Matching is ASCII-case-insensitive only (matching SQLite's default LIKE
+/// behavior) via `to_ascii_lowercase()`, which is guaranteed 1-char-to-1-char
+/// and so never desyncs indices.
+///
+/// Perf note: `body_chars` (the char-indexed body) is unavoidable — the ±32
+/// window below is sliced by char index for UTF-8 safety. But the match
+/// search itself does NOT lowercase a second full copy of the body first;
+/// `find_char_subslice_ci` lowercases each candidate window on the fly and
+/// discards it immediately. Skipping that second whole-body allocation
+/// matters here because this runs once per search hit (up to `LIMIT`, i.e.
+/// up to 50 times per keystroke), and conversation bodies can be long.
+fn build_like_snippet(body: &str, query: &str) -> String {
+    const WINDOW: usize = 32;
+    let body_chars: Vec<char> = body.chars().collect();
+    let query_lower: Vec<char> = query.chars().map(|c| c.to_ascii_lowercase()).collect();
+
+    let start_idx = match find_char_subslice_ci(&body_chars, &query_lower) {
+        Some(i) => i,
+        None => {
+            // Defensive fallback: shouldn't happen since the LIKE clause
+            // already matched this row, but never panic — return a leading
+            // window of the body instead.
+            let end = WINDOW.min(body_chars.len());
+            return body_chars[..end].iter().collect();
+        }
+    };
+    let end_idx = start_idx + query_lower.len();
+    let window_start = start_idx.saturating_sub(WINDOW);
+    let window_end = (end_idx + WINDOW).min(body_chars.len());
+
+    let mut out = String::new();
+    if window_start > 0 {
+        out.push('…');
+    }
+    out.extend(&body_chars[window_start..start_idx]);
+    out.push('\u{2}');
+    out.extend(&body_chars[start_idx..end_idx]);
+    out.push('\u{3}');
+    out.extend(&body_chars[end_idx..window_end]);
+    if window_end < body_chars.len() {
+        out.push('…');
+    }
+    out
+}
+
+/// LIKE-based fallback for 1-2 char queries, which the trigram tokenizer
+/// cannot match (trigram indexes only cover 3+-char runs). Substring
+/// semantics are preserved literally via `escape_like_pattern`; highlighting
+/// is built manually via `build_like_snippet` since `snippet()` requires an
+/// FTS5 MATCH query to work.
+///
+/// Perf note: unlike the trigram MATCH path (index-accelerated), this is a
+/// full linear LIKE scan of every non-missing conversation's `body` column —
+/// there's no index that can accelerate a 1-2 char substring search. Fine at
+/// the scale of one user's local conversation history; would need
+/// revisiting if that history grows very large.
+///
+/// Concurrency tradeoff (deliberate, not an oversight): the caller
+/// (`catalog_search`) runs this whole scan while holding `db.conn`'s Mutex,
+/// so a 1-2 char query can briefly delay a concurrent `catalog_bump_count`
+/// (fired on every message append during a running agent turn) until the
+/// scan finishes. This is accepted for V1 rather than adding a second
+/// (read-only) connection, because:
+///   - it's bounded on both ends: the frontend debounces search input by
+///     200ms (see the `isFtsSearching` effect in `Sidebar.tsx`) and this
+///     query is capped by `LIMIT`, so the scan itself is short;
+///   - the actual conversation *data* write is the JSONL append
+///     (`src/core/session/conversationStorage.ts`), which never touches this
+///     mutex at all — `catalog_bump_count` only updates the best-effort,
+///     fully re-derivable-from-JSONL catalog counters (see `reconcile_core`),
+///     so a brief delay to that update is harmless, not a data-loss risk.
+/// If this ever proves to matter in practice (e.g. very large histories, or
+/// bump_count latency becomes user-visible), the fix is a dedicated
+/// read-only search connection instead of sharing `db.conn` — not attempted
+/// here to avoid over-engineering a case that's currently hypothetical.
+fn search_like_core(conn: &Connection, query: &str, limit: i64) -> Result<Vec<SearchHit>, String> {
+    let pattern = format!("%{}%", escape_like_pattern(query));
+    let mut stmt = conn
+        .prepare(
+            "SELECT f.conv_id, c.title, f.body
+             FROM conversation_fts f
+             JOIN conversation_catalog c ON c.conv_id = f.conv_id
+             WHERE c.missing = 0 AND f.body LIKE ?1 ESCAPE '\\'
+             ORDER BY c.updated_at DESC
+             LIMIT ?2",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(params![pattern, limit], |row| {
+            let conv_id: String = row.get(0)?;
+            let title: String = row.get(1)?;
+            let body: String = row.get(2)?;
+            Ok((conv_id, title, body))
+        })
+        .map_err(|e| e.to_string())?;
+    let mut result = Vec::new();
+    for r in rows {
+        let (conv_id, title, body) = r.map_err(|e| e.to_string())?;
+        result.push(SearchHit {
+            snippet: build_like_snippet(&body, query),
+            conv_id,
+            title,
+            rank: 0.0,
+        });
+    }
+    Ok(result)
+}
+
+/// Search conversation titles+bodies. Queries of 1-2 *characters* (not
+/// bytes, so CJK counts correctly) go through `search_like_core` — the
+/// trigram tokenizer can't match anything shorter than a trigram. An empty
+/// (post-trim) query short-circuits to `Ok(vec![])`. Joins back to
+/// `conversation_catalog` so soft-deleted (`missing = 1`) conversations
+/// never surface, and so `title` reflects the catalog's authoritative value
+/// rather than whatever was last indexed into FTS.
 pub fn search_core(conn: &Connection, query: &str, limit: i64) -> Result<Vec<SearchHit>, String> {
-    if query.trim().chars().count() < 3 {
+    let trimmed = query.trim();
+    let char_count = trimmed.chars().count();
+    if char_count == 0 {
         return Ok(Vec::new());
+    }
+    if char_count < 3 {
+        return search_like_core(conn, trimmed, limit);
     }
     let match_query = sanitize_match_query(query);
     // Highlight delimiters are the STX/ETX control characters (`\u{2}`/`\u{3}`),
@@ -2094,7 +2259,7 @@ mod tests {
     }
 
     #[test]
-    fn fts_search_cjk_trigram_hits_and_short_query_short_circuits() {
+    fn fts_search_cjk_trigram_hits_and_short_query_falls_back_to_like() {
         let conn = open_test_db();
         insert_catalog_row(&conn, "conv-cjk", "重构消息存储架构讨论");
         fts_upsert_core(&conn, "conv-cjk", "重构消息存储架构讨论", "user: 我们来聊聊重构消息存储架构的方案", true).unwrap();
@@ -2103,11 +2268,136 @@ mod tests {
         assert_eq!(hits.len(), 1, "a >=3-char CJK substring must hit via the trigram tokenizer");
         assert_eq!(hits[0].conv_id, "conv-cjk");
 
+        // A <3-char query must no longer short-circuit to empty — it should
+        // fall back to the LIKE scan and still find the conversation (counted
+        // by chars not bytes, since "消息" is 2 chars / 6 bytes).
         let short_hits = search_core(&conn, "消息", 50).unwrap();
-        assert!(
-            short_hits.is_empty(),
-            "a <3-char query must short-circuit to empty (trigram needs >=3 chars), counted by chars not bytes"
+        assert_eq!(
+            short_hits.len(),
+            1,
+            "a <3-char CJK query must find the conversation via the LIKE fallback"
         );
+        assert_eq!(short_hits[0].conv_id, "conv-cjk");
+    }
+
+    // ── 15. Short-query (<3 char) LIKE fallback (search naturally at any length) ──
+
+    #[test]
+    fn fts_search_one_char_cjk_query_finds_body_match_with_highlighted_snippet() {
+        let conn = open_test_db();
+        insert_catalog_row(&conn, "conv-tax", "财务讨论");
+        fts_upsert_core(&conn, "conv-tax", "财务讨论", "user: 今年的税率上调了不少", true).unwrap();
+
+        let hits = search_core(&conn, "税", 50).unwrap();
+        assert_eq!(hits.len(), 1, "a 1-char CJK query must find a conversation whose BODY contains it");
+        assert_eq!(hits[0].conv_id, "conv-tax");
+        assert!(
+            hits[0].snippet.contains('\u{2}') && hits[0].snippet.contains('\u{3}'),
+            "the LIKE-path snippet must still wrap the match in STX/ETX sentinels, got: {:?}",
+            hits[0].snippet
+        );
+        // The matched char itself must sit between the sentinels.
+        let stx = hits[0].snippet.find('\u{2}').unwrap();
+        let etx = hits[0].snippet.find('\u{3}').unwrap();
+        assert_eq!(&hits[0].snippet[stx + '\u{2}'.len_utf8()..etx], "税");
+    }
+
+    #[test]
+    fn fts_search_two_char_query_finds_body_match() {
+        let conn = open_test_db();
+        insert_catalog_row(&conn, "conv-ab", "Some Conversation");
+        fts_upsert_core(&conn, "conv-ab", "Some Conversation", "user: the ab test results are in", true).unwrap();
+
+        let hits = search_core(&conn, "ab", 50).unwrap();
+        assert_eq!(hits.len(), 1, "a 2-char query must find a conversation whose body contains it");
+        assert_eq!(hits[0].conv_id, "conv-ab");
+    }
+
+    #[test]
+    fn fts_search_like_metachars_are_treated_literally() {
+        let conn = open_test_db();
+        // conv-pct's body contains the literal substring "a%"; conv-other's
+        // body contains a bare 'a' but NOT "a%" immediately after it. A
+        // correctly-escaped LIKE query for "a%" must match only conv-pct —
+        // an unescaped implementation would treat '%' as a wildcard and
+        // (since any string with a bare 'a' satisfies "%a%%") incorrectly
+        // match conv-other too.
+        insert_catalog_row(&conn, "conv-pct", "Discount Talk");
+        fts_upsert_core(&conn, "conv-pct", "Discount Talk", "user: let's give a% discount today", true).unwrap();
+        insert_catalog_row(&conn, "conv-other", "Other Conversation");
+        fts_upsert_core(&conn, "conv-other", "Other Conversation", "user: totally unrelated content here", true).unwrap();
+
+        let hits = search_core(&conn, "a%", 50).unwrap();
+        assert_eq!(hits.len(), 1, "a literal '%' in the query must not act as a wildcard: {:?}", hits.iter().map(|h| &h.conv_id).collect::<Vec<_>>());
+        assert_eq!(hits[0].conv_id, "conv-pct");
+
+        // Likewise "_" is a LIKE single-char wildcard and must be literal.
+        // conv-underscore's body contains "o_" literally; conv-other has
+        // plenty of bare 'o's but none immediately followed by '_'.
+        insert_catalog_row(&conn, "conv-underscore", "Underscore Talk");
+        fts_upsert_core(&conn, "conv-underscore", "Underscore Talk", "user: the variable is named fo_bar", true).unwrap();
+        let underscore_hits = search_core(&conn, "o_", 50).unwrap();
+        assert_eq!(
+            underscore_hits.len(),
+            1,
+            "a literal '_' in the query must not act as a single-char wildcard: {:?}",
+            underscore_hits.iter().map(|h| &h.conv_id).collect::<Vec<_>>()
+        );
+        assert_eq!(underscore_hits[0].conv_id, "conv-underscore");
+    }
+
+    #[test]
+    fn fts_search_short_query_utf8_boundary_safety_mid_cjk_run() {
+        let conn = open_test_db();
+        // A body that is a long, unbroken run of CJK characters around the
+        // match, so a naive byte-offset +/-32 window would very likely land
+        // mid-character. char-based windowing must never panic and must
+        // always produce valid UTF-8.
+        let padding_before: String = "重构消息存储架构讨论一二三四五六七八九十甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未申酉戌亥".repeat(3);
+        let padding_after: String = "长会话稳健性大修计划审批排队中止桌宠观测部署实验功能开关创作工作台版本历史差异视图".repeat(3);
+        let body = format!("user: {padding_before}税{padding_after}");
+        insert_catalog_row(&conn, "conv-boundary", "Boundary Test");
+        fts_upsert_core(&conn, "conv-boundary", "Boundary Test", &body, true).unwrap();
+
+        let hits = search_core(&conn, "税", 50).unwrap();
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].conv_id, "conv-boundary");
+        // If this constructed an invalid byte offset mid-character, either
+        // the code would have panicked already, or `hits[0].snippet` would
+        // fail basic sanity checks below.
+        assert!(hits[0].snippet.contains('税'));
+        assert!(hits[0].snippet.starts_with('…'), "a mid-body match must have a leading truncation marker");
+        assert!(hits[0].snippet.ends_with('…'), "a mid-body match must have a trailing truncation marker");
+    }
+
+    #[test]
+    fn build_like_snippet_window_and_case_insensitive_match_unchanged_on_long_body() {
+        // Regression test for the perf optimization that removed the second
+        // full-body-lowercase `Vec<char>` allocation from `build_like_snippet`
+        // (now `find_char_subslice_ci` lowercases each candidate window on
+        // the fly instead). Exercises a body long enough that the ±32-char
+        // window sits mid-string on both sides, and a query whose case
+        // doesn't match the body (case-insensitive match) — asserting the
+        // exact same window/sentinel/truncation output as before the change.
+        let before = "a".repeat(100);
+        let after = "b".repeat(100);
+        let body = format!("{before}NEEDLE{after}");
+
+        let snippet = build_like_snippet(&body, "needle");
+
+        assert!(snippet.starts_with('…'), "100 chars precede the match, so the window must be left-truncated");
+        assert!(snippet.ends_with('…'), "100 chars follow the match, so the window must be right-truncated");
+        assert!(
+            snippet.contains("\u{2}NEEDLE\u{3}"),
+            "matched text must keep its original casing, wrapped verbatim in STX/ETX sentinels, got: {:?}",
+            snippet
+        );
+        let stx = snippet.find('\u{2}').unwrap();
+        let etx = snippet.find('\u{3}').unwrap();
+        let before_window = &snippet['…'.len_utf8()..stx];
+        let after_window = &snippet[etx + '\u{3}'.len_utf8()..snippet.len() - '…'.len_utf8()];
+        assert_eq!(before_window, "a".repeat(32), "exactly 32 chars of left context expected");
+        assert_eq!(after_window, "b".repeat(32), "exactly 32 chars of right context expected");
     }
 
     #[test]
