@@ -5,8 +5,9 @@ import type { ToolDefinition } from '../../../types';
 import { isWindows } from '../../../utils/platform';
 import { joinPath, ensureParentDir, getParentDir } from '../../../utils/pathUtils';
 import { getTauriFetch } from '../../llm/tauriFetch';
+import { normalizeImageGenerationsUrl } from '../../llm/urlUtils';
 import { isSandboxEnabled, isNetworkIsolationEnabled } from '../../sandbox/config';
-import { useSettingsStore, getActiveApiKey, getActiveProvider } from '../../../stores/settingsStore';
+import { useSettingsStore, getDefaultImageBackend } from '../../../stores/settingsStore';
 import { useWorkspaceStore } from '../../../stores/workspaceStore';
 import {
   buildMacImageCommand,
@@ -18,12 +19,12 @@ import { getI18n, format } from '../../../i18n';
 
 export const generateImageTool: ToolDefinition = {
   name: TOOL_NAMES.GENERATE_IMAGE,
-  description: 'Generate an image from a text description (using DALL-E). Use when the user asks to generate photorealistic images, illustrations, logos, etc. For charts and data visualizations, output an HTML code block directly. Returns the saved image file path.',
+  description: 'Generate an image from a text description, using the default image-generation backend configured in Settings → Image Generation. Use when the user asks to generate photorealistic images, illustrations, logos, etc. For charts and data visualizations, output an HTML code block directly. Returns the saved image file path and displays the image inline.',
   inputSchema: {
     type: 'object',
     properties: {
       prompt: { type: 'string', description: 'Text description of the image to generate' },
-      size: { type: 'string', description: 'Image size: 1024x1024, 1792x1024, or 1024x1792 (default: 1024x1024)' },
+      size: { type: 'string', description: 'Optional image size — the accepted values depend on the backend (e.g. 1024x1024 or 2048x2048). Omit to use the backend\'s own default.' },
       style: { type: 'string', description: 'Image style: vivid or natural (default: vivid)' },
       save_path: { type: 'string', description: 'Optional absolute path to save the image. If not provided, saves to Downloads folder.' },
     },
@@ -31,48 +32,62 @@ export const generateImageTool: ToolDefinition = {
   },
   execute: async (input, context) => {
     const prompt = input.prompt as string;
-    const size = (input.size as string) || '1024x1024';
+    // No hardcoded default — an empty/omitted size lets the backend fall back
+    // to its own default dimensions. Some backends (e.g. Seedream) require a
+    // minimum pixel count (>=3686400px) well above the old 1024x1024 default
+    // and reject that value outright, so we must not force it.
+    const size = input.size as string | undefined;
     const style = (input.style as string) || 'vivid';
     const savePath = input.save_path as string | undefined;
 
     try {
-
       const state = useSettingsStore.getState();
 
-      // Resolve API key: auxiliaryServices.imageGen > active provider key (if OpenAI-compatible)
-      let apiKey = state.auxiliaryServices.imageGen?.apiKey ?? '';
-      if (!apiKey) {
-        const activeProvider = getActiveProvider(state);
-        if (activeProvider?.apiFormat === 'openai-compatible') {
-          apiKey = getActiveApiKey(state);
-        }
+      // Resolve the image-generation backend from the independent
+      // imageGeneration config (design doc §3.1, "C-a") — fully decoupled
+      // from chat providers/models, since a backend's endpoint may live on a
+      // different base path than any chat provider (e.g. Volcengine Agent
+      // Plan's /api/plan/v3 vs the chat endpoint /api/coding/v3).
+      const backend = getDefaultImageBackend(state);
+      if (!backend) {
+        return getI18n().toolResult.media.errNoImageBackend;
       }
-      if (!apiKey) {
-        return 'Error: No API key configured for image generation. Please set an OpenAI API key in Settings → Image Generation, or configure an OpenAI provider.';
-      }
+      const apiKey = backend.apiKey;
+      const modelId = backend.model;
 
-      const model = state.auxiliaryServices.imageGen?.model || 'dall-e-3';
-
-      // Resolve base URL: auxiliaryServices.imageGen.baseUrl > default OpenAI
-      const baseUrl = (state.auxiliaryServices.imageGen?.baseUrl || 'https://api.openai.com').replace(/\/+$/, '');
+      // Build the endpoint idempotently: users paste EITHER the bare base
+      // (`.../api/v3`) OR the full endpoint (`.../api/v3/images/generations`,
+      // exactly as Volcengine's docs present it). normalizeImageGenerationsUrl
+      // strips any trailing /images/generations before re-appending, and keeps a
+      // version segment (/api/v3, /v1) intact — so both inputs resolve correctly
+      // instead of doubling into .../images/generations/v1/images/generations.
+      // Default OpenAI-shape path regardless of backend.vendor — per-vendor
+      // request/response mappers are P3.
+      const endpoint = normalizeImageGenerationsUrl(backend.baseUrl);
 
       // Call image generation API via Tauri fetch (bypasses CORS)
       const fetchFn = await getTauriFetch();
 
       // Build request body — only include params the model supports
       const reqBody: Record<string, unknown> = {
-        model,
+        model: modelId,
         prompt,
         n: 1,
-        size,
         response_format: 'b64_json',
       };
+      // Only forward size when the caller explicitly passed one — omitting it
+      // lets the backend apply its own default instead of a DALL-E-shaped
+      // 1024x1024 that some backends (e.g. Seedream, which requires
+      // >=3686400px) reject outright.
+      if (size) {
+        reqBody.size = size;
+      }
       // DALL-E 3 supports style, other models may not
-      if (model.startsWith('dall-e-3')) {
+      if (modelId.startsWith('dall-e-3')) {
         reqBody.style = style;
       }
 
-      const response = await fetchFn(`${baseUrl}/v1/images/generations`, {
+      const response = await fetchFn(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -126,6 +141,14 @@ export const generateImageTool: ToolDefinition = {
       if (revisedPrompt) {
         msg += format(tm.revisedPrompt, { prompt: revisedPrompt });
       }
+
+      // Return just the text summary. The saved file already renders inline as
+      // a rich ImagePreviewCard (filename + real dimensions + preview + reveal),
+      // driven by workflowExtractor matching this "图片已保存到: <path>" text —
+      // a pre-existing path that covers both workspace and Downloads. Returning
+      // an extra base64 image block here would (a) double the image in the
+      // conversation and (b) push the full 2048×2048 base64 into the LLM
+      // context. So text only.
       return msg;
     } catch (err) {
       return `Error generating image: ${err instanceof Error ? err.message : String(err)}`;
