@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { invoke } from '@tauri-apps/api/core';
-import { writeTextFile } from '@tauri-apps/plugin-fs';
-import { readFileTool, writeFileTool, deleteFileTool } from './fileTools';
+import { writeTextFile, readTextFile, exists } from '@tauri-apps/plugin-fs';
+import { readFileTool, writeFileTool, deleteFileTool, editFileTool } from './fileTools';
 import { registerBuiltinTools } from '../builtins';
 import { toolRegistry } from '../registry';
 import { TOOL_NAMES } from '../toolNames';
@@ -271,5 +271,77 @@ describe('delete_file registration', () => {
   it('is registered as a builtin tool', () => {
     registerBuiltinTools();
     expect(toolRegistry.has(TOOL_NAMES.DELETE_FILE)).toBe(true);
+  });
+});
+
+// Regression coverage for the String.replace($-substitution) corruption bug:
+// editFileTool did `content.replace(oldContent, newContent)` with a *string*
+// replacement, so JS honored the special patterns `$$`, `$&`, `` $` ``, `$'`
+// inside new_content (regardless of the search being a plain string). An LLM
+// editing a file to insert text containing a literal `$` (prices, shell vars,
+// regex/LaTeX snippets, git diffs) would silently write the WRONG bytes while
+// the tool still reported "Successfully edited". The fix uses a function
+// replacer so the replacement is inserted verbatim.
+describe('editFileTool — new_content is inserted verbatim (no $-substitution)', () => {
+  beforeEach(() => {
+    vi.mocked(exists).mockResolvedValue(true);
+    vi.mocked(writeTextFile).mockClear();
+    vi.mocked(writeTextFile).mockResolvedValue(undefined);
+  });
+
+  function writtenContent(): string {
+    return vi.mocked(writeTextFile).mock.calls[0][1] as string;
+  }
+
+  it('does not expand `$&` into the matched old_content', async () => {
+    vi.mocked(readTextFile).mockResolvedValueOnce('a\nPLACEHOLDER\nb');
+
+    const result = await editFileTool.execute({
+      path: '/tmp/edit-dollar.txt',
+      old_content: 'PLACEHOLDER',
+      new_content: 'see $& again',
+    });
+
+    expect(String(result)).toContain('Successfully edited');
+    // Buggy behavior would produce "see PLACEHOLDER again".
+    expect(writtenContent()).toBe('a\nsee $& again\nb');
+  });
+
+  it('does not collapse `$$` into a single `$`', async () => {
+    vi.mocked(readTextFile).mockResolvedValueOnce('cost: TOKEN');
+
+    await editFileTool.execute({
+      path: '/tmp/edit-price.txt',
+      old_content: 'TOKEN',
+      new_content: 'was $$29.99',
+    });
+
+    // Buggy behavior would produce "cost: was $29.99".
+    expect(writtenContent()).toBe('cost: was $$29.99');
+  });
+
+  it("does not expand `` $` `` or `$'` (pre/post-match insertion)", async () => {
+    vi.mocked(readTextFile).mockResolvedValueOnce('before[X]after');
+
+    await editFileTool.execute({
+      path: '/tmp/edit-prepost.txt',
+      old_content: '[X]',
+      new_content: "a$`b$'c",
+    });
+
+    // Buggy behavior would splice in "before" (for $`) and "after" (for $').
+    expect(writtenContent()).toBe("beforea$`b$'cafter");
+  });
+
+  it('still performs a normal edit with no `$` in the replacement', async () => {
+    vi.mocked(readTextFile).mockResolvedValueOnce('const a = 1;\nconst b = 2;');
+
+    await editFileTool.execute({
+      path: '/tmp/edit-plain.txt',
+      old_content: 'const b = 2;',
+      new_content: 'const b = 3;',
+    });
+
+    expect(writtenContent()).toBe('const a = 1;\nconst b = 3;');
   });
 });

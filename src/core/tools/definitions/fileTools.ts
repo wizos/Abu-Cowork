@@ -327,8 +327,11 @@ export const editFileTool: ToolDefinition = {
         return `Error: old_content matches ${occurrences} locations. Please provide more surrounding context to make the match unique.`;
       }
 
-      // Perform replacement
-      const updated = content.replace(oldContent, newContent);
+      // Perform replacement. Use a function replacer so new_content is inserted
+      // verbatim — a string replacement would let JS interpret `$$`, `$&`,
+      // `` $` ``, `$'` in new_content as special patterns (even with a string
+      // search), silently corrupting any content containing a literal `$`.
+      const updated = content.replace(oldContent, () => newContent);
       await writeTextFile(path, updated);
 
       const oldLines = oldContent.split('\n').length;
