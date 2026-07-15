@@ -331,6 +331,146 @@ describe('conversationStorage', () => {
         await expect(storage.catalogGetCount('conv-error')).resolves.toBeNull();
       });
     });
+
+    // message-storage hybrid P2: FTS5 conversation search wrapper.
+    describe('catalogSearch', () => {
+      it('resolves the hits returned by catalog_search, passing query and limit through', async () => {
+        const calls: Array<{ cmd: string; args?: Record<string, unknown> }> = [];
+        (invoke as ReturnType<typeof vi.fn>).mockImplementation(async (
+          cmd: string,
+          args?: Record<string, unknown>,
+        ) => {
+          calls.push({ cmd, args });
+          if (cmd === 'catalog_search') {
+            return [
+              { conv_id: 'conv-1', title: 'Widget Launch', snippet: '<mark>widget</mark> launch plan', rank: 0.5 },
+            ];
+          }
+          return undefined;
+        });
+
+        const hits = await storage.catalogSearch('widget', 10);
+        expect(hits).toEqual([
+          { conv_id: 'conv-1', title: 'Widget Launch', snippet: '<mark>widget</mark> launch plan', rank: 0.5 },
+        ]);
+        const searchCall = calls.find((c) => c.cmd === 'catalog_search');
+        expect(searchCall?.args).toEqual({ query: 'widget', limit: 10 });
+      });
+
+      it('returns [] when invoke throws', async () => {
+        (invoke as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+          throw new Error('IPC failure');
+        });
+        await expect(storage.catalogSearch('widget')).resolves.toEqual([]);
+      });
+
+      it('returns [] when catalog_search resolves nothing useful', async () => {
+        (invoke as ReturnType<typeof vi.fn>).mockImplementation(async () => undefined);
+        await expect(storage.catalogSearch('ab')).resolves.toEqual([]);
+      });
+    });
+
+    // message-storage hybrid P2: live-freshness single-conversation reindex.
+    describe('catalogReindexConversation', () => {
+      it('flushes the index then invokes catalog_reindex_conversation with convId + conversationsRoot', async () => {
+        const calls: Array<{ cmd: string; args?: Record<string, unknown> }> = [];
+        (invoke as ReturnType<typeof vi.fn>).mockImplementation(async (
+          cmd: string,
+          args?: Record<string, unknown>,
+        ) => {
+          calls.push({ cmd, args });
+          return undefined;
+        });
+
+        // Populate indexCache the way a real caller would: both
+        // renameConversation and turn-end call updateIndexEntry() immediately
+        // before catalogReindexConversation. Without this, indexCache stays
+        // null and flushIndex() is a correct no-op (nothing to flush).
+        await storage.updateIndexEntry({
+          id: 'conv-live',
+          title: 'Widget Launch',
+          createdAt: 1,
+          updatedAt: 2,
+          messageCount: 1,
+        });
+        calls.length = 0;
+
+        await storage.catalogReindexConversation('conv-live');
+
+        const reindexCalls = calls.filter((c) => c.cmd === 'catalog_reindex_conversation');
+        expect(reindexCalls).toHaveLength(1);
+        expect(reindexCalls[0].args?.convId).toBe('conv-live');
+        expect(reindexCalls[0].args?.conversationsRoot).toEqual(expect.stringContaining('conversations'));
+
+        // The index flush (atomic_write_text against index.json) must happen
+        // BEFORE the reindex invoke — otherwise the Rust side would read a
+        // stale on-disk title/timestamp for a rename that just updated the
+        // in-memory indexCache but hasn't hit disk yet (debounced up to 2s).
+        const flushIdx = calls.findIndex((c) => c.cmd === 'atomic_write_text' && typeof c.args?.path === 'string' && (c.args.path as string).includes('index.json'));
+        const reindexIdx = calls.findIndex((c) => c.cmd === 'catalog_reindex_conversation');
+        expect(flushIdx).toBeGreaterThanOrEqual(0);
+        expect(flushIdx).toBeLessThan(reindexIdx);
+      });
+
+      it('swallows errors from invoke and never throws', async () => {
+        (invoke as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+          throw new Error('IPC failure');
+        });
+        await expect(storage.catalogReindexConversation('conv-error')).resolves.toBeUndefined();
+      });
+
+      // Fix #3: catalogReindexConversation must also drain the pending
+      // message-append write queue (flushWrites), not just the index queue —
+      // otherwise a turn-end reindex can race a still-queued final message
+      // and scan a messages.jsonl missing the very content it's meant to index.
+      it('drains the pending message-append queue before invoking catalog_reindex_conversation', async () => {
+        const calls: Array<{ cmd: string; args?: Record<string, unknown> }> = [];
+        (invoke as ReturnType<typeof vi.fn>).mockImplementation(async (
+          cmd: string,
+          args?: Record<string, unknown>,
+        ) => {
+          calls.push({ cmd, args });
+          if (cmd === 'append_file_text') {
+            throw new Error('native append unavailable in test');
+          }
+          return undefined;
+        });
+
+        await storage.updateIndexEntry({
+          id: 'conv-live2',
+          title: 'Widget Launch 2',
+          createdAt: 1,
+          updatedAt: 2,
+          messageCount: 1,
+        });
+        calls.length = 0;
+
+        // Enqueue a message write WITHOUT flushing it — this sits in the
+        // 100ms-debounced write queue exactly like a real turn-end append
+        // does when setConversationStatus fires the reindex immediately after.
+        const appendPromise = storage.appendMessage('conv-live2', {
+          id: 'm-late',
+          role: 'assistant',
+          content: 'final reply',
+          timestamp: Date.now(),
+        });
+
+        await storage.catalogReindexConversation('conv-live2');
+        await appendPromise;
+
+        const writeIdx = calls.findIndex(
+          (c) =>
+            c.cmd === 'atomic_write_text' &&
+            typeof c.args?.path === 'string' &&
+            (c.args.path as string).includes('conv-live2') &&
+            (c.args.path as string).includes('messages.jsonl'),
+        );
+        const reindexIdx = calls.findIndex((c) => c.cmd === 'catalog_reindex_conversation');
+        expect(writeIdx).toBeGreaterThanOrEqual(0);
+        expect(reindexIdx).toBeGreaterThanOrEqual(0);
+        expect(writeIdx).toBeLessThan(reindexIdx);
+      });
+    });
   });
 
   describe('loadMessages · corruption resilience', () => {

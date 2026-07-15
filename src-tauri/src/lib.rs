@@ -1419,6 +1419,7 @@ pub fn run() {
             catalog_db::catalog_bump_observation_sequence,
             catalog_db::catalog_reconcile,
             catalog_db::catalog_search,
+            catalog_db::catalog_reindex_conversation,
             secret_get,
             secret_set,
             secret_delete,

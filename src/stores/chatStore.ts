@@ -675,9 +675,29 @@ export const useChatStore = create<ChatStore>()(
           }
         });
         // Persist to disk index
-        import('../core/session/conversationStorage').then(({ updateIndexEntry }) => {
+        import('../core/session/conversationStorage').then(({ updateIndexEntry, catalogReindexConversation }) => {
           const meta = get().conversationIndex[id];
-          if (meta) updateIndexEntry(meta).catch(() => {});
+          // Live-freshness write-through (message-storage hybrid P2): re-index
+          // this conversation's FTS title immediately so the new title is
+          // searchable without waiting for the next startup reconcile.
+          // Fire-and-forget — catalogReindexConversation already swallows its
+          // own errors.
+          //
+          // Chained AFTER updateIndexEntry resolves (fix #4): updateIndexEntry
+          // itself awaits loadIndex() before mutating indexCache, so firing
+          // catalogReindexConversation concurrently could let its own
+          // flushIndex() serialize indexCache to disk before updateIndexEntry
+          // has written the new title into it — the Rust-side reindex would
+          // then read the STALE on-disk title. Sequencing guarantees the new
+          // title is in indexCache before catalogReindexConversation's
+          // flushIndex runs.
+          if (meta) {
+            updateIndexEntry(meta)
+              .then(() => catalogReindexConversation(id))
+              .catch(() => {});
+          } else {
+            catalogReindexConversation(id).catch(() => {});
+          }
         });
       },
 
@@ -1295,9 +1315,21 @@ export const useChatStore = create<ChatStore>()(
       },
 
       setConversationStatus: (convId, status) => {
+        let shouldReindex = false;
         set((state) => {
           const conv = state.conversations[convId];
           if (conv) {
+            const prevStatus = conv.status;
+            // Fix #2: 'error' is also a terminal state — the user message +
+            // partial assistant reply are already appended to messages.jsonl
+            // by the time a turn ends in error, but without this the
+            // conversation was never indexed until the next restart.
+            const isTerminal = status === 'completed' || status === 'error';
+            // Fix #5: only fire when the conversation actually exists AND is
+            // transitioning INTO a terminal state — not on a redundant
+            // re-set of a status it's already in (e.g. a duplicate
+            // 'completed' call), and never for a convId absent from state.
+            shouldReindex = isTerminal && prevStatus !== status;
             conv.status = status;
             if (status === 'completed') {
               conv.completedAt = Date.now();
@@ -1306,6 +1338,17 @@ export const useChatStore = create<ChatStore>()(
             }
           }
         });
+        // Live-freshness write-through (message-storage hybrid P2): turn-end
+        // is the moment a conversation's messages are settled for this round,
+        // so re-index its catalog row + FTS body now instead of waiting for
+        // the next startup reconcile. Fire-and-forget, matches the existing
+        // dynamic-import + .catch(()=>{}) pattern used elsewhere in this
+        // store — never await inside the reducer.
+        if (shouldReindex) {
+          import('../core/session/conversationStorage').then(({ catalogReindexConversation }) => {
+            catalogReindexConversation(convId).catch(() => {});
+          });
+        }
       },
 
       clearCompletedStatus: (convId) => {

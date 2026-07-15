@@ -804,6 +804,101 @@ fn reconcile_read_existing_core(
     Ok((existing, existing_fts_ids))
 }
 
+/// Result of deriving one conversation's catalog row + FTS body from its
+/// JSONL file (and optional index.json entry). Shared by `reconcile_scan_core`
+/// (per-directory loop, startup/incremental rebuild) and `reindex_one_core`
+/// (turn-end / rename write-through, message-storage hybrid P2) so the
+/// title/body precedence logic — index.json wins when present, JSONL-derived
+/// scan is the fallback — has exactly one implementation.
+struct ConversationIndexResult {
+    row: CatalogRow,
+    body: String,
+    corrupt_lines: i64,
+}
+
+/// Derive the catalog row + FTS body for ONE conversation from its JSONL file
+/// and (optional) index.json entry. `disk_meta` is the caller's already-taken
+/// `fs::metadata` of the JSONL path (avoids a redundant stat when the caller
+/// already has it, e.g. reconcile_scan_core's directory walk).
+///
+/// Returns `Ok(None)` when the conversation is genuinely gone — no JSONL AND
+/// no index.json entry. Callers that need "mark missing" semantics
+/// (reconcile's vanished-conversation sweep) implement that themselves from
+/// their own `existing` watermark map; a live single-conversation reindex
+/// (`reindex_one_core`) just no-ops in that case, since marking missing is
+/// delete's job, not reindex's.
+fn build_conversation_row(
+    conv_id: &str,
+    jsonl: &Path,
+    disk_meta: Option<&fs::Metadata>,
+    index_meta: Option<&IndexMetaEntry>,
+) -> Result<Option<ConversationIndexResult>, String> {
+    match (disk_meta, index_meta) {
+        (None, None) => Ok(None),
+        (None, Some(meta)) => {
+            // index.json knows about this conversation but there's no
+            // messages.jsonl yet — a valid, never-messaged conversation
+            // (fix #4). Keep it visible with message_count 0, NOT missing,
+            // and no FTS body (nothing to index yet).
+            let row = CatalogRow {
+                conv_id: conv_id.to_string(),
+                title: meta.title.clone(),
+                created_at: meta.created_at,
+                updated_at: meta.updated_at,
+                message_count: 0,
+                last_message_id: None,
+                model: meta.model_json(),
+                source_bytes: 0,
+                source_mtime: None,
+                missing: false,
+            };
+            Ok(Some(ConversationIndexResult {
+                row,
+                body: String::new(),
+                corrupt_lines: 0,
+            }))
+        }
+        (Some(_), _) => {
+            let scanned = match scan_conversation_file(jsonl)? {
+                Some(s) => s,
+                // Race: file vanished between the caller's metadata() and our
+                // read. Treat like "genuinely gone" for this call — the next
+                // reconcile pass (which re-stats fresh) will reconcile it.
+                None => return Ok(None),
+            };
+            // index.json is authoritative for title/model/createdAt/updatedAt
+            // when present (fix #7); the JSONL-derived values are only a
+            // fallback for conversations with no index.json entry.
+            let (title, created_at, updated_at, model) = match index_meta {
+                Some(meta) => (
+                    meta.title.clone(),
+                    meta.created_at,
+                    meta.updated_at,
+                    meta.model_json(),
+                ),
+                None => (scanned.title.clone(), scanned.created_at, scanned.updated_at, None),
+            };
+            let row = CatalogRow {
+                conv_id: conv_id.to_string(),
+                title,
+                created_at,
+                updated_at,
+                message_count: scanned.message_count,
+                last_message_id: scanned.last_message_id,
+                model, // None preserves the existing model via COALESCE in upsert_core
+                source_bytes: scanned.source_bytes,
+                source_mtime: Some(scanned.source_mtime),
+                missing: false,
+            };
+            Ok(Some(ConversationIndexResult {
+                row,
+                body: scanned.body,
+                corrupt_lines: scanned.corrupt_lines,
+            }))
+        }
+    }
+}
+
 /// Pure filesystem scan — no `Connection` parameter (fix #6): computes what
 /// needs to change without ever touching the DB, so it can run with the
 /// catalog Mutex released. Returns the rows to upsert, the conv_ids to mark
@@ -868,24 +963,14 @@ fn reconcile_scan_core(
                     }
                 }
             }
-            (None, Some(meta)) => {
+            (None, Some(_meta)) => {
                 // index.json knows about this conversation but there's no
                 // messages.jsonl yet — a valid, never-messaged conversation
                 // (fix #4). Keep it visible with message_count 0, NOT missing.
-                let row = CatalogRow {
-                    conv_id: conv_id.clone(),
-                    title: meta.title.clone(),
-                    created_at: meta.created_at,
-                    updated_at: meta.updated_at,
-                    message_count: 0,
-                    last_message_id: None,
-                    model: meta.model_json(),
-                    source_bytes: 0,
-                    source_mtime: None,
-                    missing: false,
-                };
-                upserts.push((row, String::new()));
-                stats.upserted += 1;
+                if let Some(result) = build_conversation_row(&conv_id, &jsonl, None, index_meta)? {
+                    upserts.push((result.row, result.body));
+                    stats.upserted += 1;
+                }
             }
             (Some(m), _) => {
                 let disk_bytes = m.len() as i64;
@@ -919,35 +1004,9 @@ fn reconcile_scan_core(
                     continue;
                 }
 
-                if let Some(scanned) = scan_conversation_file(&jsonl)? {
-                    stats.corrupt_lines_skipped += scanned.corrupt_lines;
-                    // index.json is authoritative for title/model/createdAt/
-                    // updatedAt when present (fix #7); the JSONL-derived
-                    // values are only a fallback for conversations with no
-                    // index.json entry (e.g. pre-P0 data / an index rebuild
-                    // gap), matching the module's original scan-only design.
-                    let (title, created_at, updated_at, model) = match index_meta {
-                        Some(meta) => (
-                            meta.title.clone(),
-                            meta.created_at,
-                            meta.updated_at,
-                            meta.model_json(),
-                        ),
-                        None => (scanned.title.clone(), scanned.created_at, scanned.updated_at, None),
-                    };
-                    let row = CatalogRow {
-                        conv_id: conv_id.clone(),
-                        title,
-                        created_at,
-                        updated_at,
-                        message_count: scanned.message_count,
-                        last_message_id: scanned.last_message_id,
-                        model, // None preserves the existing model via COALESCE in upsert_core
-                        source_bytes: scanned.source_bytes,
-                        source_mtime: Some(scanned.source_mtime),
-                        missing: false,
-                    };
-                    upserts.push((row, scanned.body.clone()));
+                if let Some(result) = build_conversation_row(&conv_id, &jsonl, Some(m), index_meta)? {
+                    stats.corrupt_lines_skipped += result.corrupt_lines;
+                    upserts.push((result.row, result.body));
                     stats.upserted += 1;
                 }
             }
@@ -1017,6 +1076,89 @@ pub fn reconcile_core(conn: &Connection, conversations_root: &Path) -> Result<Re
     let (upserts, mark_missing_ids, stats) = reconcile_scan_core(conversations_root, &existing, &existing_fts_ids)?;
     reconcile_apply_core(conn, &upserts, &mark_missing_ids, &existing_fts_ids)?;
     Ok(stats)
+}
+
+// ── Single-conversation reindex (message-storage hybrid P2: live freshness) ─
+//
+// `reconcile_*` above only runs at startup, so a conversation the user JUST
+// chatted in isn't searchable until the next app restart. `reindex_one_core`
+// re-indexes exactly ONE conversation the same way reconcile would — reusing
+// `build_conversation_row` so title/body precedence never has a second
+// implementation — and is called write-through at turn-end and on rename
+// (see `catalogReindexConversation` on the TS side). It also incidentally
+// fixes the P1.5 catalog `message_count` drift, since `upsert_core` re-derives
+// every field (including message_count) fresh from the JSONL scan, same as a
+// full reconcile would.
+//
+// Split into scan/apply (fix #1, mirrors reconcile's fix #6):
+//   1. `reindex_scan_core` — pure filesystem work (index.json read + full
+//      `messages.jsonl` scan). Takes NO `Connection`, so the DB Mutex can be
+//      released for the whole read — this runs on the hot per-turn-end /
+//      per-rename path, so without the split it would block a concurrent
+//      `catalog_search` (sidebar) or `catalog_bump_count` (every message
+//      append) for as long as the JSONL read takes.
+//   2. `reindex_apply_core` — the upsert/FTS write, run inside a short-lived
+//      transaction under the lock.
+// `reindex_one_core` below just chains the two for callers (tests, and any
+// single-threaded use) that don't need the lock released in between; the
+// `catalog_reindex_conversation` Tauri command calls the two phases directly
+// so it can scan before ever touching `db.conn.lock()`.
+
+/// Pure filesystem scan — no `Connection` parameter (fix #1): computes the
+/// catalog row + FTS body for ONE conversation without ever touching the DB,
+/// so `catalog_reindex_conversation` can run it with the catalog Mutex
+/// released. Returns `None` when the conversation is genuinely gone (see
+/// `build_conversation_row`).
+fn reindex_scan_core(
+    conv_id: &str,
+    conversations_root: &Path,
+) -> Result<Option<ConversationIndexResult>, String> {
+    let jsonl = conversations_root.join(conv_id).join("messages.jsonl");
+    let disk_meta = fs::metadata(&jsonl).ok();
+    let index_entries = read_index_entries(conversations_root);
+    let index_meta = index_entries.get(conv_id);
+    build_conversation_row(conv_id, &jsonl, disk_meta.as_ref(), index_meta)
+}
+
+/// Apply one `reindex_scan_core` result under the DB lock — the
+/// single-conversation counterpart of `reconcile_apply_core`'s per-row upsert.
+/// `result == None` means genuinely gone (no JSONL, no index.json entry).
+/// Deliberately NOT calling mark_missing_core here — that is delete's job
+/// (catalog_mark_missing / reconcile's vanished-conversation sweep), not
+/// reindex's. A live reindex racing a delete should just no-op.
+fn reindex_apply_core(
+    conn: &Connection,
+    result: Option<&ConversationIndexResult>,
+) -> Result<(), String> {
+    let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
+    if let Some(ConversationIndexResult { row, body, .. }) = result {
+        upsert_core(&tx, row)?;
+        // Empty body (never-messaged conversation) is never matchable under
+        // the trigram tokenizer — skip the FTS write, same as reconcile's
+        // fix #3. `may_exist=true`: unlike the initial full-scan build, a
+        // live single-conversation reindex has no cheap way to know whether
+        // an FTS row already exists, and DELETE-then-INSERT is always
+        // correct, just not always necessary (see fts_upsert_core doc).
+        if !body.is_empty() {
+            fts_upsert_core(&tx, &row.conv_id, &row.title, body, true)?;
+        }
+    }
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Convenience wrapper chaining scan+apply on a single `Connection` — used by
+/// unit tests and any single-threaded caller that doesn't need the lock
+/// released in between. The `catalog_reindex_conversation` Tauri command does
+/// NOT use this: it calls `reindex_scan_core` (lock-free) then
+/// `reindex_apply_core` (locked) directly so the DB Mutex is released during
+/// the JSONL/index.json filesystem read (fix #1). `#[cfg(test)]`-only:
+/// nothing in the non-test build calls it anymore (mirrors `reconcile_core`
+/// above).
+#[cfg(test)]
+pub fn reindex_one_core(conn: &Connection, conv_id: &str, conversations_root: &Path) -> Result<(), String> {
+    let result = reindex_scan_core(conv_id, conversations_root)?;
+    reindex_apply_core(conn, result.as_ref())
 }
 
 // ── Tauri commands ─────────────────────────────────────────────────────
@@ -1151,6 +1293,31 @@ pub fn catalog_search(app: AppHandle, query: String, limit: Option<i64>) -> Resu
     let db = get_db(&app)?;
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     search_core(&conn, &query, limit.unwrap_or(50))
+}
+
+/// Live-freshness reindex entry point (message-storage hybrid P2). Re-indexes
+/// exactly one conversation (catalog row + FTS row) straight from its JSONL +
+/// index.json, so a conversation is searchable immediately at turn-end /
+/// rename instead of only after the next startup `catalog_reconcile`. See
+/// `reindex_one_core` for the no-crash/no-mark-missing behavior on a
+/// missing/never-messaged conversation.
+///
+/// Fix #1: do NOT hold the single connection Mutex across the filesystem scan
+/// (index.json parse + full `messages.jsonl` read) below — this command fires
+/// on the hot per-turn-end/per-rename path, so without releasing the lock a
+/// concurrent `catalog_search` (sidebar) or `catalog_bump_count` (every
+/// message append) would stall for the whole scan. Mirrors reconcile's fix #6.
+#[tauri::command]
+pub fn catalog_reindex_conversation(app: AppHandle, conv_id: String, conversations_root: String) -> Result<(), String> {
+    let db = get_db(&app)?;
+    let root = Path::new(&conversations_root);
+
+    // Scan the filesystem with the lock NOT held...
+    let result = reindex_scan_core(&conv_id, root)?;
+
+    // ...and re-acquire only to apply the upsert/FTS write.
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    reindex_apply_core(&conn, result.as_ref())
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────
@@ -2158,5 +2325,212 @@ mod tests {
 
         let hits_a_after = search_core(&conn, "Title A", 50).unwrap();
         assert!(hits_a_after.is_empty(), "searching the OLD title must no longer hit by title after the rename+reconcile");
+    }
+
+    // ── 18. reindex_one_core — live freshness write-through (message-storage hybrid P2) ──
+
+    #[test]
+    fn reindex_one_core_indexes_a_single_conversation_catalog_row_and_fts_row() {
+        let root = tempdir().unwrap();
+        write_jsonl(
+            root.path(),
+            "conv-live",
+            &[&msg("m1", "user", "let's plan the widget launch", 100)],
+        );
+        write_index_json(root.path(), &[("conv-live", "Widget Launch Plan", 100, 100, None)]);
+
+        let conn = open_test_db();
+        // No startup reconcile has run — this proves reindex_one_core alone
+        // (the turn-end write-through path) is sufficient to make a brand
+        // new conversation searchable without waiting for the next restart.
+        reindex_one_core(&conn, "conv-live", root.path()).unwrap();
+
+        let row = get_core(&conn, "conv-live").unwrap().unwrap();
+        assert_eq!(row.title, "Widget Launch Plan", "title must come from index.json");
+        assert_eq!(row.message_count, 1);
+        assert!(!row.missing);
+
+        let hits = search_core(&conn, "widget launch", 50).unwrap();
+        assert_eq!(hits.len(), 1, "the conversation must be searchable immediately, no restart/reconcile required");
+        assert_eq!(hits[0].conv_id, "conv-live");
+    }
+
+    #[test]
+    fn reindex_one_core_picks_up_appended_text_and_updated_message_count() {
+        let root = tempdir().unwrap();
+        write_jsonl(root.path(), "conv-append", &[&msg("m1", "user", "initial message", 100)]);
+        write_index_json(root.path(), &[("conv-append", "Append Test", 100, 100, None)]);
+
+        let conn = open_test_db();
+        reindex_one_core(&conn, "conv-append", root.path()).unwrap();
+        assert_eq!(get_core(&conn, "conv-append").unwrap().unwrap().message_count, 1);
+        assert!(search_core(&conn, "brand new followup text", 50).unwrap().is_empty());
+
+        // Simulate a new turn: JSONL gains a message, index.json's updatedAt moves.
+        write_jsonl(
+            root.path(),
+            "conv-append",
+            &[
+                &msg("m1", "user", "initial message", 100),
+                &msg("m2", "assistant", "here is brand new followup text", 200),
+            ],
+        );
+        write_index_json(root.path(), &[("conv-append", "Append Test", 100, 200, None)]);
+
+        reindex_one_core(&conn, "conv-append", root.path()).unwrap();
+
+        let row = get_core(&conn, "conv-append").unwrap().unwrap();
+        assert_eq!(row.message_count, 2, "message_count must be re-derived fresh from the JSONL scan (also fixes P1.5 count drift)");
+        assert_eq!(row.updated_at, 200);
+
+        let hits = search_core(&conn, "brand new followup text", 50).unwrap();
+        assert_eq!(hits.len(), 1, "newly appended text must be searchable after reindex");
+        assert_eq!(hits[0].conv_id, "conv-append");
+    }
+
+    #[test]
+    fn reindex_one_core_reflects_a_rename_from_index_json() {
+        let root = tempdir().unwrap();
+        write_jsonl(root.path(), "conv-rn", &[&msg("m1", "user", "some conversation content", 100)]);
+        write_index_json(root.path(), &[("conv-rn", "Old Title", 100, 100, None)]);
+
+        let conn = open_test_db();
+        reindex_one_core(&conn, "conv-rn", root.path()).unwrap();
+        assert_eq!(get_core(&conn, "conv-rn").unwrap().unwrap().title, "Old Title");
+        assert_eq!(search_core(&conn, "Old Title", 50).unwrap().len(), 1);
+
+        // Rename: only index.json's title changes (matches renameConversation's
+        // write-through — messages.jsonl is untouched).
+        write_index_json(root.path(), &[("conv-rn", "New Title", 100, 100, None)]);
+        reindex_one_core(&conn, "conv-rn", root.path()).unwrap();
+
+        assert_eq!(get_core(&conn, "conv-rn").unwrap().unwrap().title, "New Title", "catalog title must reflect the rename immediately");
+        let hits_new = search_core(&conn, "New Title", 50).unwrap();
+        assert_eq!(hits_new.len(), 1, "new title must be searchable immediately after reindex, no restart required");
+        assert_eq!(hits_new[0].conv_id, "conv-rn");
+
+        let hits_old = search_core(&conn, "Old Title", 50).unwrap();
+        assert!(hits_old.is_empty(), "old title must no longer be searchable after the rename+reindex");
+    }
+
+    #[test]
+    fn reindex_one_core_no_ops_on_a_conversation_with_no_jsonl_and_no_index_entry() {
+        let root = tempdir().unwrap();
+        let conn = open_test_db();
+        // Neither messages.jsonl nor an index.json entry exists for this id —
+        // e.g. a stale/already-deleted conv_id reaching a late write-through
+        // call. Must not crash, must not create a phantom row.
+        reindex_one_core(&conn, "conv-ghost", root.path()).unwrap();
+        assert!(get_core(&conn, "conv-ghost").unwrap().is_none(), "no row should be created for a conversation with no JSONL and no index.json entry");
+    }
+
+    #[test]
+    fn reindex_one_core_handles_never_messaged_conversation_without_writing_fts() {
+        let root = tempdir().unwrap();
+        // index.json entry exists but messages.jsonl was never created (brand
+        // new conversation before the first message is sent).
+        write_index_json(root.path(), &[("conv-empty-new", "Fresh Chat", 100, 100, None)]);
+
+        let conn = open_test_db();
+        reindex_one_core(&conn, "conv-empty-new", root.path()).unwrap();
+
+        let row = get_core(&conn, "conv-empty-new").unwrap().unwrap();
+        assert_eq!(row.message_count, 0);
+        assert!(!row.missing, "a never-messaged conversation must stay visible, not missing");
+
+        let fts_count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM conversation_fts WHERE conv_id = 'conv-empty-new'", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(fts_count, 0, "an empty body must never produce an FTS row (nothing to match under the trigram tokenizer)");
+    }
+
+    #[test]
+    fn reindex_one_core_does_not_mark_missing_when_conversation_vanishes() {
+        // reindex_one_core must never call mark_missing_core — that is
+        // delete's job. A conversation that already has a catalog+FTS row
+        // and then vanishes (dir removed) mid-reindex must simply be left
+        // alone (stale row), not soft-deleted, since a delete's own explicit
+        // catalog_mark_missing call is the only path allowed to do that.
+        let root = tempdir().unwrap();
+        write_jsonl(root.path(), "conv-vanish", &[&msg("m1", "user", "will vanish soon", 100)]);
+        write_index_json(root.path(), &[("conv-vanish", "Vanishing", 100, 100, None)]);
+
+        let conn = open_test_db();
+        reindex_one_core(&conn, "conv-vanish", root.path()).unwrap();
+        assert!(!get_core(&conn, "conv-vanish").unwrap().unwrap().missing);
+
+        // Directory and index.json entry both disappear (simulates a delete
+        // racing a queued reindex).
+        stdfs::remove_dir_all(root.path().join("conv-vanish")).unwrap();
+        stdfs::write(root.path().join("index.json"), r#"{"version":1,"entries":{}}"#).unwrap();
+
+        reindex_one_core(&conn, "conv-vanish", root.path()).unwrap();
+
+        let row = get_core(&conn, "conv-vanish").unwrap().unwrap();
+        assert!(!row.missing, "reindex_one_core must never mark a row missing — that stays delete's exclusive responsibility");
+    }
+
+    // ── 19. Fix #1 — reindex must not hold the DB Mutex across the scan ────
+
+    #[test]
+    fn catalog_reindex_conversation_releases_lock_during_filesystem_scan() {
+        // Mirrors test #10 (`reconcile_via_catalog_db_releases_lock_during_
+        // filesystem_scan`) but for the live single-conversation reindex path
+        // (turn-end / rename write-through) — this is the hot path that fix
+        // #1 addresses: it must scan the JSONL file with the DB Mutex
+        // released, not hold it across the whole read like reconcile used to
+        // before fix #6.
+        use std::sync::mpsc;
+        use std::sync::Arc;
+        use std::time::{Duration, Instant};
+
+        let root = tempdir().unwrap();
+        // One conversation with a large JSONL so the scan takes measurable time.
+        let lines: Vec<String> = (0..20_000)
+            .map(|i| msg(&format!("m{i}"), "user", "padding text so the scan takes measurable time", i as i64))
+            .collect();
+        let line_refs: Vec<&str> = lines.iter().map(String::as_str).collect();
+        write_jsonl(root.path(), "conv-big", &line_refs);
+        write_index_json(root.path(), &[("conv-big", "Big Conversation", 100, 100, None)]);
+
+        let db_path = root.path().join("catalog.sqlite");
+        let db = Arc::new(CatalogDb::open(&db_path).unwrap());
+
+        let (tx, rx) = mpsc::channel::<()>();
+        let db_for_reindex = Arc::clone(&db);
+        let conversations_root = root.path().to_path_buf();
+        let reindex_handle = std::thread::spawn(move || {
+            // Signal right before the lock-free scan starts — mirrors the
+            // production command's sequencing (scan first, lock only to apply).
+            tx.send(()).unwrap();
+            let result = reindex_scan_core("conv-big", &conversations_root).unwrap();
+            let conn = db_for_reindex.conn.lock().unwrap();
+            reindex_apply_core(&conn, result.as_ref()).unwrap();
+        });
+
+        rx.recv_timeout(Duration::from_secs(5))
+            .expect("reindex thread should signal that it entered the scan phase");
+
+        // At this instant the (fixed) reindex thread holds no lock — it is
+        // mid filesystem-scan. Acquiring the Mutex here must be near-instant.
+        // Before fix #1, catalog_reindex_conversation locked db.conn BEFORE
+        // calling into the scan, so this acquisition would block until the
+        // whole 20k-line JSONL scan (and the write transaction) finished.
+        let acquire_started = Instant::now();
+        {
+            let _conn = db.conn.lock().unwrap();
+        }
+        let acquire_elapsed = acquire_started.elapsed();
+
+        reindex_handle.join().unwrap();
+
+        assert!(
+            get_core(&db.conn.lock().unwrap(), "conv-big").unwrap().is_some(),
+            "the split scan/apply must still land the row"
+        );
+        assert!(
+            acquire_elapsed < Duration::from_millis(200),
+            "lock acquisition during reindex's scan phase took {acquire_elapsed:?} — the DB Mutex must be released during the filesystem scan (fix #1)"
+        );
     }
 }

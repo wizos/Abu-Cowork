@@ -482,6 +482,93 @@ export async function reconcileCatalog(): Promise<void> {
 }
 
 // ════════════════════════════════════════════════════════════
+// SQLite FTS5 conversation search — write-through (message-storage P2)
+// ════════════════════════════════════════════════════════════
+//
+// Design doc: docs/2026-07-15-fts5-conversation-search-SPEC.md. `conversation_fts`
+// is a rebuildable projection, same invariant as the catalog above. Both
+// wrappers below are best-effort: search returns [] on any failure, and the
+// reindex write-through swallows errors — the next startup `reconcileCatalog()`
+// self-heals from JSONL regardless of whether any given reindex call landed.
+
+/** One conversation search hit. Field names match the Rust `SearchHit`
+ * struct's serde output verbatim (snake_case, no rename) — see
+ * `catalog_search`'s `SearchHit` in `src-tauri/src/catalog_db.rs`. Command
+ * *argument* names go through Tauri's camelCase<->snake_case bridging (as
+ * every other catalog invoke call in this file does), but *return* values are
+ * plain serde JSON with no such bridging — the same reason
+ * `catalogGetCount` above reads `row?.message_count`, not `row?.messageCount`.
+ */
+export interface SearchHit {
+  conv_id: string;
+  title: string;
+  snippet: string;
+  rank: number;
+}
+
+/**
+ * Best-effort conversation full-text search. Returns `[]` on any failure
+ * (IPC error, DB not initialized, etc.) — callers must treat that the same as
+ * "no results," never as a hard error. `limit` defaults to 50 on the Rust
+ * side when omitted. Queries under 3 characters short-circuit to `[]` in
+ * `search_core` (trigram tokenizer can't match anything shorter).
+ */
+export async function catalogSearch(query: string, limit?: number): Promise<SearchHit[]> {
+  try {
+    const hits = await invoke<SearchHit[] | null>('catalog_search', { query, limit });
+    // Defensive `?? []`: the Rust command always resolves an array (empty on
+    // no match), but callers downstream (sidebar search results) will `.map()`
+    // this — never let a null/undefined IPC quirk propagate into that.
+    return hits ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Best-effort: re-index ONE conversation's catalog row + FTS row straight
+ * from its JSONL + index.json — the same derivation `catalog_reconcile` uses
+ * per-conversation, just scoped to a single `convId`. Called write-through at
+ * turn-end and on rename (see chatStore's `setConversationStatus` /
+ * `renameConversation`) so a conversation is searchable immediately instead
+ * of only after the next startup reconcile. Fire-and-forget from the caller;
+ * swallows all errors — reconcile on next launch repairs any missed reindex.
+ */
+export async function catalogReindexConversation(convId: string): Promise<void> {
+  try {
+    await ensureBase();
+    // Drain the pending message-append write queue FIRST (fix #3).
+    // `appendMessage` enqueues each JSONL line onto the 100ms-debounced
+    // `enqueueWrite`/`drainAll` queue and returns without waiting for the
+    // drain; at turn-end `setConversationStatus` fires this reindex right
+    // after the final message is appended, so without draining here the
+    // Rust-side `reindex_one_core` can scan a `messages.jsonl` that's still
+    // missing the very message this reindex is supposed to index — newest
+    // text absent from FTS, `message_count` lagging by one turn.
+    // `flushWrites()` is a no-op if nothing is queued (idempotent, already
+    // used this way elsewhere — see `shutdownConversationStorage`).
+    await flushWrites();
+    // Flush the in-memory index to disk NEXT. The Rust side's
+    // `read_index_entries` reads `index.json` straight off disk, not TS's
+    // in-memory `indexCache` — and index writes are normally debounced up to
+    // `INDEX_FLUSH_INTERVAL_MS` (2s) by `scheduleIndexFlush()`. Both call
+    // sites (rename, turn-end) call `updateIndexEntry()` — which updates
+    // `indexCache` synchronously — immediately before this, so without an
+    // explicit flush here the Rust-side reindex would very likely read the
+    // STALE on-disk title/timestamps, defeating the entire point of a
+    // live-freshness reindex. `flushIndex()` is a no-op if there's nothing
+    // pending (idempotent, already used this way elsewhere in this module).
+    await flushIndex();
+    await invoke('catalog_reindex_conversation', {
+      convId,
+      conversationsRoot: conversationsRoot(),
+    });
+  } catch {
+    // Non-fatal: startup reconcile repairs the catalog/FTS row from JSONL.
+  }
+}
+
+// ════════════════════════════════════════════════════════════
 // Message CRUD
 // ════════════════════════════════════════════════════════════
 

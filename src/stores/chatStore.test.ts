@@ -319,6 +319,56 @@ describe('chatStore', () => {
       useChatStore.getState().renameConversation(id, '测试对话');
       expect(useChatStore.getState().conversations[id].title).toBe('测试对话');
     });
+
+    // message-storage hybrid P2 (live freshness): a rename must be searchable
+    // immediately, not only after the next startup reconcile. The store
+    // reaches catalogReindexConversation via a dynamic import (module-level
+    // vi.mock can't intercept it), so — same pattern as the catalog_bump_count
+    // assertions above — we assert at the invoke('catalog_reindex_conversation')
+    // layer.
+    it('fires a live-freshness catalog reindex after renaming', async () => {
+      const id = useChatStore.getState().createConversation();
+      await new Promise((r) => setTimeout(r, 20));
+      vi.mocked(invoke).mockClear();
+
+      useChatStore.getState().renameConversation(id, '新标题');
+
+      await vi.waitFor(() => {
+        const reindex = vi.mocked(invoke).mock.calls.find((c) => c[0] === 'catalog_reindex_conversation');
+        expect(reindex).toBeDefined();
+        expect((reindex![1] as { convId: string }).convId).toBe(id);
+      });
+    });
+
+    // Fix #4: catalogReindexConversation must fire AFTER updateIndexEntry's
+    // own index flush lands the new title on disk — not concurrently — so
+    // the Rust-side reindex never races updateIndexEntry's indexCache
+    // mutation and reads a stale title. Asserted the same way as the
+    // ordering check in conversationStorage.test.ts's catalogReindexConversation
+    // suite: the index.json write must precede the reindex invoke.
+    it('reindexes only after the renamed title has been flushed to index.json', async () => {
+      const id = useChatStore.getState().createConversation();
+      await new Promise((r) => setTimeout(r, 20));
+      vi.mocked(invoke).mockClear();
+
+      useChatStore.getState().renameConversation(id, '排序新标题');
+
+      await vi.waitFor(() => {
+        const reindex = vi.mocked(invoke).mock.calls.find((c) => c[0] === 'catalog_reindex_conversation');
+        expect(reindex).toBeDefined();
+      });
+
+      const calls = vi.mocked(invoke).mock.calls;
+      const indexWriteIdx = calls.findIndex(
+        (c) =>
+          c[0] === 'atomic_write_text' &&
+          typeof (c[1] as { path?: string } | undefined)?.path === 'string' &&
+          (c[1] as { path: string }).path.includes('index.json'),
+      );
+      const reindexIdx = calls.findIndex((c) => c[0] === 'catalog_reindex_conversation');
+      expect(indexWriteIdx).toBeGreaterThanOrEqual(0);
+      expect(indexWriteIdx).toBeLessThan(reindexIdx);
+    });
   });
 
   // ── addMessage ──
@@ -742,6 +792,85 @@ describe('chatStore', () => {
       const conv = useChatStore.getState().conversations[id];
       expect(conv.status).toBe('idle');
       expect(conv.completedAt).toBeUndefined();
+    });
+
+    // message-storage hybrid P2 (live freshness): turn-end ('completed') is
+    // when a conversation's messages are settled for this round, so it must
+    // be re-indexed for search right away rather than waiting for the next
+    // startup reconcile. Asserted at the invoke() layer — same reasoning as
+    // the renameConversation reindex test above.
+    it('fires a live-freshness catalog reindex when status becomes completed', async () => {
+      const id = useChatStore.getState().createConversation();
+      await new Promise((r) => setTimeout(r, 20));
+      vi.mocked(invoke).mockClear();
+
+      useChatStore.getState().setConversationStatus(id, 'completed');
+
+      await vi.waitFor(() => {
+        const reindex = vi.mocked(invoke).mock.calls.find((c) => c[0] === 'catalog_reindex_conversation');
+        expect(reindex).toBeDefined();
+        expect((reindex![1] as { convId: string }).convId).toBe(id);
+      });
+    });
+
+    it('does not fire a catalog reindex for a non-terminal status', async () => {
+      const id = useChatStore.getState().createConversation();
+      await new Promise((r) => setTimeout(r, 20));
+      vi.mocked(invoke).mockClear();
+
+      useChatStore.getState().setConversationStatus(id, 'running');
+
+      await new Promise((r) => setTimeout(r, 20));
+      const reindex = vi.mocked(invoke).mock.calls.find((c) => c[0] === 'catalog_reindex_conversation');
+      expect(reindex).toBeUndefined();
+    });
+
+    // Fix #2: 'error' is also a terminal state — messages.jsonl already has
+    // the user message + partial assistant reply appended by the time a turn
+    // ends in error, so it must be indexed immediately too, not only on
+    // 'completed' (which previously left errored turns unsearchable until
+    // the next app restart).
+    it('fires a live-freshness catalog reindex when status becomes error', async () => {
+      const id = useChatStore.getState().createConversation();
+      await new Promise((r) => setTimeout(r, 20));
+      vi.mocked(invoke).mockClear();
+
+      useChatStore.getState().setConversationStatus(id, 'error');
+
+      await vi.waitFor(() => {
+        const reindex = vi.mocked(invoke).mock.calls.find((c) => c[0] === 'catalog_reindex_conversation');
+        expect(reindex).toBeDefined();
+        expect((reindex![1] as { convId: string }).convId).toBe(id);
+      });
+    });
+
+    // Fix #5: only fire the reindex when the conversation actually exists AND
+    // is transitioning INTO a terminal state — a redundant re-set of the same
+    // terminal status (e.g. a duplicate 'completed' call) must not re-fire it.
+    it('does not re-fire the catalog reindex for a redundant same-status re-set', async () => {
+      const id = useChatStore.getState().createConversation();
+      useChatStore.getState().setConversationStatus(id, 'completed');
+      await new Promise((r) => setTimeout(r, 20));
+      vi.mocked(invoke).mockClear();
+
+      // Re-set the SAME terminal status again — no real transition happened.
+      useChatStore.getState().setConversationStatus(id, 'completed');
+
+      await new Promise((r) => setTimeout(r, 20));
+      const reindex = vi.mocked(invoke).mock.calls.find((c) => c[0] === 'catalog_reindex_conversation');
+      expect(reindex).toBeUndefined();
+    });
+
+    // Fix #5: a convId absent from state (e.g. already deleted) must never
+    // trigger a reindex call.
+    it('does not fire a catalog reindex for a convId absent from state', async () => {
+      vi.mocked(invoke).mockClear();
+
+      useChatStore.getState().setConversationStatus('nonexistent-conv', 'completed');
+
+      await new Promise((r) => setTimeout(r, 20));
+      const reindex = vi.mocked(invoke).mock.calls.find((c) => c[0] === 'catalog_reindex_conversation');
+      expect(reindex).toBeUndefined();
     });
   });
 
