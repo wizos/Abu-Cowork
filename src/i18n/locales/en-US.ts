@@ -150,6 +150,9 @@ const enUS: TranslationDict = {
     memoryGuideTip: 'Tip: Personal and project memory are accumulated automatically by Abu during conversations — you can view and edit them anytime. Project instructions need to be written by you manually.',
     todos: 'Todos',
     inbox: 'Inbox',
+    searchResults: 'Search results',
+    searchNoResults: 'No matches found',
+    searchMinChars: 'Type at least 3 characters',
   },
 
   todos: {

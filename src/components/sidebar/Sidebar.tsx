@@ -24,6 +24,8 @@ import { readTextFile } from '@tauri-apps/plugin-fs';
 import ShareExportDialog from '@/components/share/ShareExportDialog';
 import ImportedBadge from './ImportedBadge';
 import { isMacOS } from '@/utils/platform';
+import { catalogSearch, type SearchHit } from '@/core/session/conversationStorage';
+import { renderMarkedText, highlightQuery } from '@/utils/searchHighlight';
 import EnterpriseStatusBadge from '@/components/enterprise/EnterpriseStatusBadge';
 // Side-effect import: registers BrandSlot in the enterprise mounts registry
 import '@/components/enterprise/BrandSlot';
@@ -115,6 +117,39 @@ export default function Sidebar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  // FTS5 full-text search: kicks in only for queries ≥3 chars (backend
+  // trigram tokenizer can't match anything shorter — see catalogSearch
+  // jsdoc). Shorter queries keep using the existing client-side title
+  // filter over sortedConvs below (zero-latency, unchanged behavior).
+  const [searchHits, setSearchHits] = useState<SearchHit[]>([]);
+  const searchTokenRef = useRef(0);
+  const trimmedSearchQuery = searchQuery.trim();
+  const isFtsSearching = trimmedSearchQuery.length >= 3;
+
+  useEffect(() => {
+    if (!isFtsSearching) {
+      // Bump the token here too: an in-flight FTS request for an abandoned
+      // longer query would otherwise still pass the `searchTokenRef.current
+      // === token` guard below and populate searchHits after the query has
+      // dropped below the FTS threshold (or been cleared), flashing stale
+      // results when the user types a new ≥3-char query.
+      searchTokenRef.current++;
+      setSearchHits([]);
+      return;
+    }
+    // Bump the token before debouncing so a stale in-flight request (from a
+    // previous keystroke) can be told apart from the latest one once both
+    // resolve — guards against out-of-order responses overwriting results.
+    const token = ++searchTokenRef.current;
+    const timer = setTimeout(() => {
+      catalogSearch(trimmedSearchQuery).then((hits) => {
+        if (searchTokenRef.current === token) {
+          setSearchHits(hits);
+        }
+      });
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [trimmedSearchQuery, isFtsSearching]);
 
   // Undo delete state
   const [pendingDelete, setPendingDelete] = useState<{ id: string; data: string } | null>(null);
@@ -203,8 +238,28 @@ export default function Sidebar() {
   // Use conversationIndex (lightweight metadata) instead of full conversations for listing
   const sortedConvs = Object.values(conversationIndex)
     .filter((c) => !c.scheduledTaskId && !c.triggerId && !c.projectId)
-    .filter((c) => !searchQuery || c.title.toLowerCase().includes(searchQuery.toLowerCase()))
+    .filter((c) => !trimmedSearchQuery || c.title.toLowerCase().includes(trimmedSearchQuery.toLowerCase()))
     .sort((a, b) => b.createdAt - a.createdAt);
+
+  // FTS body-hit results (≥3-char queries), scoped and deduped against
+  // `sortedConvs`'s instant title matches:
+  //  - Title matches always come from `sortedConvs` (already scoped to
+  //    exclude project/scheduled/trigger convs), so they render reliably even
+  //    if the SQLite catalog is cold/uninitialized/failed — never "No
+  //    matches" for a plainly-existing title.
+  //  - `searchHits` (FTS body hits) are filtered to the same project/
+  //    scheduled/trigger exclusion so search never leaks a conversation that
+  //    the recents list deliberately hides, then deduped against the title
+  //    matches so nothing shows twice.
+  const titleMatchIds = new Set(sortedConvs.map((c) => c.id));
+  const scopedBodyHits = isFtsSearching
+    ? searchHits.filter((hit) => {
+        if (titleMatchIds.has(hit.conv_id)) return false;
+        const meta = conversationIndex[hit.conv_id];
+        if (meta?.projectId || meta?.scheduledTaskId || meta?.triggerId) return false;
+        return true;
+      })
+    : [];
 
   const handleDeleteConversation = async (e: React.MouseEvent, convId: string) => {
     e.stopPropagation();
@@ -431,11 +486,67 @@ export default function Sidebar() {
                 </button>
               )}
             </div>
+            {trimmedSearchQuery.length > 0 && trimmedSearchQuery.length < 3 && (
+              <p className="mt-1 pl-1 text-[11px] text-[var(--abu-text-tertiary)]">{t.sidebar.searchMinChars}</p>
+            )}
           </div>
         )}
 
-        {/* Conversation List */}
-        {!recentsCollapsed && (
+        {/* Conversation List — replaced by a merged title-match + FTS5
+            body-hit result list while a ≥3-char query is active (see
+            isFtsSearching effect above and the scopedBodyHits comment). */}
+        {!recentsCollapsed && isFtsSearching && (
+        <div className="px-4">
+          <div className="px-2 py-1.5 text-[13px] font-medium text-[var(--abu-text-muted)]">
+            {t.sidebar.searchResults}
+          </div>
+          {sortedConvs.length === 0 && scopedBodyHits.length === 0 ? (
+            <div className="px-2 py-3">
+              <p className="text-[13px] text-[var(--abu-text-tertiary)]">{t.sidebar.searchNoResults}</p>
+            </div>
+          ) : (
+            <div className="space-y-0.5">
+              {sortedConvs.map((conv) => {
+                const convStatus = conversations[conv.id]?.status ?? 'idle';
+                return (
+                  <div
+                    key={conv.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => { switchConversation(conv.id); setViewMode('chat'); clearBadge(conv.id); if (convStatus === 'error') clearCompletedStatus(conv.id); }}
+                    className="flex flex-col gap-0.5 px-2 py-2 rounded-lg cursor-pointer transition-colors w-full text-left text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]"
+                  >
+                    <span className="truncate text-[13px] text-[var(--abu-text-primary)]">
+                      {highlightQuery(conv.title, trimmedSearchQuery, 'bg-[var(--abu-clay-bg-15)] text-[var(--abu-clay)] rounded-sm')}
+                    </span>
+                  </div>
+                );
+              })}
+              {scopedBodyHits.map((hit) => {
+                const convStatus = conversations[hit.conv_id]?.status ?? 'idle';
+                return (
+                  <div
+                    key={hit.conv_id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => { switchConversation(hit.conv_id); setViewMode('chat'); clearBadge(hit.conv_id); if (convStatus === 'error') clearCompletedStatus(hit.conv_id); }}
+                    className="flex flex-col gap-0.5 px-2 py-2 rounded-lg cursor-pointer transition-colors w-full text-left text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]"
+                  >
+                    <span className="truncate text-[13px] text-[var(--abu-text-primary)]">
+                      {highlightQuery(hit.title, trimmedSearchQuery, 'bg-[var(--abu-clay-bg-15)] text-[var(--abu-clay)] rounded-sm')}
+                    </span>
+                    <span className="line-clamp-2 text-[12px] leading-snug text-[var(--abu-text-tertiary)]">
+                      {renderMarkedText(hit.snippet, 'bg-[var(--abu-clay-bg-15)] text-[var(--abu-clay)] rounded-sm')}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        )}
+
+        {!recentsCollapsed && !isFtsSearching && (
         <div className="px-4">
         {sortedConvs.length === 0 ? (
           <div className="px-4 py-3">

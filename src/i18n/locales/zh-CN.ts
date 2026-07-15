@@ -150,6 +150,9 @@ const zhCN: TranslationDict = {
     memoryGuideTip: '提示：个人记忆和项目记忆由阿布在对话中自动积累，你随时可以查看和修改。项目指令需要你手动编写。',
     todos: '待办',
     inbox: '收件箱',
+    searchResults: '搜索结果',
+    searchNoResults: '无匹配结果',
+    searchMinChars: '至少输入 3 个字',
   },
 
   todos: {

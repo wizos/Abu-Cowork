@@ -423,10 +423,17 @@ pub fn search_core(conn: &Connection, query: &str, limit: i64) -> Result<Vec<Sea
         return Ok(Vec::new());
     }
     let match_query = sanitize_match_query(query);
+    // Highlight delimiters are the STX/ETX control characters (`\u{2}`/`\u{3}`),
+    // not literal `<mark>`/`</mark>` text — titles/message bodies routinely
+    // contain literal HTML-looking text in this app (it's a coding assistant),
+    // and literal `<mark>` in content would otherwise be misparsed as a
+    // delimiter by the frontend (`renderMarkedText` in
+    // `src/utils/searchHighlight.tsx`). Control chars never occur in normal
+    // text, so they're safe, unambiguous sentinels.
     let mut stmt = conn
         .prepare(
             "SELECT f.conv_id, c.title,
-                    snippet(conversation_fts, 2, '<mark>', '</mark>', '…', 32) AS snippet,
+                    snippet(conversation_fts, 2, '\u{2}', '\u{3}', '…', 32) AS snippet,
                     bm25(conversation_fts, 0.0, 5.0, 1.0) AS rank
              FROM conversation_fts f
              JOIN conversation_catalog c ON c.conv_id = f.conv_id
@@ -2077,9 +2084,11 @@ mod tests {
         assert_eq!(hits.len(), 1, "only conv-1's body matches");
         assert_eq!(hits[0].conv_id, "conv-1");
         assert!(!hits[0].snippet.is_empty());
+        // Highlight markers are STX/ETX sentinel control chars, not literal
+        // `<mark>` text — see the comment on `search_core`'s snippet() call.
         assert!(
-            hits[0].snippet.contains("<mark>"),
-            "snippet must contain highlight markers, got: {}",
+            hits[0].snippet.contains('\u{2}') && hits[0].snippet.contains('\u{3}'),
+            "snippet must contain STX/ETX highlight sentinels, got: {:?}",
             hits[0].snippet
         );
     }

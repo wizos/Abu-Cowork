@@ -177,6 +177,9 @@ export interface TranslationDict {
     memoryGuideTip: string;
     todos: string;
     inbox: string;
+    searchResults: string;
+    searchNoResults: string;
+    searchMinChars: string;
   };
 
   // Todos
