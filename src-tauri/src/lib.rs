@@ -1418,6 +1418,7 @@ pub fn run() {
             catalog_db::catalog_set_initial_build_complete,
             catalog_db::catalog_bump_observation_sequence,
             catalog_db::catalog_reconcile,
+            catalog_db::catalog_search,
             secret_get,
             secret_set,
             secret_delete,

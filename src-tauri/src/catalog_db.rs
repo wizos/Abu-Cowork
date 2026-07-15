@@ -79,6 +79,19 @@ fn init_schema(conn: &Connection) -> Result<(), String> {
         );
         INSERT OR IGNORE INTO catalog_sync_state (id, initial_build_complete, observation_sequence, schema_version)
             VALUES (1, 0, 0, 1);
+
+        -- Conversation-level full-text search (message-storage hybrid P2).
+        -- Design doc: docs/2026-07-15-fts5-conversation-search-SPEC.md.
+        -- A rebuildable projection, same invariant as conversation_catalog:
+        -- catalog_reconcile repopulates it from JSONL, never authoritative.
+        -- tokenize='trigram' gives substring matching (incl. CJK) without a
+        -- real tokenizer; requires >=3 chars per query (enforced in search_core).
+        CREATE VIRTUAL TABLE IF NOT EXISTS conversation_fts USING fts5(
+            conv_id UNINDEXED,
+            title,
+            body,
+            tokenize = 'trigram'
+        );
         ",
     )
     .map_err(|e| format!("Failed to init catalog DB schema: {}", e))
@@ -286,12 +299,18 @@ pub fn bump_count_core(
     Ok(())
 }
 
+/// Soft-delete: flips `missing = 1` on the catalog row AND drops the
+/// conversation's FTS row (fix: a soft-deleted conversation must not keep
+/// showing up in search results). Single choke point so every caller —
+/// the `catalog_mark_missing` command and `reconcile_apply_core`'s vanished-
+/// conversation sweep — gets this for free without a second call site.
 pub fn mark_missing_core(conn: &Connection, conv_id: &str) -> Result<(), String> {
     conn.execute(
         "UPDATE conversation_catalog SET missing = 1 WHERE conv_id = ?1",
         params![conv_id],
     )
     .map_err(|e| format!("catalog mark_missing failed: {}", e))?;
+    fts_delete_core(conn, conv_id)?;
     Ok(())
 }
 
@@ -334,6 +353,105 @@ pub fn bump_observation_sequence_core(conn: &Connection) -> Result<i64, String> 
     .map_err(|e| format!("catalog bump_observation_sequence read-back failed: {}", e))
 }
 
+// ── FTS5 conversation search (message-storage hybrid P2) ─────────────────
+//
+// `conversation_fts` is a rebuildable projection exactly like
+// `conversation_catalog`: never the source of truth, always repopulated from
+// JSONL by `reconcile_*`. FTS5 has no UPSERT, so every write is delete-then-
+// insert. See docs/2026-07-15-fts5-conversation-search-SPEC.md.
+
+/// `may_exist` (fix #2): pass `false` only when the caller already knows
+/// `conv_id` has no existing `conversation_fts` row (e.g. every conversation
+/// during the very first reconcile build, tracked via `existing_fts_ids`) —
+/// this skips the DELETE and goes straight to INSERT. The DELETE targets
+/// `conv_id`, which is UNINDEXED, so it's a full-table scan; doing it
+/// unconditionally for every brand-new conversation during the initial
+/// full-scan build made that pass O(N^2) over a table that's growing by one
+/// row per iteration. When in doubt, pass `true` — DELETE-then-INSERT is
+/// always correct, just not always necessary.
+pub fn fts_upsert_core(conn: &Connection, conv_id: &str, title: &str, body: &str, may_exist: bool) -> Result<(), String> {
+    if may_exist {
+        conn.execute(
+            "DELETE FROM conversation_fts WHERE conv_id = ?1",
+            params![conv_id],
+        )
+        .map_err(|e| format!("fts delete-before-insert failed: {}", e))?;
+    }
+    conn.execute(
+        "INSERT INTO conversation_fts (conv_id, title, body) VALUES (?1, ?2, ?3)",
+        params![conv_id, title, body],
+    )
+    .map_err(|e| format!("fts insert failed: {}", e))?;
+    Ok(())
+}
+
+pub fn fts_delete_core(conn: &Connection, conv_id: &str) -> Result<(), String> {
+    conn.execute(
+        "DELETE FROM conversation_fts WHERE conv_id = ?1",
+        params![conv_id],
+    )
+    .map_err(|e| format!("fts delete failed: {}", e))?;
+    Ok(())
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct SearchHit {
+    pub conv_id: String,
+    pub title: String,
+    pub snippet: String,
+    pub rank: f64,
+}
+
+/// Query sanitization (critical): user input is treated as a literal
+/// substring, NOT FTS5 query syntax — otherwise stray `"`/`AND`/`OR`/`*`/`:`
+/// in a search box would either error out or silently do something the user
+/// didn't type. Doubling embedded `"` then wrapping the whole query in `"`
+/// makes FTS5 parse it as a single phrase; under the trigram tokenizer a
+/// phrase search is equivalent to substring matching.
+fn sanitize_match_query(query: &str) -> String {
+    format!("\"{}\"", query.replace('"', "\"\""))
+}
+
+/// Search conversation titles+bodies. Short-circuits to `Ok(vec![])` for
+/// queries under 3 *characters* (not bytes, so CJK counts correctly) — the
+/// trigram tokenizer cannot match anything shorter than a trigram anyway.
+/// Joins back to `conversation_catalog` so soft-deleted (`missing = 1`)
+/// conversations never surface, and so `title` reflects the catalog's
+/// authoritative value rather than whatever was last indexed into FTS.
+pub fn search_core(conn: &Connection, query: &str, limit: i64) -> Result<Vec<SearchHit>, String> {
+    if query.trim().chars().count() < 3 {
+        return Ok(Vec::new());
+    }
+    let match_query = sanitize_match_query(query);
+    let mut stmt = conn
+        .prepare(
+            "SELECT f.conv_id, c.title,
+                    snippet(conversation_fts, 2, '<mark>', '</mark>', '…', 32) AS snippet,
+                    bm25(conversation_fts, 0.0, 5.0, 1.0) AS rank
+             FROM conversation_fts f
+             JOIN conversation_catalog c ON c.conv_id = f.conv_id
+             WHERE conversation_fts MATCH ?1 AND c.missing = 0
+             ORDER BY rank
+             LIMIT ?2",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(params![match_query, limit], |row| {
+            Ok(SearchHit {
+                conv_id: row.get(0)?,
+                title: row.get(1)?,
+                snippet: row.get(2)?,
+                rank: row.get(3)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    let mut result = Vec::new();
+    for r in rows {
+        result.push(r.map_err(|e| e.to_string())?);
+    }
+    Ok(result)
+}
+
 // ── JSONL scan (rebuildable projection derivation) ────────────────────────
 
 #[derive(Debug, Clone, PartialEq)]
@@ -346,6 +464,11 @@ pub struct ScannedConversation {
     pub source_bytes: i64,
     pub source_mtime: i64,
     pub corrupt_lines: i64,
+    /// Concatenated `role: text` per deduped message (newline-joined), fed
+    /// into `conversation_fts` by reconcile. System messages and
+    /// `compact-boundary-*` marker messages are excluded — same noise
+    /// filtering as the send-side path — so they don't pollute search hits.
+    pub body: String,
 }
 
 fn mtime_ms(metadata: &fs::Metadata) -> i64 {
@@ -509,6 +632,29 @@ pub fn scan_conversation_file(path: &Path) -> Result<Option<ScannedConversation>
         }
     }
 
+    // Build the FTS body: `role: text` per deduped message, newline-joined.
+    // Skip system messages and compact-boundary marker messages — mirrors the
+    // send-side noise filtering so neither pollutes search results.
+    let mut body_lines: Vec<String> = Vec::with_capacity(deduped.len());
+    for v in &deduped {
+        let is_system = v.get("isSystem").and_then(|x| x.as_bool()).unwrap_or(false);
+        if is_system {
+            continue;
+        }
+        let is_marker = v
+            .get("id")
+            .and_then(|x| x.as_str())
+            .map(|s| s.starts_with("compact-boundary-"))
+            .unwrap_or(false);
+        if is_marker {
+            continue;
+        }
+        let role = v.get("role").and_then(|x| x.as_str()).unwrap_or("");
+        let text = extract_text_from_content(v.get("content"));
+        body_lines.push(format!("{}: {}", role, text));
+    }
+    let body = body_lines.join("\n");
+
     Ok(Some(ScannedConversation {
         title,
         created_at,
@@ -518,6 +664,7 @@ pub fn scan_conversation_file(path: &Path) -> Result<Option<ScannedConversation>
         source_bytes,
         source_mtime,
         corrupt_lines,
+        body,
     }))
 }
 
@@ -604,12 +751,25 @@ fn read_index_entries(conversations_root: &Path) -> HashMap<String, IndexMetaEnt
 // `catalog_reconcile` Tauri command calls the three phases directly so it can
 // drop the lock between (1) and (3).
 
+/// Returns the existing catalog watermarks, plus the set of conv_ids that
+/// currently have an FTS row. The FTS-presence set lets `reconcile_scan_core`
+/// force a rescan (and thus an `fts_upsert_core`) for a conversation whose
+/// catalog watermark is unchanged but whose `conversation_fts` row was lost
+/// (table dropped/corrupted/manually cleared) — otherwise the byte/mtime-diff
+/// check alone would never notice, and the FTS index couldn't self-heal
+/// without also wiping the whole catalog. Both are cheap SELECTs done in the
+/// same short-lived lock acquisition as the original watermark read (fix #6
+/// still holds: no `Connection` is threaded into the scan phase).
 fn reconcile_read_existing_core(
     conn: &Connection,
-) -> Result<HashMap<String, (i64, Option<i64>, bool)>, String> {
-    let mut existing: HashMap<String, (i64, Option<i64>, bool)> = HashMap::new();
+) -> Result<(HashMap<String, (i64, Option<i64>, bool, String)>, HashSet<String>), String> {
+    // The tuple's trailing `String` is the catalog row's current title (fix
+    // #5): `reconcile_scan_core` compares it against index.json's title to
+    // detect a rename and force a re-index even when the JSONL watermark
+    // (bytes/mtime) hasn't moved.
+    let mut existing: HashMap<String, (i64, Option<i64>, bool, String)> = HashMap::new();
     let mut stmt = conn
-        .prepare("SELECT conv_id, source_bytes, source_mtime, missing FROM conversation_catalog")
+        .prepare("SELECT conv_id, source_bytes, source_mtime, missing, title FROM conversation_catalog")
         .map_err(|e| e.to_string())?;
     let rows = stmt
         .query_map([], |row| {
@@ -618,14 +778,30 @@ fn reconcile_read_existing_core(
                 row.get::<_, i64>(1)?,
                 row.get::<_, Option<i64>>(2)?,
                 row.get::<_, i64>(3)? != 0,
+                row.get::<_, String>(4)?,
             ))
         })
         .map_err(|e| e.to_string())?;
     for r in rows {
-        let (id, bytes, mtime, missing) = r.map_err(|e| e.to_string())?;
-        existing.insert(id, (bytes, mtime, missing));
+        let (id, bytes, mtime, missing, title) = r.map_err(|e| e.to_string())?;
+        existing.insert(id, (bytes, mtime, missing, title));
     }
-    Ok(existing)
+
+    // Fix #4: the delete-then-insert invariant (see module doc + fts_upsert_core)
+    // guarantees at most one conversation_fts row per conv_id, so DISTINCT here
+    // is a needless sort/temp-btree over a full scan — plain SELECT is enough.
+    let mut existing_fts_ids: HashSet<String> = HashSet::new();
+    let mut fts_stmt = conn
+        .prepare("SELECT conv_id FROM conversation_fts")
+        .map_err(|e| e.to_string())?;
+    let fts_rows = fts_stmt
+        .query_map([], |row| row.get::<_, String>(0))
+        .map_err(|e| e.to_string())?;
+    for r in fts_rows {
+        existing_fts_ids.insert(r.map_err(|e| e.to_string())?);
+    }
+
+    Ok((existing, existing_fts_ids))
 }
 
 /// Pure filesystem scan — no `Connection` parameter (fix #6): computes what
@@ -634,11 +810,14 @@ fn reconcile_read_existing_core(
 /// missing, and the pass's stats; the caller applies them separately.
 fn reconcile_scan_core(
     conversations_root: &Path,
-    existing: &HashMap<String, (i64, Option<i64>, bool)>,
-) -> Result<(Vec<CatalogRow>, Vec<String>, ReconcileStats), String> {
+    existing: &HashMap<String, (i64, Option<i64>, bool, String)>,
+    existing_fts_ids: &HashSet<String>,
+) -> Result<(Vec<(CatalogRow, String)>, Vec<String>, ReconcileStats), String> {
     let mut stats = ReconcileStats::default();
     let mut seen: HashSet<String> = HashSet::new();
-    let mut upserts: Vec<CatalogRow> = Vec::new();
+    // Each upsert carries its FTS body alongside the CatalogRow — body isn't
+    // a catalog column, it only feeds `fts_upsert_core` in reconcile_apply_core.
+    let mut upserts: Vec<(CatalogRow, String)> = Vec::new();
     let mut mark_missing_ids: Vec<String> = Vec::new();
 
     let index_entries = read_index_entries(conversations_root);
@@ -682,7 +861,7 @@ fn reconcile_scan_core(
                 // Genuinely gone: neither an index.json entry nor a
                 // messages.jsonl file on disk. This is the real "missing"
                 // case (fix #4's complement) — only mark missing here.
-                if let Some((_, _, missing)) = existing.get(&conv_id) {
+                if let Some((_, _, missing, _)) = existing.get(&conv_id) {
                     if !missing {
                         mark_missing_ids.push(conv_id.clone());
                         stats.marked_missing += 1;
@@ -705,15 +884,34 @@ fn reconcile_scan_core(
                     source_mtime: None,
                     missing: false,
                 };
-                upserts.push(row);
+                upserts.push((row, String::new()));
                 stats.upserted += 1;
             }
             (Some(m), _) => {
                 let disk_bytes = m.len() as i64;
                 let disk_mtime = mtime_ms(m);
                 let needs_scan = match existing.get(&conv_id) {
-                    Some((ebytes, emtime, emissing)) => {
-                        *emissing || *ebytes != disk_bytes || *emtime != Some(disk_mtime)
+                    Some((ebytes, emtime, emissing, etitle)) => {
+                        // Fix #5: index.json is authoritative for title (see
+                        // below). If it disagrees with what's currently in the
+                        // catalog row, the conversation was renamed. A rename
+                        // only touches index.json — messages.jsonl bytes/mtime
+                        // are untouched — so without this check needs_scan
+                        // would stay false forever and the FTS `title` column
+                        // would keep serving the stale title across every
+                        // future reconcile, even past app restarts.
+                        let title_changed = index_meta
+                            .map(|meta| meta.title != *etitle)
+                            .unwrap_or(false);
+                        // The `!existing_fts_ids.contains(...)` arm lets a
+                        // dropped/cleared conversation_fts table self-heal on
+                        // the next reconcile even when the catalog watermark
+                        // itself hasn't changed (see reconcile_read_existing_core).
+                        *emissing
+                            || *ebytes != disk_bytes
+                            || *emtime != Some(disk_mtime)
+                            || !existing_fts_ids.contains(&conv_id)
+                            || title_changed
                     }
                     None => true,
                 };
@@ -749,14 +947,14 @@ fn reconcile_scan_core(
                         source_mtime: Some(scanned.source_mtime),
                         missing: false,
                     };
-                    upserts.push(row);
+                    upserts.push((row, scanned.body.clone()));
                     stats.upserted += 1;
                 }
             }
         }
     }
 
-    for (conv_id, (_, _, missing)) in existing.iter() {
+    for (conv_id, (_, _, missing, _)) in existing.iter() {
         if !missing && !seen.contains(conv_id) {
             mark_missing_ids.push(conv_id.clone());
             stats.marked_missing += 1;
@@ -771,8 +969,9 @@ fn reconcile_scan_core(
 /// conversations is one commit/fsync, not N.
 fn reconcile_apply_core(
     conn: &Connection,
-    upserts: &[CatalogRow],
+    upserts: &[(CatalogRow, String)],
     mark_missing_ids: &[String],
+    existing_fts_ids: &HashSet<String>,
 ) -> Result<(), String> {
     // `unchecked_transaction` (rather than `transaction`, which needs `&mut
     // Connection`) because callers only ever hold a `&Connection` here (e.g.
@@ -781,10 +980,24 @@ fn reconcile_apply_core(
     // single connection's Mutex, so there is no concurrent use of this
     // Connection to race with.
     let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
-    for row in upserts {
+    for (row, body) in upserts {
         upsert_core(&tx, row)?;
+        // Fix #3: an empty body (a never-messaged conversation — index.json
+        // entry but no messages.jsonl yet) is never matchable under the
+        // trigram tokenizer, so skip the FTS write entirely instead of
+        // unconditionally re-inserting an empty row every reconcile pass.
+        if !body.is_empty() {
+            // Fix #2: only DELETE-then-INSERT when this conv_id might already
+            // have an FTS row (tracked in existing_fts_ids, read once before
+            // the scan). A brand-new conversation can go straight to INSERT,
+            // avoiding an UNINDEXED-column full-table-scan DELETE for every
+            // row during the O(N) initial build.
+            let may_exist = existing_fts_ids.contains(&row.conv_id);
+            fts_upsert_core(&tx, &row.conv_id, &row.title, body, may_exist)?;
+        }
     }
     for conv_id in mark_missing_ids {
+        // mark_missing_core also drops the FTS row (soft-delete => out of search).
         mark_missing_core(&tx, conv_id)?;
     }
     bump_observation_sequence_core(&tx)?;
@@ -800,9 +1013,9 @@ fn reconcile_apply_core(
 /// `#[cfg(test)]`-only: nothing in the non-test build calls it anymore.
 #[cfg(test)]
 pub fn reconcile_core(conn: &Connection, conversations_root: &Path) -> Result<ReconcileStats, String> {
-    let existing = reconcile_read_existing_core(conn)?;
-    let (upserts, mark_missing_ids, stats) = reconcile_scan_core(conversations_root, &existing)?;
-    reconcile_apply_core(conn, &upserts, &mark_missing_ids)?;
+    let (existing, existing_fts_ids) = reconcile_read_existing_core(conn)?;
+    let (upserts, mark_missing_ids, stats) = reconcile_scan_core(conversations_root, &existing, &existing_fts_ids)?;
+    reconcile_apply_core(conn, &upserts, &mark_missing_ids, &existing_fts_ids)?;
     Ok(stats)
 }
 
@@ -913,21 +1126,31 @@ pub fn catalog_reconcile(app: AppHandle, conversations_root: String) -> Result<R
     // `catalog_bump_count` (fired by every message append) would otherwise
     // stall until this entire reconcile finished. Lock only for the cheap
     // existing-rows SELECT...
-    let existing = {
+    let (existing, existing_fts_ids) = {
         let conn = db.conn.lock().map_err(|e| e.to_string())?;
         reconcile_read_existing_core(&conn)?
     };
 
     // ...do all filesystem work with the lock released...
-    let (upserts, mark_missing_ids, stats) = reconcile_scan_core(root, &existing)?;
+    let (upserts, mark_missing_ids, stats) = reconcile_scan_core(root, &existing, &existing_fts_ids)?;
 
     // ...and re-acquire only to apply every write in one transaction (fix #8).
     {
         let conn = db.conn.lock().map_err(|e| e.to_string())?;
-        reconcile_apply_core(&conn, &upserts, &mark_missing_ids)?;
+        reconcile_apply_core(&conn, &upserts, &mark_missing_ids, &existing_fts_ids)?;
     }
 
     Ok(stats)
+}
+
+/// Conversation full-text search entry point (message-storage hybrid P2).
+/// `limit` defaults to 50. See `search_core` for sanitization/short-circuit
+/// behavior.
+#[tauri::command]
+pub fn catalog_search(app: AppHandle, query: String, limit: Option<i64>) -> Result<Vec<SearchHit>, String> {
+    let db = get_db(&app)?;
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    search_core(&conn, &query, limit.unwrap_or(50))
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────
@@ -1565,7 +1788,7 @@ mod tests {
         let db_for_reconcile = Arc::clone(&db);
         let conversations_root = root.path().to_path_buf();
         let reconcile_handle = std::thread::spawn(move || {
-            let existing = {
+            let (existing, existing_fts_ids) = {
                 let conn = db_for_reconcile.conn.lock().unwrap();
                 reconcile_read_existing_core(&conn).unwrap()
             };
@@ -1573,10 +1796,10 @@ mod tests {
             // scan is about to start.
             tx.send(()).unwrap();
             let (upserts, mark_missing_ids, stats) =
-                reconcile_scan_core(&conversations_root, &existing).unwrap();
+                reconcile_scan_core(&conversations_root, &existing, &existing_fts_ids).unwrap();
             {
                 let conn = db_for_reconcile.conn.lock().unwrap();
-                reconcile_apply_core(&conn, &upserts, &mark_missing_ids).unwrap();
+                reconcile_apply_core(&conn, &upserts, &mark_missing_ids, &existing_fts_ids).unwrap();
             }
             stats
         });
@@ -1620,23 +1843,28 @@ mod tests {
             }));
         }
 
-        let upserts: Vec<CatalogRow> = (0..20)
-            .map(|i| CatalogRow {
-                conv_id: format!("conv-{i}"),
-                title: format!("t{i}"),
-                created_at: i,
-                updated_at: i,
-                message_count: 1,
-                last_message_id: Some(format!("m{i}")),
-                model: None,
-                source_bytes: 0,
-                source_mtime: None,
-                missing: false,
+        let upserts: Vec<(CatalogRow, String)> = (0..20)
+            .map(|i| {
+                (
+                    CatalogRow {
+                        conv_id: format!("conv-{i}"),
+                        title: format!("t{i}"),
+                        created_at: i,
+                        updated_at: i,
+                        message_count: 1,
+                        last_message_id: Some(format!("m{i}")),
+                        model: None,
+                        source_bytes: 0,
+                        source_mtime: None,
+                        missing: false,
+                    },
+                    String::new(),
+                )
             })
             .collect();
         let mark_missing_ids = vec!["nonexistent-conv".to_string()];
 
-        reconcile_apply_core(&conn, &upserts, &mark_missing_ids).unwrap();
+        reconcile_apply_core(&conn, &upserts, &mark_missing_ids, &HashSet::new()).unwrap();
 
         assert_eq!(
             commit_count.load(Ordering::SeqCst),
@@ -1647,5 +1875,288 @@ mod tests {
         for i in 0..20 {
             assert!(get_core(&conn, &format!("conv-{i}")).unwrap().is_some());
         }
+    }
+
+    // ── 12. FTS5 conversation search (message-storage hybrid P2) ───────
+
+    fn insert_catalog_row(conn: &Connection, conv_id: &str, title: &str) {
+        upsert_core(
+            conn,
+            &CatalogRow {
+                conv_id: conv_id.to_string(),
+                title: title.to_string(),
+                created_at: 1,
+                updated_at: 1,
+                message_count: 1,
+                last_message_id: None,
+                model: None,
+                source_bytes: 0,
+                source_mtime: None,
+                missing: false,
+            },
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn fts_search_finds_matching_conversation_with_highlighted_snippet() {
+        let conn = open_test_db();
+        insert_catalog_row(&conn, "conv-1", "Conversation One");
+        insert_catalog_row(&conn, "conv-2", "Conversation Two");
+        fts_upsert_core(&conn, "conv-1", "Conversation One", "user: let's discuss the widget rollout plan", true).unwrap();
+        fts_upsert_core(&conn, "conv-2", "Conversation Two", "user: totally unrelated content", true).unwrap();
+
+        let hits = search_core(&conn, "widget rollout", 50).unwrap();
+        assert_eq!(hits.len(), 1, "only conv-1's body matches");
+        assert_eq!(hits[0].conv_id, "conv-1");
+        assert!(!hits[0].snippet.is_empty());
+        assert!(
+            hits[0].snippet.contains("<mark>"),
+            "snippet must contain highlight markers, got: {}",
+            hits[0].snippet
+        );
+    }
+
+    #[test]
+    fn fts_search_cjk_trigram_hits_and_short_query_short_circuits() {
+        let conn = open_test_db();
+        insert_catalog_row(&conn, "conv-cjk", "重构消息存储架构讨论");
+        fts_upsert_core(&conn, "conv-cjk", "重构消息存储架构讨论", "user: 我们来聊聊重构消息存储架构的方案", true).unwrap();
+
+        let hits = search_core(&conn, "消息存储", 50).unwrap();
+        assert_eq!(hits.len(), 1, "a >=3-char CJK substring must hit via the trigram tokenizer");
+        assert_eq!(hits[0].conv_id, "conv-cjk");
+
+        let short_hits = search_core(&conn, "消息", 50).unwrap();
+        assert!(
+            short_hits.is_empty(),
+            "a <3-char query must short-circuit to empty (trigram needs >=3 chars), counted by chars not bytes"
+        );
+    }
+
+    #[test]
+    fn fts_rebuild_from_jsonl_via_reconcile() {
+        let root = tempdir().unwrap();
+        write_jsonl(
+            root.path(),
+            "conv-rebuild",
+            &[&msg("m1", "user", "the quarterly roadmap review notes", 100)],
+        );
+        let conn = open_test_db();
+        reconcile_core(&conn, root.path()).unwrap();
+
+        // Sanity: searchable right after the first reconcile.
+        assert_eq!(search_core(&conn, "roadmap review", 50).unwrap().len(), 1);
+
+        // Simulate the FTS projection being lost/corrupted while the catalog
+        // table (and its on-disk watermark) is untouched — the JSONL file
+        // itself never changes.
+        conn.execute("DELETE FROM conversation_fts", []).unwrap();
+        assert!(search_core(&conn, "roadmap review", 50).unwrap().is_empty());
+
+        // Reconcile again — it must notice the missing FTS row (even though
+        // the catalog watermark hasn't drifted) and rebuild it from JSONL.
+        let stats = reconcile_core(&conn, root.path()).unwrap();
+        assert_eq!(stats.upserted, 1, "the FTS-less conversation must be rescanned to self-heal its FTS row");
+        let hits = search_core(&conn, "roadmap review", 50).unwrap();
+        assert_eq!(hits.len(), 1, "reconcile must rebuild the FTS row from JSONL after the FTS table is emptied");
+        assert_eq!(hits[0].conv_id, "conv-rebuild");
+    }
+
+    #[test]
+    fn fts_soft_delete_removes_conversation_from_search_results() {
+        let conn = open_test_db();
+        insert_catalog_row(&conn, "conv-del", "Conversation To Delete");
+        fts_upsert_core(&conn, "conv-del", "Conversation To Delete", "user: some searchable phrase here", true).unwrap();
+        assert_eq!(search_core(&conn, "searchable phrase", 50).unwrap().len(), 1);
+
+        mark_missing_core(&conn, "conv-del").unwrap();
+
+        let hits = search_core(&conn, "searchable phrase", 50).unwrap();
+        assert!(hits.is_empty(), "a soft-deleted (missing=1) conversation must not appear in search results");
+    }
+
+    #[test]
+    fn fts_search_sanitizes_query_and_never_errors_on_fts5_syntax() {
+        let conn = open_test_db();
+        insert_catalog_row(&conn, "conv-x", "Some Conversation");
+        fts_upsert_core(&conn, "conv-x", "Some Conversation", "user: plain body text here", true).unwrap();
+
+        // A literal double quote and FTS5 boolean-operator-looking input must
+        // not be interpreted as FTS5 query syntax — both must return Ok
+        // (possibly empty), never an Err, proving injection is neutralized.
+        let quote_result = search_core(&conn, "a\"b", 50);
+        assert!(quote_result.is_ok(), "a query containing a double-quote must not error: {:?}", quote_result.err());
+
+        let operator_result = search_core(&conn, "foo OR bar", 50);
+        assert!(operator_result.is_ok(), "a query containing FTS5 operators must not error: {:?}", operator_result.err());
+    }
+
+    // ── 13. Fix #1 — bm25 title boost ranks a title match above a body-only match ──
+
+    #[test]
+    fn fts_search_ranks_title_match_above_body_only_match() {
+        let conn = open_test_db();
+        insert_catalog_row(&conn, "conv-title-hit", "Quarterly Budget Review");
+        insert_catalog_row(&conn, "conv-body-hit", "Unrelated Conversation");
+
+        // conv-title-hit matches the query in its TITLE; its body is short
+        // and otherwise unrelated to the query.
+        fts_upsert_core(&conn, "conv-title-hit", "Quarterly Budget Review", "user: let's sync tomorrow", true).unwrap();
+
+        // conv-body-hit matches the query only once, deep inside a long,
+        // otherwise-unrelated BODY; its title is completely unrelated. Under
+        // the old buggy weighting (bm25(fts, 5.0, 1.0) — 5.0 landing on the
+        // UNINDEXED conv_id column and 1.0 on title) title got no real boost
+        // over body, so a long body match could out-rank a title match. Fix
+        // #1's bm25(fts, 0.0, 5.0, 1.0) puts the boost on title (5.0) vs body
+        // (1.0), so the title match must win.
+        let long_body = format!(
+            "user: {}quarterly budget review appears once in a much longer unrelated passage{}",
+            "padding text ".repeat(40),
+            " more padding text".repeat(40)
+        );
+        fts_upsert_core(&conn, "conv-body-hit", "Unrelated Conversation", &long_body, true).unwrap();
+
+        let hits = search_core(&conn, "quarterly budget review", 50).unwrap();
+        assert_eq!(hits.len(), 2, "both conversations must match (one via title, one via body)");
+        assert_eq!(
+            hits[0].conv_id, "conv-title-hit",
+            "the TITLE match must rank first under the boosted bm25 weights (fix #1); got order {:?}",
+            hits.iter().map(|h| (&h.conv_id, h.rank)).collect::<Vec<_>>()
+        );
+        assert_eq!(hits[1].conv_id, "conv-body-hit");
+    }
+
+    // ── 14. Fix #2 — initial-build inserts skip the O(N^2) delete-before-insert ──
+
+    #[test]
+    fn fts_upsert_core_may_exist_false_skips_delete_and_still_inserts_correctly() {
+        let conn = open_test_db();
+        insert_catalog_row(&conn, "conv-fresh", "Fresh Conversation");
+        // may_exist=false is the fast path used for brand-new conversations
+        // during the initial reconcile build (fix #2): it must go straight to
+        // INSERT without a DELETE, and still produce a correct, searchable row.
+        fts_upsert_core(&conn, "conv-fresh", "Fresh Conversation", "user: brand new content here", false).unwrap();
+
+        let hits = search_core(&conn, "brand new content", 50).unwrap();
+        assert_eq!(hits.len(), 1, "the may_exist=false insert-only path must still produce a searchable row");
+        assert_eq!(hits[0].conv_id, "conv-fresh");
+
+        // Sanity: exactly one row — no phantom duplicate from skipping the DELETE.
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM conversation_fts WHERE conv_id = 'conv-fresh'", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 1, "may_exist=false must not leave behind a duplicate row when none existed before");
+    }
+
+    #[test]
+    fn reconcile_initial_build_indexes_many_new_conversations_via_insert_only_path() {
+        let root = tempdir().unwrap();
+        for i in 0..5 {
+            write_jsonl(
+                root.path(),
+                &format!("conv-{i}"),
+                &[&msg("m1", "user", &format!("unique topic {i} content"), 100)],
+            );
+        }
+        let conn = open_test_db();
+        // First-ever reconcile: existing_fts_ids is empty for every
+        // conversation, so every fts_upsert_core call inside
+        // reconcile_apply_core takes the insert-only (may_exist=false) path
+        // (fix #2) instead of an UNINDEXED-column full-table-scan DELETE per
+        // row. This must still produce correct, independently searchable rows.
+        reconcile_core(&conn, root.path()).unwrap();
+        for i in 0..5 {
+            let hits = search_core(&conn, &format!("unique topic {i}"), 50).unwrap();
+            assert_eq!(hits.len(), 1, "conv-{i} must be searchable after the insert-only initial build");
+            assert_eq!(hits[0].conv_id, format!("conv-{i}"));
+        }
+    }
+
+    // ── 15. Fix #3 — never-messaged conversations don't churn the FTS table ──
+
+    #[test]
+    fn never_messaged_conversation_produces_no_fts_row_and_no_per_pass_churn() {
+        let root = tempdir().unwrap();
+        stdfs::create_dir_all(root.path()).unwrap();
+        // conv-never has an index.json entry but has never had a message
+        // appended — no directory, no messages.jsonl (same fixture shape as
+        // fix #4's existing coverage).
+        write_index_json(root.path(), &[("conv-never", "Never messaged", 10, 10, None)]);
+
+        let conn = open_test_db();
+        reconcile_core(&conn, root.path()).unwrap();
+
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM conversation_fts WHERE conv_id = 'conv-never'", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 0, "fix #3: a never-messaged conversation (empty body) must produce no FTS row at all");
+
+        // A second reconcile pass over the same, unchanged disk state must
+        // not create one either (no per-pass churn).
+        reconcile_core(&conn, root.path()).unwrap();
+        let count_after: i64 = conn
+            .query_row("SELECT COUNT(*) FROM conversation_fts WHERE conv_id = 'conv-never'", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count_after, 0, "a second reconcile pass over an unchanged never-messaged conversation must still produce no FTS row");
+
+        // The catalog row itself must still be visible and correct.
+        let row = get_core(&conn, "conv-never").unwrap().unwrap();
+        assert!(!row.missing);
+        assert_eq!(row.title, "Never messaged");
+    }
+
+    // ── 16. Fix #4 — conversation_fts never has duplicate conv_id rows ──
+
+    #[test]
+    fn conversation_fts_never_has_duplicate_conv_id_rows() {
+        let conn = open_test_db();
+        insert_catalog_row(&conn, "conv-dup", "Conv");
+        fts_upsert_core(&conn, "conv-dup", "Conv", "user: first body", true).unwrap();
+        fts_upsert_core(&conn, "conv-dup", "Conv", "user: second body replacing first", true).unwrap();
+
+        // The delete-then-insert invariant guarantees at most one FTS row per
+        // conv_id — this is exactly the invariant that makes
+        // reconcile_read_existing_core's plain `SELECT conv_id` (no DISTINCT,
+        // fix #4) safe: DISTINCT would be defending against duplicates that
+        // can never occur.
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM conversation_fts WHERE conv_id = 'conv-dup'", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 1, "at most one conversation_fts row must ever exist per conv_id");
+    }
+
+    // ── 17. Fix #5 — a rename (index.json title change) re-indexes the FTS title ──
+
+    #[test]
+    fn reconcile_reindexes_fts_title_when_index_json_title_changes_without_touching_jsonl() {
+        let root = tempdir().unwrap();
+        write_jsonl(root.path(), "conv-rename", &[&msg("m1", "user", "original message body text", 100)]);
+        write_index_json(root.path(), &[("conv-rename", "Title A", 100, 100, None)]);
+
+        let conn = open_test_db();
+        reconcile_core(&conn, root.path()).unwrap();
+
+        assert_eq!(get_core(&conn, "conv-rename").unwrap().unwrap().title, "Title A");
+        let hits_a = search_core(&conn, "Title A", 50).unwrap();
+        assert_eq!(hits_a.len(), 1, "the original title must be searchable before the rename");
+
+        // Rename: only index.json changes. messages.jsonl bytes/mtime are
+        // deliberately left untouched — this is the exact scenario that used
+        // to leave the FTS `title` column stuck on the old value forever.
+        write_index_json(root.path(), &[("conv-rename", "Title B", 100, 100, None)]);
+
+        let stats = reconcile_core(&conn, root.path()).unwrap();
+        assert_eq!(stats.upserted, 1, "fix #5: a title-only rename must force a re-index even though the JSONL is byte-for-byte unchanged");
+
+        assert_eq!(get_core(&conn, "conv-rename").unwrap().unwrap().title, "Title B", "catalog title must reflect the rename");
+
+        let hits_b = search_core(&conn, "Title B", 50).unwrap();
+        assert_eq!(hits_b.len(), 1, "searching the NEW title must hit after reconcile");
+        assert_eq!(hits_b[0].conv_id, "conv-rename");
+
+        let hits_a_after = search_core(&conn, "Title A", 50).unwrap();
+        assert!(hits_a_after.is_empty(), "searching the OLD title must no longer hit by title after the rename+reconcile");
     }
 }
