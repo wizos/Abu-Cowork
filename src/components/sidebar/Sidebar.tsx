@@ -490,21 +490,23 @@ export default function Sidebar() {
                   status={convStatus}
                   onComplete={() => handleClearCompletedStatus(conv.id)}
                 />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    switchConversation(conv.id);
-                    setViewMode('chat');
-                    clearBadge(conv.id);
-                    setShowFileTree(true);
-                  }}
-                  className="h-5 w-5 opacity-0 group-hover:opacity-100 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-clay)] hover:bg-transparent shrink-0"
-                  title={t.sidebar.projectFiles}
-                >
-                  <ListTree className="h-3.5 w-3.5" strokeWidth={1.5} />
-                </Button>
+                {conv.workspacePath && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      switchConversation(conv.id);
+                      setViewMode('chat');
+                      clearBadge(conv.id);
+                      setShowFileTree(true);
+                    }}
+                    className="h-5 w-5 opacity-0 group-hover:opacity-100 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-clay)] hover:bg-transparent shrink-0"
+                    title={t.sidebar.projectFiles}
+                  >
+                    <ListTree className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
