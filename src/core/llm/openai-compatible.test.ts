@@ -633,6 +633,38 @@ describe('OpenAICompatibleAdapter streaming finish_reason handling', () => {
         expect('_parse_error' in tu.input).toBe(true);
       }
     });
+
+    it('keeps the replayed _parse_error input bounded even for very long invalid args', async () => {
+      // The _parse_error blob is persisted in the tool_use input and re-sent to
+      // the model every turn until compaction, so it MUST stay small regardless
+      // of how long the model's malformed args were (full args go to the disk
+      // log instead — see PARSE_ERROR_INPUT_PREVIEW vs LOG_TOOL_ARG_PREVIEW).
+      // Marker sits at ~char 230, past the 200-char input cap.
+      const longInvalid = `{"path":"${'x'.repeat(220)}NEEDLE`; // unterminated string → invalid JSON
+      const events = await runChat([
+        {
+          choices: [{
+            delta: {
+              tool_calls: [{
+                index: 0,
+                id: 'tc_1',
+                function: { name: 'read_file', arguments: longInvalid },
+              }],
+            },
+          }],
+        },
+      ]);
+
+      const tu = events.find((e) => e.type === 'tool_use');
+      expect(tu?.type).toBe('tool_use');
+      if (tu?.type === 'tool_use') {
+        const preview = (tu.input as Record<string, unknown>)._parse_error as string;
+        // Bounded: prefix (~28 chars) + at most 200 chars of args.
+        expect(preview.length).toBeLessThanOrEqual(240);
+        // Content past the 200-char cap must NOT be replayed to the model.
+        expect(preview).not.toContain('NEEDLE');
+      }
+    });
   });
 });
 
