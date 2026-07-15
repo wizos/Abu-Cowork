@@ -1,11 +1,14 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { LLMAdapter, ChatOptions, ToolChoice } from './adapter';
-import { LLMError, classifyError } from './adapter';
+import { LLMError, classifyError, LOG_TOOL_ARG_PREVIEW, PARSE_ERROR_INPUT_PREVIEW } from './adapter';
 import type { Message, StreamEvent, ToolDefinition } from '../../types';
 import { getTauriFetch } from './tauriFetch';
 import { normalizeMessages } from './messageNormalizer';
 import type { PreparedTurn, PreparedToolCall } from './messageNormalizer';
 import { createHeartbeat, anySignal, DEFAULT_STREAM_HANG_TIMEOUT_MS as STREAM_HANG_TIMEOUT_MS } from './heartbeat';
+import { createLogger } from '../logging/logger';
+
+const logger = createLogger('claude');
 
 function convertTools(tools: ToolDefinition[]): Anthropic.Tool[] {
   return tools.map((t) => ({
@@ -330,7 +333,15 @@ export class ClaudeAdapter implements LLMAdapter {
               try {
                 input = JSON.parse(currentToolInput);
               } catch {
-                input = { _parse_error: `Failed to parse tool input: ${currentToolInput.slice(0, 200)}` };
+                // Log the full preview to disk (no token cost) for diagnosis;
+                // keep the replayed _parse_error input small (see adapter.ts).
+                logger.error('tool args JSON parse failed', {
+                  source: 'claude/content_block_stop',
+                  tool: currentToolName,
+                  argsLength: currentToolInput.length,
+                  argsPreview: currentToolInput.slice(0, LOG_TOOL_ARG_PREVIEW),
+                });
+                input = { _parse_error: `Failed to parse tool input: ${currentToolInput.slice(0, PARSE_ERROR_INPUT_PREVIEW)}` };
               }
               onEvent({
                 type: 'tool_use',

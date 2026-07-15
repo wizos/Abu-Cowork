@@ -1,5 +1,5 @@
 import type { LLMAdapter, ChatOptions, ToolChoice } from './adapter';
-import { LLMError, classifyError } from './adapter';
+import { LLMError, classifyError, LOG_TOOL_ARG_PREVIEW, PARSE_ERROR_INPUT_PREVIEW } from './adapter';
 import type { Message, StreamEvent, ToolDefinition } from '../../types';
 import { getTauriFetch } from './tauriFetch';
 import { normalizeMessages } from './messageNormalizer';
@@ -99,9 +99,9 @@ function buildToolInput(
     source,
     tool: tc.name,
     argsLength: tc.args.length,
-    argsPreview: tc.args.slice(0, 500),
+    argsPreview: tc.args.slice(0, LOG_TOOL_ARG_PREVIEW),
   });
-  return { _parse_error: `Failed to parse tool input: ${tc.args.slice(0, 200)}` };
+  return { _parse_error: `Failed to parse tool input: ${tc.args.slice(0, PARSE_ERROR_INPUT_PREVIEW)}` };
 }
 
 /**
@@ -892,7 +892,7 @@ export class OpenAICompatibleAdapter implements LLMAdapter {
                   partials: Array.from(toolCallBuffers.values()).map((t) => ({
                     name: t.name,
                     argsLength: t.args.length,
-                    argsPreview: t.args.slice(0, 200),
+                    argsPreview: t.args.slice(0, LOG_TOOL_ARG_PREVIEW),
                   })),
                 });
                 onEvent({ type: 'done', stopReason: 'max_tokens' });
