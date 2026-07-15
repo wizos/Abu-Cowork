@@ -129,6 +129,7 @@ const enUS: TranslationDict = {
     archiveTriggerRun: 'Archive',
     help: 'Help',
     editProfile: 'Edit Profile',
+    localMode: 'Local mode',
     nickname: 'Nickname',
     nicknamePlaceholder: 'Enter your nickname',
     avatar: 'Avatar',

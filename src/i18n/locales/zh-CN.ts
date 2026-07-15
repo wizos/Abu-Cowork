@@ -129,6 +129,7 @@ const zhCN: TranslationDict = {
     archiveTriggerRun: '删除记录',
     help: '帮助',
     editProfile: '编辑资料',
+    localMode: '本地模式',
     nickname: '昵称',
     nicknamePlaceholder: '输入你的昵称',
     avatar: '头像',

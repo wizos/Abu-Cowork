@@ -156,6 +156,7 @@ export interface TranslationDict {
     archiveTriggerRun: string;
     help: string;
     editProfile: string;
+    localMode: string;
     nickname: string;
     nicknamePlaceholder: string;
     avatar: string;

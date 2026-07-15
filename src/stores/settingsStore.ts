@@ -384,6 +384,9 @@ interface SettingsState {
   toolboxSearchQuery: string;
   installingItem: string | null;
   viewMode: ViewMode;
+  /** System settings render as an overlay dialog on top of the current view,
+   *  decoupled from viewMode. Ephemeral — not persisted. */
+  systemSettingsOpen: boolean;
   disabledSkills: string[];
   disabledAgents: string[];
   sandboxEnabled: boolean;
@@ -763,6 +766,7 @@ export const useSettingsStore = create<SettingsStore>()(
       toolboxSearchQuery: '',
       installingItem: null,
       viewMode: 'chat' as ViewMode,
+      systemSettingsOpen: false,
       disabledSkills: [
         'alert-sop', 'algorithmic-art', 'brand-guidelines', 'canvas-design',
         'claude-api', 'create-agent', 'doc-coauthoring', 'docx',
@@ -1043,13 +1047,15 @@ export const useSettingsStore = create<SettingsStore>()(
         setLanguage(lang);
         set({ language: lang });
       },
+      // Settings open as an overlay dialog over the current view — do NOT
+      // switch viewMode, so the underlying view stays visible behind it.
       openSystemSettings: (tab) =>
         set((s) => ({
-          viewMode: 'settings' as ViewMode,
+          systemSettingsOpen: true,
           activeSystemTab: tab ?? s.activeSystemTab,
         })),
       closeSystemSettings: () =>
-        set({ viewMode: 'chat' as ViewMode }),
+        set({ systemSettingsOpen: false }),
       setActiveSystemTab: (tab) => set({ activeSystemTab: tab }),
       setLabsFlag: (id, enabled) =>
         set((s) => ({ labs: { ...s.labs, [id]: enabled } })),
