@@ -411,18 +411,6 @@ describe('settingsStore whitespace trim', () => {
     });
   });
 
-  describe('setAuxiliaryImageGen', () => {
-    it('trims whitespace from baseUrl and apiKey', () => {
-      useSettingsStore.getState().setAuxiliaryImageGen({
-        apiKey: ' imgkey ',
-        baseUrl: '  http://img.example.com/ ',
-        model: 'dall-e-3',
-      });
-      const cfg = useSettingsStore.getState().auxiliaryServices.imageGen;
-      expect(cfg?.apiKey).toBe('imgkey');
-      expect(cfg?.baseUrl).toBe('http://img.example.com/');
-    });
-  });
 });
 
 describe('settingsStore partialize', () => {

@@ -503,7 +503,6 @@ interface SettingsActions {
 
   // ── Auxiliary services ──
   setAuxiliaryWebSearch: (config: AuxiliaryServices['webSearch']) => void;
-  setAuxiliaryImageGen: (config: AuxiliaryServices['imageGen']) => void;
 
   // ── Image-generation backends (V2, "C-a") ──
   /** Adds a backend, auto-selecting it as default when it's the first one. Returns its id. */
@@ -974,20 +973,6 @@ export const useSettingsStore = create<SettingsStore>()(
         fafSecret(
           writeSecretOrDelete(SECRET_KEYS.auxWebSearch, cleaned?.apiKey ?? ''),
           'setAuxiliaryWebSearch',
-        );
-      },
-
-      setAuxiliaryImageGen: (config) => {
-        // Trim whitespace at the store boundary (same rationale as addProvider).
-        const cleaned = config
-          ? { ...config, apiKey: config.apiKey?.trim() ?? '', baseUrl: config.baseUrl?.trim() ?? '' }
-          : config;
-        set((s) => ({
-          auxiliaryServices: { ...s.auxiliaryServices, imageGen: cleaned },
-        }));
-        fafSecret(
-          writeSecretOrDelete(SECRET_KEYS.auxImageGen, cleaned?.apiKey ?? ''),
-          'setAuxiliaryImageGen',
         );
       },
 
