@@ -1431,7 +1431,6 @@ const zhCN: TranslationDict = {
       empty: '空文件夹',
       loadError: '读取文件夹失败',
       folderDeleted: '该文件夹已删除，无法查看当前任务下的文件',
-      retry: '重试',
       loading: '加载中...',
       moreActions: '更多操作',
       newFolder: '新建文件夹',

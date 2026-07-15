@@ -1430,7 +1430,6 @@ const enUS: TranslationDict = {
       empty: 'Empty folder',
       loadError: 'Failed to read folder',
       folderDeleted: "This folder has been deleted — files for this task can't be shown",
-      retry: 'Retry',
       loading: 'Loading...',
       moreActions: 'More actions',
       newFolder: 'New folder',

@@ -1560,7 +1560,6 @@ export interface TranslationDict {
       empty: string;
       loadError: string;
       folderDeleted: string;
-      retry: string;
       loading: string;
       moreActions: string;
       newFolder: string;

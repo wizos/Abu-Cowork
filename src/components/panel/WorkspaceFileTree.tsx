@@ -17,7 +17,6 @@ import {
   Copy,
   Pencil,
   Trash2,
-  RefreshCw,
 } from 'lucide-react';
 import { mkdir, copyFile, rename, writeTextFile, exists } from '@tauri-apps/plugin-fs';
 import { invoke } from '@tauri-apps/api/core';
@@ -25,7 +24,6 @@ import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import { useI18n, type TranslationDict } from '@/i18n';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Button } from '@/components/ui/button';
 import { usePreviewStore } from '@/stores/previewStore';
 import { useToastStore } from '@/stores/toastStore';
 import { useChatStore } from '@/stores/chatStore';
@@ -616,12 +614,7 @@ export default function WorkspaceFileTree() {
       {!rootPath ? (
         <p className="text-[12px] text-[var(--abu-text-muted)] py-1">{t.panel.fileTree.noWorkspace}</p>
       ) : rootMissing ? (
-        <div className="flex flex-col items-start gap-1.5 py-1">
-          <p className="text-[12px] text-[var(--abu-text-muted)]">{t.panel.fileTree.folderDeleted}</p>
-          <Button variant="outline" size="sm" onClick={refresh}>
-            <RefreshCw className="h-3.5 w-3.5 shrink-0" /> {t.panel.fileTree.retry}
-          </Button>
-        </div>
+        <p className="text-[12px] text-[var(--abu-text-muted)] py-1">{t.panel.fileTree.folderDeleted}</p>
       ) : rootError ? (
         <p className="text-[12px] text-[var(--abu-text-muted)] py-1">{t.panel.fileTree.loadError}</p>
       ) : isRootLoading && rootEntries.length === 0 ? (
