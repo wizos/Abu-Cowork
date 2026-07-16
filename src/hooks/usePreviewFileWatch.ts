@@ -24,7 +24,14 @@ function isDataUrl(path: string): boolean {
 }
 
 /**
- * Watch `filePath` for external changes and auto-refresh the preview panel.
+ * Watch `filePath` for external changes and invoke `onChange` (debounced).
+ *
+ * Each `PreviewPanel` instance now owns its own reload nonce (workspace
+ * tabs — multiple preview instances can be mounted at once, keep-alive —
+ * see `docs/2026-07-17-workspace-tabs-design.md`), so the caller supplies
+ * `onChange` to bump its own local state. Back-compat: if no `onChange` is
+ * passed, falls back to the old behavior of bumping the global
+ * `previewStore.reloadNonce` signal directly.
  *
  * P2 note (in-panel editor autosave): once the editor writes the file itself,
  * that write will also land in this watcher (self-triggered refresh). If that
@@ -34,8 +41,15 @@ function isDataUrl(path: string): boolean {
  * before scheduling the debounced refresh). Not needed for P1 (read-only
  * preview; only external writers touch the file).
  */
-export function usePreviewFileWatch(filePath: string | null): void {
+export function usePreviewFileWatch(filePath: string | null, onChange?: () => void): void {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Ref so the watch-setup effect below (keyed only on `filePath`) doesn't
+  // need `onChange` identity in its deps — callers commonly pass a fresh
+  // inline arrow function each render.
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   useEffect(() => {
     if (!filePath || isDataUrl(filePath)) return;
@@ -61,7 +75,11 @@ export function usePreviewFileWatch(filePath: string | null): void {
             if (timerRef.current) clearTimeout(timerRef.current);
             timerRef.current = setTimeout(() => {
               timerRef.current = null;
-              usePreviewStore.getState().refreshPreview();
+              if (onChangeRef.current) {
+                onChangeRef.current();
+              } else {
+                usePreviewStore.getState().refreshPreview();
+              }
             }, DEBOUNCE_MS);
           },
           { recursive: false },

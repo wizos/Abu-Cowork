@@ -1467,6 +1467,20 @@ const enUS: TranslationDict = {
     },
   },
 
+  workspace: {
+    newTab: 'New tab',
+    newBrowserTab: 'New Browser',
+    newTerminalTab: 'New Terminal',
+    closeTab: 'Close tab',
+    closeOtherTabs: 'Close other tabs',
+    closeAllTabs: 'Close all tabs',
+    newTabPage: 'New Tab',
+    terminalTitle: 'Terminal',
+    comingSoon: 'Coming soon',
+    browserComingSoonHint: 'Browser tabs are coming soon',
+    terminalComingSoonHint: 'Terminal tabs are coming soon',
+  },
+
   folder: {
     selectFolder: 'Select Folder',
     selectWorkspaceFolder: 'Select Workspace Folder',

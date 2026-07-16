@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import TaskProgressPanel from './TaskProgressPanel';
 import WorkspaceSection from './WorkspaceSection';
 import ContextSection from './ContextSection';
-import PreviewPanel from './PreviewPanel';
+import WorkspacePanel from './workspace/WorkspacePanel';
 import {
   PREVIEW_MIN_WIDTH,
   clampChatWidth,
@@ -25,7 +25,7 @@ export default function RightPanel() {
   const collapsed = useSettingsStore((s) => s.rightPanelCollapsed);
   const setRightPanelCollapsed = useSettingsStore((s) => s.setRightPanelCollapsed);
   const viewMode = useSettingsStore((s) => s.viewMode);
-  const previewFilePath = usePreviewStore((s) => s.previewFilePath);
+  const hasTabs = usePreviewStore((s) => s.tabs.length > 0);
   const conversation = useActiveConversation();
   const prevHasMessagesRef = useRef(false);
   // Track whether auto-expand already fired for this conversation
@@ -62,7 +62,7 @@ export default function RightPanel() {
     if (upHandlerRef.current) document.removeEventListener('mouseup', upHandlerRef.current);
 
     const startX = e.clientX;
-    const isPreview = !!usePreviewStore.getState().previewFilePath;
+    const isPreview = usePreviewStore.getState().tabs.length > 0;
     const sidebarOpen = !useSettingsStore.getState().sidebarCollapsed;
 
     setIsDragging(true);
@@ -140,25 +140,27 @@ export default function RightPanel() {
     prevHasMessagesRef.current = hasMessages;
   }, [hasMessages]);
 
-  // Auto-expand right panel + collapse left sidebar when preview opens
+  // Auto-expand right panel + collapse left sidebar when the workspace opens
+  // (any tab kind, not just preview — a new browser/terminal tab is just as
+  // much "the user wants to see the panel" as a file preview).
   const sidebarCollapsed = useSettingsStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useSettingsStore((s) => s.toggleSidebar);
   useEffect(() => {
-    if (!previewFilePath) return;
+    if (!hasTabs) return;
     if (collapsed) setRightPanelCollapsed(false);
     // In file-tree mode the sidebar hosts the tree the user is browsing, so
     // collapsing it on file-open would hide the tree — keep it open then.
     if (!sidebarCollapsed && !usePreviewStore.getState().fileTreeMode) toggleSidebar();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [previewFilePath]);
+  }, [hasTabs]);
 
-  // Close preview when switching conversations
+  // Close all workspace tabs when switching conversations
   useEffect(() => {
-    usePreviewStore.getState().closePreview();
+    usePreviewStore.getState().closeAllTabs();
   }, [conversationId]);
 
   // Reset drag width when preview mode changes
-  const showPreview = !!previewFilePath;
+  const showPreview = hasTabs;
   useEffect(() => {
     setDragWidth(null);
   }, [showPreview]);
@@ -208,8 +210,8 @@ export default function RightPanel() {
       {/* Panel content */}
       <div className="flex-1 flex flex-col overflow-hidden border-l border-[var(--abu-border)]">
       {showPreview ? (
-        // Preview mode - full panel is preview
-        <PreviewPanel />
+        // Workspace mode - full panel is the tabbed workspace (preview/browser/terminal)
+        <WorkspacePanel />
       ) : (
         // Normal mode - show details sections
         <>

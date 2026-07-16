@@ -1597,6 +1597,21 @@ export interface TranslationDict {
     };
   };
 
+  // Workspace tabs (preview / browser / terminal tab strip)
+  workspace: {
+    newTab: string;
+    newBrowserTab: string;
+    newTerminalTab: string;
+    closeTab: string;
+    closeOtherTabs: string;
+    closeAllTabs: string;
+    newTabPage: string;
+    terminalTitle: string;
+    comingSoon: string;
+    browserComingSoonHint: string;
+    terminalComingSoonHint: string;
+  };
+
   // Folder Selector
   folder: {
     selectFolder: string;

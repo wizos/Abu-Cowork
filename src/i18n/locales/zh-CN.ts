@@ -1468,6 +1468,20 @@ const zhCN: TranslationDict = {
     },
   },
 
+  workspace: {
+    newTab: '新建标签页',
+    newBrowserTab: '新建浏览器',
+    newTerminalTab: '新建终端',
+    closeTab: '关闭标签页',
+    closeOtherTabs: '关闭其他标签页',
+    closeAllTabs: '关闭所有标签页',
+    newTabPage: '新标签页',
+    terminalTitle: '终端',
+    comingSoon: '即将推出',
+    browserComingSoonHint: '浏览器标签页即将推出',
+    terminalComingSoonHint: '终端标签页即将推出',
+  },
+
   folder: {
     selectFolder: '选择文件夹',
     selectWorkspaceFolder: '选择工作区文件夹',

@@ -116,9 +116,10 @@ function App() {
   const toggleRightPanel = useSettingsStore((s) => s.toggleRightPanel);
   const viewMode = useSettingsStore((s) => s.viewMode);
   const setViewMode = useSettingsStore((s) => s.setViewMode);
-  // Preview split (TRAE-style): when a file preview is open, the chat column takes a
-  // stable, resizable width and the preview flex-fills the rest.
-  const previewFilePath = usePreviewStore((s) => s.previewFilePath);
+  // Preview split (TRAE-style): when the workspace panel has any open tab
+  // (preview/browser/terminal), the chat column takes a stable, resizable
+  // width and the workspace flex-fills the rest.
+  const hasWorkspaceTabs = usePreviewStore((s) => s.tabs.length > 0);
   const chatWidth = usePreviewStore((s) => s.chatWidth);
   const viewportWidth = useViewportWidth();
   const showTodosInbox = useLabsFlag(LABS_TODOS_INBOX);
@@ -581,7 +582,7 @@ function App() {
 
   // Preview split is active only when a preview is open in the chat view AND the
   // right panel is showing — then the chat holds a stable width and preview flex-fills.
-  const previewSplit = viewMode === 'chat' && !!previewFilePath && !rightPanelCollapsed;
+  const previewSplit = viewMode === 'chat' && hasWorkspaceTabs && !rightPanelCollapsed;
   const previewChatWidth = resolveChatWidth(chatWidth, viewportWidth, !sidebarCollapsed);
 
   return (

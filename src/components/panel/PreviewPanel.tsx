@@ -86,9 +86,22 @@ function LazyFallback() {
   );
 }
 
-export default function PreviewPanel() {
-  const { previewFilePath, closePreview, reloadNonce } = usePreviewStore();
-  usePreviewFileWatch(previewFilePath);
+export default function PreviewPanel({
+  filePath: filePathProp,
+  tabId,
+  embedded = false,
+}: { filePath?: string; tabId?: string; embedded?: boolean } = {}) {
+  // Back-compat: without a `filePath` prop (older call sites, before
+  // workspace tabs existed), fall back to the store's single previewFilePath.
+  const storePreviewFilePath = usePreviewStore((s) => s.previewFilePath);
+  const closePreview = usePreviewStore((s) => s.closePreview);
+  const closeTab = usePreviewStore((s) => s.closeTab);
+  const previewFilePath = filePathProp ?? storePreviewFilePath;
+  // Each instance owns its own reload nonce (keep-alive multi-tab preview —
+  // see docs/2026-07-17-workspace-tabs-design.md) instead of reading a
+  // single global one off the store.
+  const [reloadNonce, setReloadNonce] = useState(0);
+  usePreviewFileWatch(previewFilePath, () => setReloadNonce((n) => n + 1));
   const { t } = useI18n();
   const [content, setContent] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -433,8 +446,14 @@ export default function PreviewPanel() {
       'flex flex-col',
       isFullscreen ? 'fixed inset-0 z-50 bg-[var(--abu-bg-base)]' : 'h-full',
     )}>
-      {/* Header — mt-7 to clear the overlay title bar drag region */}
-      <div className="shrink-0 px-3 py-2.5 mt-7 border-b border-[var(--abu-bg-pressed)] flex items-center gap-2">
+      {/* Header — mt-7 clears the overlay title bar drag region. Skipped when
+          embedded (WorkspacePanel's TabStrip already provides that
+          clearance) unless fullscreen, since fullscreen overlays the whole
+          window regardless of embedding. */}
+      <div className={cn(
+        'shrink-0 px-3 py-2.5 border-b border-[var(--abu-bg-pressed)] flex items-center gap-2',
+        (!embedded || isFullscreen) && 'mt-7',
+      )}>
         <Icon className="w-4 h-4 text-[var(--abu-text-tertiary)] shrink-0" />
         <span className="text-[13px] font-medium text-[var(--abu-text-primary)] truncate flex-1">
           {fileName}
@@ -502,7 +521,7 @@ export default function PreviewPanel() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={closePreview}
+          onClick={() => (tabId ? closeTab(tabId) : closePreview())}
           className="h-6 w-6 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)]"
           title={t.panel.closePreview}
         >
