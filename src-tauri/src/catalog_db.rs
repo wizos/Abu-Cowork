@@ -587,7 +587,13 @@ pub fn search_core(conn: &Connection, query: &str, limit: i64) -> Result<Vec<Sea
     if char_count < 3 {
         return search_like_core(conn, trimmed, limit);
     }
-    let match_query = sanitize_match_query(query);
+    // Use `trimmed`, not `query` — the LIKE branch above already trims, and
+    // the MATCH branch must too: passing the untrimmed original here would
+    // wrap incidental leading/trailing whitespace inside the FTS5 phrase,
+    // making the same term return different/zero results depending on
+    // whitespace the user didn't intend to be part of the query
+    // (code-review fix #7).
+    let match_query = sanitize_match_query(trimmed);
     // Highlight delimiters are the STX/ETX control characters (`\u{2}`/`\u{3}`),
     // not literal `<mark>`/`</mark>` text — titles/message bodies routinely
     // contain literal HTML-looking text in this app (it's a coding assistant),
@@ -2256,6 +2262,32 @@ mod tests {
             "snippet must contain STX/ETX highlight sentinels, got: {:?}",
             hits[0].snippet
         );
+    }
+
+    #[test]
+    fn fts_search_match_path_is_whitespace_insensitive() {
+        // code-review fix #7: search_core's 3+-char MATCH branch used to pass
+        // the untrimmed `query` to sanitize_match_query while the <3-char LIKE
+        // branch correctly used `trimmed` — so the same term surrounded by
+        // incidental leading/trailing whitespace returned different (often
+        // zero) results depending on the untrimmed original. Both branches
+        // must now agree: a query with surrounding whitespace must return the
+        // exact same hits as the trimmed query.
+        let conn = open_test_db();
+        insert_catalog_row(&conn, "conv-1", "Conversation One");
+        fts_upsert_core(&conn, "conv-1", "Conversation One", "user: let's discuss the widget rollout plan", true).unwrap();
+
+        let hits_trimmed = search_core(&conn, "widget rollout", 50).unwrap();
+        let hits_padded = search_core(&conn, "  widget rollout  ", 50).unwrap();
+
+        assert_eq!(hits_trimmed.len(), 1, "trimmed query must match");
+        assert_eq!(
+            hits_padded.len(),
+            1,
+            "query with surrounding whitespace must match identically to the trimmed query, got: {:?}",
+            hits_padded
+        );
+        assert_eq!(hits_trimmed[0].conv_id, hits_padded[0].conv_id);
     }
 
     #[test]

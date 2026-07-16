@@ -9,15 +9,38 @@ import { getI18n, format } from '../../../i18n';
  * Light TTL cache for the catalog's authoritative message_count, keyed by
  * conversation id. The recall tool displays a message count per listed
  * conversation and prefers the catalog (authoritative) over the in-memory
- * conversationIndex.messageCount, which can understate a windowed
- * conversation (message-storage P1 step 3). Caching keeps a burst of recall
- * calls from issuing one IPC per conversation per call. Misses (null) are NOT
- * cached — we fall back to the optimistic index count and retry next time.
+ * conversationIndex.messageCount ONLY for conversations that are not
+ * currently loaded in memory — see `resolveDisplayCount` for why. Caching
+ * keeps a burst of recall calls from issuing one IPC per conversation per
+ * call. Misses (null) are NOT cached — we fall back to the optimistic index
+ * count and retry next time.
  */
 const catalogCountCache = new Map<string, { count: number; at: number }>();
 const CATALOG_COUNT_CACHE_TTL_MS = 5000;
 
+/**
+ * Resolve the message count to display for a conversation in recall's list.
+ *
+ * - **Loaded in memory** (`useChatStore.getState().conversations[convId]`
+ *   exists): `fallback` (the in-memory `conversationIndex.messageCount`) is
+ *   authoritative here — chatStore re-derives it from `conv.messages.length`
+ *   on every `addMessage` (see chatStore.ts), so it already reflects any
+ *   edit/retry truncation of the in-memory transcript. The catalog's
+ *   `message_count`, by contrast, is re-derived by the Rust side from the
+ *   append-only JSONL line count (`reindex_one_core`, catalog_db.rs), which
+ *   is NOT rewritten on truncation — at the next turn-end reindex it would
+ *   re-inflate back up to include messages the user has since edited/retried
+ *   away. Preferring the catalog here would make recall report a stale,
+ *   too-high count for the conversation the user is actively looking at.
+ * - **Not loaded in memory**: fall back to the catalog's authoritative count
+ *   (message-storage P1 step 3) — the in-memory index for an unloaded
+ *   conversation can understate it (e.g. a windowed/partial index entry),
+ *   and there is no truncation risk since nothing is currently mutating it.
+ */
 async function resolveDisplayCount(convId: string, fallback: number): Promise<number> {
+  const isLoadedInMemory = Boolean(useChatStore.getState().conversations[convId]);
+  if (isLoadedInMemory) return fallback;
+
   const now = Date.now();
   const cached = catalogCountCache.get(convId);
   if (cached && now - cached.at < CATALOG_COUNT_CACHE_TTL_MS) return cached.count;
@@ -207,9 +230,10 @@ Memories are snapshots from a point in the past and may be outdated. Before givi
       matched = matched.slice(0, limit);
 
       if (matched.length > 0) {
-        // Prefer the catalog's authoritative count for display; fall back to the
-        // optimistic index count when the catalog is unavailable. Bounded to the
-        // <= limit matched rows and TTL-cached, so this is at most `limit` IPCs.
+        // Displayed count resolution: see `resolveDisplayCount` — loaded
+        // conversations use the accurate in-memory count, unloaded ones fall
+        // back to the catalog's authoritative count. Bounded to the <= limit
+        // matched rows and TTL-cached, so this is at most `limit` IPCs.
         const lines = await Promise.all(matched.map(async c => {
           const count = await resolveDisplayCount(c.id, c.messageCount);
           return format(t.convLine, { title: c.title || t.untitled, count, time: formatTime(c.updatedAt) });

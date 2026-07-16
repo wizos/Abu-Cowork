@@ -274,6 +274,21 @@ function populateWrittenIds(messages: Message[]): void {
   }
 }
 
+/**
+ * Check whether a message id has already taken the disk-append path — i.e.
+ * mirrors the exact dedup condition `appendMessage` uses to decide whether to
+ * fire its `catalogBumpCount(+1)` (see `writtenIds.has` / `.add` above).
+ *
+ * Used by chatStore's ghost-message deletion path (agentLoop.ts) to avoid an
+ * unbalanced catalog `-1`: a streamed assistant placeholder that never
+ * durably reached messages.jsonl (aborted before `addMessage`'s
+ * fire-and-forget `appendMessage` call ran) never had a `+1` to offset, so
+ * deleting it must skip the catalog bump entirely (code-review fix #8).
+ */
+export function isMessageWrittenToDisk(id: string): boolean {
+  return writtenIds.has(id);
+}
+
 // ════════════════════════════════════════════════════════════
 // Strip for disk — reduce message size before persisting
 // ════════════════════════════════════════════════════════════

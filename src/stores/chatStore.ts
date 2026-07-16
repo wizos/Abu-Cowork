@@ -160,6 +160,27 @@ function findTargetMessage(messages: Message[] | undefined, msgId: string): Mess
   return messages[messages.length - 1];
 }
 
+/**
+ * Best-effort catalog count adjustment after a message deletion
+ * (message-storage P1 step 2). Shared by deleteMessage / deleteMessagesFrom /
+ * deleteLoopMessages (code-review fix #9 — was three copies of this same
+ * block). This is a DISPLAY-LEVEL / session-level count nudge, not a claim
+ * that the JSONL file itself shrank by `removedCount` — delete never
+ * rewrites messages.jsonl, so the catalog's message_count would otherwise
+ * drift upward forever relative to what's actually rendered. A wrong/stale
+ * bump here is harmless and self-heals: `catalog_reconcile` re-derives the
+ * true count from JSONL on next startup (same accepted-drift posture as the
+ * P0 write-through comment elsewhere in this file). Do NOT "fix" this into
+ * an exact JSONL-truth accounting — that's an intentional trade-off, not an
+ * oversight.
+ */
+function bumpCatalogAfterDelete(convId: string, removedCount: number): void {
+  if (removedCount <= 0) return;
+  import('../core/session/conversationStorage').then(({ catalogBumpCount }) => {
+    catalogBumpCount(convId, -removedCount, Date.now(), null).catch(() => {});
+  });
+}
+
 let flushScheduled = false;
 
 function scheduleFlush() {
@@ -304,7 +325,7 @@ interface ChatActions {
 
   // New message operations
   editMessage: (convId: string, messageId: string, newContent: string) => void;
-  deleteMessage: (convId: string, messageId: string) => void;
+  deleteMessage: (convId: string, messageId: string, opts?: { skipCatalogBump?: boolean }) => void;
   deleteMessagesFrom: (convId: string, messageId: string) => void;
   deleteLoopMessages: (convId: string, loopId: string) => void;
   updateMessageThinking: (convId: string, thinking: string, msgId?: string) => void;
@@ -946,7 +967,7 @@ export const useChatStore = create<ChatStore>()(
         });
       },
 
-      deleteMessage: (convId, messageId) => {
+      deleteMessage: (convId, messageId, opts) => {
         let removedCount = 0;
         set((state) => {
           const conv = state.conversations[convId];
@@ -958,22 +979,16 @@ export const useChatStore = create<ChatStore>()(
             conv.contextCache = undefined;  // Invalidate compression cache
           }
         });
-        // Best-effort catalog count adjustment (message-storage P1 step 2).
-        // This is a DISPLAY-LEVEL / session-level count nudge, not a claim
-        // that the JSONL file itself shrank by `removedCount` — delete never
-        // rewrites messages.jsonl (see plan's open question #1), so the
-        // catalog's message_count would otherwise drift upward forever
-        // relative to what's actually rendered. A wrong/stale bump here is
-        // harmless and self-heals: `catalog_reconcile` re-derives the true
-        // count from JSONL on next startup (same accepted-drift posture as
-        // the P0 write-through comment above). Do NOT "fix" this into an
-        // exact JSONL-truth accounting — that's an intentional trade-off,
-        // not an oversight.
-        if (removedCount > 0) {
-          import('../core/session/conversationStorage').then(({ catalogBumpCount }) => {
-            catalogBumpCount(convId, -removedCount, Date.now(), null).catch(() => {});
-          });
-        }
+        // See bumpCatalogAfterDelete's doc comment for why this is an
+        // intentionally approximate, self-healing display-level nudge.
+        // `skipCatalogBump` (code-review fix #8): the agentLoop ghost-message
+        // deletion path passes this when the placeholder was never durably
+        // appended to messages.jsonl — appendMessage's own catalog `+1` only
+        // fires once the disk-append path is actually taken (see
+        // `isMessageWrittenToDisk`), so a ghost that never reached disk has
+        // no `+1` to offset and an unconditional `-1` here would transiently
+        // undercount the catalog until the next turn-end reindex.
+        if (!opts?.skipCatalogBump) bumpCatalogAfterDelete(convId, removedCount);
       },
 
       deleteMessagesFrom: (convId, messageId) => {
@@ -990,13 +1005,7 @@ export const useChatStore = create<ChatStore>()(
             }
           }
         });
-        // Display-level catalog count adjustment — see deleteMessage above
-        // for why this is intentionally approximate and self-healing.
-        if (removedCount > 0) {
-          import('../core/session/conversationStorage').then(({ catalogBumpCount }) => {
-            catalogBumpCount(convId, -removedCount, Date.now(), null).catch(() => {});
-          });
-        }
+        bumpCatalogAfterDelete(convId, removedCount);
       },
 
       deleteLoopMessages: (convId, loopId) => {
@@ -1011,13 +1020,7 @@ export const useChatStore = create<ChatStore>()(
             conv.contextCache = undefined;  // Invalidate compression cache
           }
         });
-        // Display-level catalog count adjustment — see deleteMessage above
-        // for why this is intentionally approximate and self-healing.
-        if (removedCount > 0) {
-          import('../core/session/conversationStorage').then(({ catalogBumpCount }) => {
-            catalogBumpCount(convId, -removedCount, Date.now(), null).catch(() => {});
-          });
-        }
+        bumpCatalogAfterDelete(convId, removedCount);
       },
 
       updateMessageThinking: (convId, thinking, msgId) => {

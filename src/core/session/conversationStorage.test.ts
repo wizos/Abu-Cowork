@@ -631,6 +631,31 @@ describe('conversationStorage', () => {
       const reloaded = await storage.loadMessages('conv-2');
       expect(reloaded).toHaveLength(1); // Still 1, not 2
     });
+
+    // Regression (code-review fix #8): chatStore's ghost-message deletion
+    // path (agentLoop.ts) checks isMessageWrittenToDisk before bumping the
+    // catalog by -1, to avoid an unbalanced decrement when the +1 from
+    // appendMessage never fired (message never durably reached disk).
+    describe('isMessageWrittenToDisk', () => {
+      it('is false before appendMessage runs and true after', async () => {
+        const msg = makeMsg({ id: 'ghost-1', content: '' });
+        expect(storage.isMessageWrittenToDisk('ghost-1')).toBe(false);
+        await storage.appendMessage('conv-1', msg);
+        expect(storage.isMessageWrittenToDisk('ghost-1')).toBe(true);
+      });
+
+      it('is true for a preexisting id populated from a disk load', async () => {
+        const msg = makeMsg({ id: 'preexisting-2', content: 'From disk' });
+        const path = '/Users/testuser/.abu/conversations/conv-3/messages.jsonl';
+        memFs.files.set(path, JSON.stringify(msg) + '\n');
+        memFs.dirs.add('/Users/testuser/.abu/conversations/conv-3');
+        memFs.dirs.add('/Users/testuser/.abu/conversations');
+
+        expect(storage.isMessageWrittenToDisk('preexisting-2')).toBe(false);
+        await storage.loadMessages('conv-3');
+        expect(storage.isMessageWrittenToDisk('preexisting-2')).toBe(true);
+      });
+    });
   });
 
   describe('stripForDisk', () => {

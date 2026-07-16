@@ -700,6 +700,24 @@ describe('chatStore', () => {
       const bump = vi.mocked(invoke).mock.calls.find((c) => c[0] === 'catalog_bump_count');
       expect(bump).toBeUndefined();
     });
+
+    // Regression (code-review fix #8): agentLoop's ghost-message deletion
+    // path passes { skipCatalogBump: true } for a placeholder that never
+    // durably reached messages.jsonl, since there is no +1 for the -1 to
+    // balance. Still removes the message from memory either way.
+    it('removes the message but skips the catalog bump when skipCatalogBump is true', async () => {
+      const id = useChatStore.getState().createConversation();
+      useChatStore.getState().addMessage(id, { id: 'msg1', role: 'user', content: 'a', timestamp: 1 });
+
+      await new Promise((r) => setTimeout(r, 20));
+      vi.mocked(invoke).mockClear();
+      useChatStore.getState().deleteMessage(id, 'msg1', { skipCatalogBump: true });
+
+      expect(useChatStore.getState().conversations[id].messages).toHaveLength(0);
+      await new Promise((r) => setTimeout(r, 20));
+      const bump = vi.mocked(invoke).mock.calls.find((c) => c[0] === 'catalog_bump_count');
+      expect(bump).toBeUndefined();
+    });
   });
 
   // ── deleteMessagesFrom ──

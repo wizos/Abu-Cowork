@@ -2349,7 +2349,18 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
             && !(placeholder.toolCalls?.length)
             && !(placeholder.toolCallsForContext?.length)
             && !placeholder.thinking;
-          if (isGhost) chatStore.deleteMessage(conversationId, assistantMsgId);
+          if (isGhost) {
+            // code-review fix #8: chatStore.deleteMessage's catalog `-1` only
+            // balances a `+1` that addMessage's appendMessage call actually
+            // fired. If this ghost placeholder aborted before that
+            // fire-and-forget disk-append ran, there was never a `+1` to
+            // offset, so skip the bump — otherwise the catalog would
+            // transiently undercount until the next turn-end reindex.
+            const { isMessageWrittenToDisk } = await import('../session/conversationStorage');
+            chatStore.deleteMessage(conversationId, assistantMsgId, {
+              skipCatalogBump: !isMessageWrittenToDisk(assistantMsgId),
+            });
+          }
         }
 
         chatStore.cancelStreaming(conversationId);
