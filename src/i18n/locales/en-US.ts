@@ -1479,6 +1479,8 @@ const enUS: TranslationDict = {
     comingSoon: 'Coming soon',
     browserComingSoonHint: 'Browser tabs are coming soon',
     terminalComingSoonHint: 'Terminal tabs are coming soon',
+    terminalProcessExited: '[process exited]',
+    terminalStartFailed: 'Failed to start terminal: {error}',
   },
 
   folder: {

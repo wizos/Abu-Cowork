@@ -1480,6 +1480,8 @@ const zhCN: TranslationDict = {
     comingSoon: '即将推出',
     browserComingSoonHint: '浏览器标签页即将推出',
     terminalComingSoonHint: '终端标签页即将推出',
+    terminalProcessExited: '[进程已退出]',
+    terminalStartFailed: '终端启动失败：{error}',
   },
 
   folder: {

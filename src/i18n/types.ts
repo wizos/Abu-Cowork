@@ -1610,6 +1610,8 @@ export interface TranslationDict {
     comingSoon: string;
     browserComingSoonHint: string;
     terminalComingSoonHint: string;
+    terminalProcessExited: string;
+    terminalStartFailed: string;
   };
 
   // Folder Selector
