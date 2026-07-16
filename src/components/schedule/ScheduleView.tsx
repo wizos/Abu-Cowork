@@ -29,10 +29,10 @@ export default function ScheduleView() {
 
   return (
     <div className="flex flex-col h-full bg-[var(--abu-bg-base)]">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--abu-border)]">
-        <h1 className="text-[16px] font-semibold text-[var(--abu-text-primary)]">{t.schedule.title}</h1>
-        {sortedTasks.length > 0 && (
+      {/* Action row — the toolbox top-tab already labels this view, so the
+          redundant title is dropped; only render the bar when there are tasks. */}
+      {sortedTasks.length > 0 && (
+        <div className="flex items-center justify-end px-6 pt-4 pb-2">
           <div className="flex items-center gap-2">
             <button
               onClick={handleAskAbu}
@@ -49,8 +49,8 @@ export default function ScheduleView() {
               {t.schedule.newTask}
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Info banner */}
       <div className="mx-6 mt-4 flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--abu-bg-active)]/80 border border-[var(--abu-border-subtle)]">

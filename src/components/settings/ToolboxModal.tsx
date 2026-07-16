@@ -29,6 +29,7 @@ export default function ToolboxView() {
     setActiveToolboxTab,
     setToolboxSearchQuery,
   } = useSettingsStore();
+  const sidebarCollapsed = useSettingsStore((s) => s.sidebarCollapsed);
   const setPendingInput = useChatStore((s) => s.setPendingInput);
   const startNewConversation = useChatStore((s) => s.startNewConversation);
   const refresh = useDiscoveryStore((s) => s.refresh);
@@ -161,37 +162,42 @@ export default function ToolboxView() {
   };
 
   return (
-    <div className="h-full bg-[var(--abu-bg-base)] flex">
-      {/* Left Navigation — sub-nav for toolbox types */}
-      <nav className="w-[224px] shrink-0 border-r border-[var(--abu-border)] flex flex-col pt-4">
-        {/* Nav items */}
-        <div className="px-3 space-y-0.5">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeExtTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleTabChange(item.id)}
-                className={cn(
-                  'w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors text-left',
-                  isActive
-                    ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]'
-                    : 'text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]'
-                )}
-              >
-                <Icon className={cn(
-                  'h-[18px] w-[18px] shrink-0',
-                  isActive ? 'text-[var(--abu-clay)]' : 'text-[var(--abu-text-muted)]'
-                )} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
+    <div className="h-full bg-[var(--abu-bg-base)] flex flex-col">
+      {/* Top Navigation — horizontal tab bar for toolbox types (underline style).
+          When the sidebar is collapsed, the window's floating controls (sidebar
+          toggle / search / new-task) + macOS traffic lights sit over the card's
+          top-left, so pad the tabs right to clear them. */}
+      <nav
+        className={cn(
+          'shrink-0 flex items-center gap-1 pt-3 pr-4 border-b border-[var(--abu-border)]',
+          sidebarCollapsed ? 'pl-[184px]' : 'pl-4'
+        )}
+      >
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeExtTab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => handleTabChange(item.id)}
+              className={cn(
+                'flex items-center gap-2 px-3 py-2 -mb-px border-b-2 text-sm font-medium transition-colors',
+                isActive
+                  ? 'border-[var(--abu-clay)] text-[var(--abu-text-primary)]'
+                  : 'border-transparent text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)]'
+              )}
+            >
+              <Icon className={cn(
+                'h-4 w-4 shrink-0',
+                isActive ? 'text-[var(--abu-clay)]' : 'text-[var(--abu-text-muted)]'
+              )} />
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
       </nav>
 
-      {/* Right Content */}
+      {/* Content */}
       <div className="flex-1 overflow-hidden">
         {renderContent()}
       </div>

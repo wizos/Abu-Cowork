@@ -8,6 +8,9 @@ import { parseArgs } from '@/utils/argsParser';
 import { Trash2, Plus, Loader2, Check, X, Plug, PlugZap, ChevronDown, ChevronRight, Wrench, Zap, AlertCircle, ScrollText, Server, Search, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { open } from '@tauri-apps/plugin-shell';
+import ToolCard from '@/components/toolbox/ToolCard';
+import ToolGrid from '@/components/toolbox/ToolGrid';
+import ToolDetailModal from '@/components/toolbox/ToolDetailModal';
 
 const urlPattern = /https?:\/\/[^\s]+/;
 
@@ -27,6 +30,11 @@ function renderSetupHint(text: string) {
       <span key={i}>{part}</span>
     )
   );
+}
+
+/** Locale-aware pick between zh (default) and en fields — mirrors TemplateDetail's local `pick`. */
+function pickLocale(locale: string, zh: string, en?: string): string {
+  return locale.startsWith('zh') ? zh : (en ?? zh);
 }
 
 /** Shared tool details list */
@@ -67,7 +75,7 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
   const connectServer = useMCPStore((s) => s.connectServer);
   const disconnectServer = useMCPStore((s) => s.disconnectServer);
   const clearServerError = useMCPStore((s) => s.clearServerError);
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   const mcpServers = useMemo(() => Object.values(servers), [servers]);
 
@@ -92,7 +100,6 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
 
   // Search & create UI
   const [showSearch, setShowSearch] = useState(false);
-  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
   // New/Edit server form
   const [internalShowAddForm, setInternalShowAddForm] = useState(false);
@@ -175,29 +182,17 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
     return items;
   }, [servers, searchLower]);
 
-  // Auto-select first visible item when none selected (initial load or after deletion)
+  // The detail is a modal now, so it stays closed until the user clicks a card
+  // — no auto-select on load. Still guard against a dangling selection: if the
+  // currently-selected server disappears (removed elsewhere), fall back to its
+  // template view (or close the modal).
   useEffect(() => {
-    if (selected) {
-      // If the selected server was removed, fall back to its template view (or clear)
-      if (selected.kind === 'server' && !servers[selected.name]) {
-        const tmpl = mcpTemplates.find((t) => t.name === selected.name);
-        setSelected(tmpl ? { kind: 'template', id: tmpl.id } : null);
-      }
-      return;
+    if (selected?.kind === 'server' && !servers[selected.name]) {
+      const tmpl = mcpTemplates.find((t) => t.name === selected.name);
+      setSelected(tmpl ? { kind: 'template', id: tmpl.id } : null);
     }
-    // Follow UI order: customServers first, then exampleItems
-    if (customServers.length > 0) {
-      setSelected({ kind: 'server', name: customServers[0].config.name });
-    } else if (exampleItems.length > 0) {
-      const first = exampleItems[0];
-      if (first.kind === 'installed') {
-        setSelected({ kind: 'server', name: first.entry.config.name });
-      } else {
-        setSelected({ kind: 'template', id: first.template.id });
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- servers omitted: it's an object ref that changes on every store update, would cause frequent re-runs overriding user selection
-  }, [mcpServers, customServers, exampleItems, selected]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- servers omitted: it's an object ref that changes on every store update, would cause frequent re-runs; mcpServers is the memoized array form
+  }, [mcpServers, selected]);
 
   // Add or update custom server
   const handleAddServer = async () => {
@@ -423,14 +418,6 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
     } finally { setTestingServer(null); }
   };
 
-  const toggleCategory = (cat: string) => {
-    setCollapsedCategories((prev) => {
-      const next = new Set(prev);
-      if (next.has(cat)) next.delete(cat); else next.add(cat);
-      return next;
-    });
-  };
-
   // Status icon color helper
   const statusIconClass = (entry: MCPServerEntry) => {
     const { status } = entry;
@@ -455,131 +442,97 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
     setShowLogs(false);
   }, [selectedKey]);
 
+  const renderServerCard = (entry: MCPServerEntry) => {
+    const c = entry.config;
+    const isHttp = !!(c.url || c.transport === 'http');
+    const description = isHttp ? c.url : [c.command, ...(c.args ?? [])].filter(Boolean).join(' ');
+    return (
+      <ToolCard
+        key={c.name}
+        item={{
+          id: c.name,
+          name: c.name,
+          description,
+          avatar: <Server className={cn('h-6 w-6', statusIconClass(entry))} />,
+        }}
+        onClick={() => setSelected({ kind: 'server', name: c.name })}
+      />
+    );
+  };
+
+  const renderTemplateCard = (tmpl: typeof mcpTemplates[0]) => (
+    <ToolCard
+      key={tmpl.id}
+      item={{
+        id: tmpl.id,
+        name: pickLocale(locale, tmpl.name, tmpl.nameEn),
+        description: pickLocale(locale, tmpl.description, tmpl.descriptionEn),
+        avatar: <Server className="h-6 w-6 text-[var(--abu-text-placeholder)]" />,
+        tags: tmpl.transport === 'http' ? ['HTTP'] : undefined,
+      }}
+      onClick={() => setSelected({ kind: 'template', id: tmpl.id })}
+    />
+  );
+
   return (
-    <div className="flex h-full overflow-hidden">
-      {/* Left: Server list */}
-      <div className="w-[340px] shrink-0 border-r border-[var(--abu-border)] flex flex-col overflow-hidden bg-[var(--abu-bg-base)]">
-        {/* Header */}
-        <div className="shrink-0 px-4 pt-4 pb-3 border-b border-[var(--abu-border)]">
-          {showSearch ? (
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--abu-text-tertiary)]" />
-              <input
-                autoFocus type="text" placeholder={t.toolbox.searchPlaceholder}
-                value={toolboxSearchQuery}
-                onChange={(e) => setToolboxSearchQuery(e.target.value)}
-                onBlur={() => { if (!toolboxSearchQuery) setShowSearch(false); }}
-                onKeyDown={(e) => { if (e.key === 'Escape') { setToolboxSearchQuery(''); setShowSearch(false); } }}
-                className="w-full pl-7 pr-7 py-1 text-sm border border-[var(--abu-border)] rounded-md bg-[var(--abu-bg-base)] focus:outline-none focus:ring-1 focus:ring-[var(--abu-clay-ring)] text-[var(--abu-text-primary)]"
-              />
-              <button onClick={() => { setToolboxSearchQuery(''); setShowSearch(false); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)]">
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <span className="text-base font-semibold text-[var(--abu-text-primary)]">{t.toolbox.mcp}</span>
-              <div className="flex items-center gap-1">
-                <button onClick={() => setShowSearch(true)} className="p-1 text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] transition-colors">
-                  <Search className="h-3.5 w-3.5" />
-                </button>
-                <button onClick={() => setShowAddForm(true)} className="p-1 text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] transition-colors">
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="flex-1 overflow-y-auto overlay-scroll py-2">
-          {/* "我的" — user-added custom servers */}
-          {customServers.length > 0 && (
-            <div>
-              <div
-                className="flex items-center gap-1.5 px-5 py-2.5 cursor-pointer text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)]"
-                onClick={() => toggleCategory('my')}
-              >
-                {collapsedCategories.has('my') ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                <span className="text-[13px] font-medium">{t.toolbox.myServers}</span>
-              </div>
-              {!collapsedCategories.has('my') && customServers.map((entry) => {
-                const isSelected = selected?.kind === 'server' && selected.name === entry.config.name;
-                return (
-                  <div
-                    key={entry.config.name}
-                    className={`flex items-center gap-3 mx-2 pl-7 pr-3 py-2.5 mb-0.5 rounded-lg cursor-pointer transition-colors ${
-                      isSelected ? 'bg-[var(--abu-bg-active)]' : 'hover:bg-[var(--abu-bg-active)]/60'
-                    }`}
-                    onClick={() => setSelected({ kind: 'server', name: entry.config.name })}
-                  >
-                    <Server className={cn('h-4 w-4 shrink-0', statusIconClass(entry))} />
-                    <span className={`text-sm flex-1 truncate ${isSelected ? 'text-[var(--abu-text-primary)] font-medium' : 'text-[var(--abu-text-tertiary)]'}`}>
-                      {entry.config.name}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* "示例" — template-based (installed + uninstalled together) */}
-          {exampleItems.length > 0 && (
-            <div>
-              <div
-                className="flex items-center gap-1.5 px-5 py-2.5 cursor-pointer text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)]"
-                onClick={() => toggleCategory('examples')}
-              >
-                {collapsedCategories.has('examples') ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                <span className="text-[13px] font-medium">{t.toolbox.exampleServers}</span>
-              </div>
-              {!collapsedCategories.has('examples') && exampleItems.map((item) => {
-                if (item.kind === 'installed') {
-                  const { entry } = item;
-                  const isSelected = selected?.kind === 'server' && selected.name === entry.config.name;
-                  return (
-                    <div
-                      key={entry.config.name}
-                      className={`flex items-center gap-3 mx-2 pl-7 pr-3 py-2.5 mb-0.5 rounded-lg cursor-pointer transition-colors ${
-                        isSelected ? 'bg-[var(--abu-bg-active)]' : 'hover:bg-[var(--abu-bg-active)]/60'
-                      }`}
-                      onClick={() => setSelected({ kind: 'server', name: entry.config.name })}
-                    >
-                      <Server className={cn('h-4 w-4 shrink-0', statusIconClass(entry))} />
-                      <span className={`text-sm flex-1 truncate ${isSelected ? 'text-[var(--abu-text-primary)] font-medium' : 'text-[var(--abu-text-tertiary)]'}`}>
-                        {entry.config.name}
-                      </span>
-                    </div>
-                  );
-                } else {
-                  const { template: tmpl } = item;
-                  const isSelected = selected?.kind === 'template' && selected.id === tmpl.id;
-                  return (
-                    <div
-                      key={tmpl.id}
-                      className={`flex items-center gap-3 mx-2 pl-7 pr-3 py-2.5 mb-0.5 rounded-lg cursor-pointer transition-colors ${
-                        isSelected ? 'bg-[var(--abu-bg-active)]' : 'hover:bg-[var(--abu-bg-active)]/60'
-                      }`}
-                      onClick={() => setSelected({ kind: 'template', id: tmpl.id })}
-                    >
-                      <Server className="h-4 w-4 shrink-0 text-[var(--abu-text-placeholder)]" />
-                      <span className={`text-sm flex-1 truncate ${isSelected ? 'text-[var(--abu-text-primary)] font-medium' : 'text-[var(--abu-text-placeholder)]'}`}>
-                        {tmpl.name}
-                      </span>
-                    </div>
-                  );
-                }
-              })}
-            </div>
-          )}
-
-          {customServers.length === 0 && exampleItems.length === 0 && (
-            <div className="text-xs text-[var(--abu-text-muted)] py-8 text-center">{t.toolbox.noServersConnected}</div>
-          )}
-        </div>
+    <div className="flex flex-col h-full overflow-hidden bg-[var(--abu-bg-base)]">
+      {/* Toolbar: search + add */}
+      <div className="shrink-0 px-6 pt-4 pb-3 flex items-center justify-end gap-1">
+        {showSearch ? (
+          <div className="relative w-full max-w-xs">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--abu-text-tertiary)]" />
+            <input
+              autoFocus type="text" placeholder={t.toolbox.searchPlaceholder}
+              value={toolboxSearchQuery}
+              onChange={(e) => setToolboxSearchQuery(e.target.value)}
+              onBlur={() => { if (!toolboxSearchQuery) setShowSearch(false); }}
+              onKeyDown={(e) => { if (e.key === 'Escape') { setToolboxSearchQuery(''); setShowSearch(false); } }}
+              className="w-full pl-7 pr-7 py-1 text-sm border border-[var(--abu-border)] rounded-md bg-[var(--abu-bg-base)] focus:outline-none focus:ring-1 focus:ring-[var(--abu-clay-ring)] text-[var(--abu-text-primary)]"
+            />
+            <button onClick={() => { setToolboxSearchQuery(''); setShowSearch(false); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)]">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ) : (
+          <>
+            <button onClick={() => setShowSearch(true)} className="p-1 text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] transition-colors">
+              <Search className="h-3.5 w-3.5" />
+            </button>
+            <button onClick={() => setShowAddForm(true)} className="p-1 text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] transition-colors">
+              <Plus className="h-4 w-4" />
+            </button>
+          </>
+        )}
       </div>
 
-      {/* Right: Detail panel */}
-      <div className="flex-1 overflow-y-auto overlay-scroll bg-[var(--abu-bg-base)]">
+      {/* Card grid */}
+      <div className="flex-1 overflow-y-auto overlay-scroll px-6 pb-6">
+        {customServers.length === 0 && exampleItems.length === 0 ? (
+          <div className="text-sm text-[var(--abu-text-muted)] py-16 text-center">{t.toolbox.noServersConnected}</div>
+        ) : (
+          <div className="space-y-6">
+            {/* "我的" — user-added custom servers */}
+            {customServers.length > 0 && (
+              <div>
+                <div className="mb-3 text-[13px] font-medium text-[var(--abu-text-muted)]">{t.toolbox.myServers}</div>
+                <ToolGrid>{customServers.map((entry) => renderServerCard(entry))}</ToolGrid>
+              </div>
+            )}
+            {/* "示例" — template-based (installed + uninstalled together) */}
+            {exampleItems.length > 0 && (
+              <div>
+                <div className="mb-3 text-[13px] font-medium text-[var(--abu-text-muted)]">{t.toolbox.exampleServers}</div>
+                <ToolGrid>
+                  {exampleItems.map((item) => item.kind === 'installed' ? renderServerCard(item.entry) : renderTemplateCard(item.template))}
+                </ToolGrid>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Detail modal */}
+      <ToolDetailModal open={!!selected} onClose={() => setSelected(null)} maxWidth="max-w-2xl">
         {selectedServer ? (
           <ServerDetail
             entry={selectedServer}
@@ -604,12 +557,8 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
             installingTemplate={installingTemplate}
             onInstall={() => handleInstallTemplate(selectedTemplate)}
           />
-        ) : (
-          <div className="flex items-center justify-center h-full text-sm text-[var(--abu-text-muted)]">
-            {t.toolbox.noServersConnected}
-          </div>
-        )}
-      </div>
+        ) : null}
+      </ToolDetailModal>
 
       {/* Add / Edit Server Modal */}
       {showAddForm && (

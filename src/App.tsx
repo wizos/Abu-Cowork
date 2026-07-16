@@ -39,7 +39,7 @@ initPlatform().then(() => {
 });
 import { useSettingsStore, bootstrapSecrets } from '@/stores/settingsStore';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { PanelLeft, PanelRight, ArrowLeft, Search, Plus } from 'lucide-react';
+import { PanelLeft, PanelRight, Search, Plus } from 'lucide-react';
 import ConversationSearchModal from '@/components/sidebar/ConversationSearchModal';
 import { isMacOS } from '@/utils/platform';
 import { cn } from '@/lib/utils';
@@ -126,8 +126,6 @@ function App() {
   const chatWidth = usePreviewStore((s) => s.chatWidth);
   const viewportWidth = useViewportWidth();
   const showTodosInbox = useLabsFlag(LABS_TODOS_INBOX);
-  const closeAutomation = useSettingsStore((s) => s.closeAutomation);
-  const closeToolbox = useSettingsStore((s) => s.closeToolbox);
   const activeConv = useActiveConversation();
   const { t } = useI18n();
 
@@ -604,29 +602,18 @@ function App() {
 
       {/* Sidebar & panel toggle buttons — positioned in title bar area on macOS, top bar on Windows */}
       <div className={cn('fixed left-0 right-0 z-40 pointer-events-none', mac ? 'top-0 h-11' : 'top-0 h-8')}>
-        {viewMode === 'automation' || viewMode === 'toolbox' ? (
-          <button
-            onClick={viewMode === 'automation' ? closeAutomation : closeToolbox}
-            className="absolute flex items-center gap-1.5 btn-ghost px-2 py-1 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)] rounded-md pointer-events-auto text-sm"
-            style={{ top: mac ? 23 : 6, left: mac ? 80 : 8 }}
-          >
-            <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.5} />
-            <span>{viewMode === 'automation' ? t.sidebar.automation : t.sidebar.toolbox}</span>
-          </button>
-        ) : (
-          <button
-            onClick={toggleSidebar}
-            className="absolute btn-ghost p-1 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)] rounded-md transition-[left] duration-200 pointer-events-auto"
-            style={{ top: mac ? 23 : 6, left: sidebarCollapsed ? 96 : 200 }}
-            title={sidebarCollapsed ? t.sidebar.showSidebar : t.sidebar.hideSidebar}
-          >
-            <PanelLeft className="h-3.5 w-[18px]" strokeWidth={1.5} />
-          </button>
-        )}
+        <button
+          onClick={toggleSidebar}
+          className="absolute btn-ghost p-1 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)] rounded-md transition-[left] duration-200 pointer-events-auto"
+          style={{ top: mac ? 23 : 6, left: sidebarCollapsed ? 96 : 200 }}
+          title={sidebarCollapsed ? t.sidebar.showSidebar : t.sidebar.hideSidebar}
+        >
+          <PanelLeft className="h-3.5 w-[18px]" strokeWidth={1.5} />
+        </button>
 
         {/* Conversation search — sits just right of the sidebar toggle (WorkBuddy-style),
             opens a centered search modal. */}
-        {viewMode !== 'settings' && viewMode !== 'automation' && viewMode !== 'toolbox' && (
+        {viewMode !== 'settings' && (
           <button
             onClick={() => setSearchModalOpen(true)}
             className="absolute btn-ghost p-1 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)] rounded-md transition-[left] duration-200 pointer-events-auto"
@@ -639,7 +626,7 @@ function App() {
 
         {/* New task — only when the sidebar is collapsed (when expanded the sidebar hosts its
             own 新建任务). Completes the [toggle][search][+new] top toolbar like TRAE/WorkBuddy. */}
-        {sidebarCollapsed && viewMode !== 'settings' && viewMode !== 'automation' && viewMode !== 'toolbox' && (
+        {sidebarCollapsed && viewMode !== 'settings' && (
           <button
             onClick={() => { startNewConversation(); setViewMode('chat'); setFileTreeMode(false); }}
             className="absolute btn-ghost p-1 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)] rounded-md pointer-events-auto"
@@ -667,28 +654,23 @@ function App() {
         <div
           className="shrink-0 overflow-hidden"
           style={{
-            width: (sidebarCollapsed || viewMode === 'automation' || viewMode === 'toolbox') ? 0 : 260,
+            width: sidebarCollapsed ? 0 : 260,
           }}
         >
           <Sidebar />
         </div>
 
-        {/* Main — content surface. In chat/content modes it becomes a raised card
-            floating on the canvas (rounded + border + shadow, top margin clears the
-            overlay title bar so it sits below it). Full-screen takeover modes
-            (automation/toolbox) stay flush + padded instead of carded.
+        {/* Main — content surface. All content modes (chat/todos/inbox/toolbox/automation)
+            render as a raised card floating on the canvas (rounded + border + shadow, top
+            margin clears the overlay title bar so it sits below it). 8px gap on all sides
+            (matches TRAE --solo-layout-padding); traffic-light clearance is handled by the
+            sidebar's own top strip, not by pushing the card down — so the card sits near the
+            window top, no empty band.
             In preview mode the chat takes a stable resizable width; otherwise it flex-fills. */}
         <main
           className={cn(
             'bg-[var(--abu-bg-base)]',
-            (viewMode === 'automation' || viewMode === 'toolbox')
-              ? (mac ? 'pt-11' : 'pt-8')
-              : cn(
-                  // 8px gap on all sides (matches TRAE --solo-layout-padding). Traffic-light
-                  // clearance is handled by the sidebar's own top strip, not by pushing the
-                  // card down — so the card sits near the window top, no empty band.
-                  'mt-3 mb-2 ml-2 mr-2 rounded-[var(--abu-radius-panel)] border border-[var(--abu-border)] shadow-[var(--abu-shadow-card)] overflow-hidden',
-                ),
+            'mt-3 mb-2 ml-2 mr-2 rounded-[var(--abu-radius-panel)] border border-[var(--abu-border)] shadow-[var(--abu-shadow-card)] overflow-hidden',
             previewSplit ? 'shrink-0' : 'flex-1 min-w-0',
           )}
           style={previewSplit ? { width: previewChatWidth } : undefined}
