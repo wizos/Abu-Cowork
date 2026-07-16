@@ -13,66 +13,66 @@ export interface ToolItem {
   description?: string;
   /** Rendered node so callers can pass an emoji, <img>, or a status-colored icon. */
   avatar?: ReactNode;
-  tags?: string[];
   /** Optional top-right corner adornment (source badge, connection status dot, …). */
   badge?: ReactNode;
-  /** Render in a muted/disabled style (e.g. an agent toggled off). */
-  dimmed?: boolean;
+  /** Optional top-right interactive control (e.g. an enable/disable switch).
+   *  Rendered after `badge`; its own click must stopPropagation so toggling
+   *  doesn't also open the card's detail view. */
+  toggle?: ReactNode;
 }
 
 /**
- * Fixed-height card. Every region is a fixed size and content is clamped
- * (name → 1 line, tags → 1 row of ≤3, description → 2 lines) so cards are
- * pixel-identical across all tabs regardless of how much text an item has —
- * long content can never stretch a card taller than its neighbours. The tags
- * row is always reserved (even when empty) so tagged and untagged items match.
+ * Short landscape card (WorkBuddy-style): (1) avatar + name on one row (vertically
+ * centered so they line up) + an optional top-right badge, (2) the description
+ * clamped to two lines. No tag row — it made cards look lopsided and too tall.
+ * Height is FIXED (`h-[120px]`) and the description always reserves two lines, so
+ * every card is the same height whether its description is one line or two (grid
+ * `stretch` only equalizes within a row, not across rows — hence a fixed height).
  */
 export default function ToolCard({ item, onClick }: { item: ToolItem; onClick: () => void }) {
   return (
-    <button
+    // A <div role="button"> rather than a real <button> so an interactive
+    // <Toggle> button can nest inside (button-in-button is invalid HTML).
+    <div
       onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        // Only when the card itself is focused — not a nested control (the enable
+        // Toggle). A Space/Enter keydown on the Toggle bubbles here; without this
+        // guard it would also open the detail modal on top of the toggle action.
+        if (e.target !== e.currentTarget) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       className={cn(
-        'group flex flex-col items-start gap-3 w-full h-[184px] overflow-hidden rounded-xl p-4 text-left',
+        'group flex flex-col gap-2 w-full h-[120px] overflow-hidden rounded-xl p-4 text-left cursor-pointer',
         'bg-[var(--abu-bg-subtle)] border border-[var(--abu-border)]',
         'hover:border-[var(--abu-clay)] hover:shadow-sm transition-all duration-150'
       )}
     >
-      {/* Avatar + optional badge */}
-      <div className="flex items-center justify-between w-full shrink-0">
-        <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-[var(--abu-bg-active)] text-2xl select-none shrink-0">
+      {/* Row 1: avatar + name (centered so they align), optional badge + toggle */}
+      <div className="flex items-center gap-3 w-full shrink-0">
+        <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-[var(--abu-bg-active)] text-xl select-none shrink-0 overflow-hidden">
           {item.avatar ?? '🤖'}
         </div>
-        {item.badge}
-      </div>
-
-      {/* Name + tags (tags row always reserved for uniform height) */}
-      <div className="w-full shrink-0">
         <p
-          className={cn(
-            'text-sm font-semibold leading-snug truncate',
-            item.dimmed ? 'text-[var(--abu-text-placeholder)]' : 'text-[var(--abu-text-primary)]'
-          )}
+          className="flex-1 min-w-0 text-sm font-semibold leading-snug truncate text-[var(--abu-text-primary)]"
           title={item.name}
         >
           {item.name}
         </p>
-        <div className="flex flex-wrap gap-1 mt-1.5 h-4 overflow-hidden">
-          {item.tags?.slice(0, 3).map((tag) => (
-            <span
-              key={tag}
-              className="px-1.5 py-0.5 rounded text-[10px] leading-none font-medium bg-[var(--abu-bg-active)] text-[var(--abu-text-tertiary)]"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
+        {item.badge && <div className="shrink-0">{item.badge}</div>}
+        {item.toggle && <div className="shrink-0">{item.toggle}</div>}
       </div>
 
-      {/* Description — fixed two-line height, always reserved. w-full + break-words
-          so long unbreakable strings (e.g. URLs) wrap instead of overflowing. */}
-      <p className="w-full h-[39px] text-[12px] text-[var(--abu-text-secondary)] leading-relaxed line-clamp-2 break-words shrink-0">
+      {/* Row 2: description — up to two lines. break-words so long unbreakable
+          strings (e.g. URLs) wrap instead of overflowing. */}
+      <p className="w-full text-[12px] text-[var(--abu-text-secondary)] leading-relaxed line-clamp-2 break-words">
         {item.description}
       </p>
-    </button>
+    </div>
   );
 }

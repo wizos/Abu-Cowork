@@ -6,7 +6,7 @@ import { useI18n } from '@/i18n';
 import { agentRegistry } from '@/core/agent/registry';
 import AgentEditor from './AgentEditor';
 import { Toggle } from '@/components/ui/toggle';
-import { MoreHorizontal, Pencil, Trash2, MessageCircle, Eye, Code, Plus, Wand2, PenLine, Upload, Check } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, MessageCircle, Eye, Code, Check, Bot } from 'lucide-react';
 import { remove } from '@tauri-apps/plugin-fs';
 import { getParentDir } from '@/utils/pathUtils';
 import type { SubagentDefinition } from '@/types';
@@ -14,7 +14,6 @@ import MarkdownRenderer from '@/components/chat/MarkdownRenderer';
 import ToolCard from '@/components/toolbox/ToolCard';
 import ToolGrid from '@/components/toolbox/ToolGrid';
 import ToolDetailModal from '@/components/toolbox/ToolDetailModal';
-import ToolboxToolbar from '@/components/toolbox/ToolboxToolbar';
 import abuAvatar from '@/assets/abu-avatar.png';
 
 function isSystemAgent(agent: SubagentDefinition): boolean {
@@ -24,13 +23,15 @@ function isSystemAgent(agent: SubagentDefinition): boolean {
   return agent.filePath === '__builtin__';
 }
 
-/** Render agent avatar: use real image for abu, emoji for others */
+/** Render agent avatar: real image for abu (brand mascot), otherwise a single
+ *  uniform robot icon — keeps the agent grid clean and tidy (matches the
+ *  connectors' Server-icon style). */
 function AgentAvatar({ agent, size = 'md' }: { agent: SubagentDefinition; size?: 'sm' | 'md' }) {
   const cls = size === 'sm' ? 'h-5 w-5' : 'h-6 w-6';
   if (agent.name === 'abu') {
     return <img src={abuAvatar} alt="Abu" className={`${cls} rounded-full object-cover`} />;
   }
-  return <span className={size === 'sm' ? 'text-base' : 'text-xl'}>{agent.avatar || '🤖'}</span>;
+  return <Bot className={`${cls} text-[var(--abu-text-muted)]`} />;
 }
 
 /** Display name: locale-aware. Falls back to canonical `name` if no override. */
@@ -52,20 +53,13 @@ function localizedExpertise(agent: SubagentDefinition, locale: 'zh-CN' | 'en-US'
 function localizedSamplePrompts(agent: SubagentDefinition, locale: 'zh-CN' | 'en-US'): string[] | undefined {
   return agent.samplePromptsI18n?.[locale] ?? agent.samplePrompts;
 }
-function localizedTags(agent: SubagentDefinition, locale: 'zh-CN' | 'en-US'): string[] | undefined {
-  return agent.tagsI18n?.[locale] ?? agent.tags;
-}
-
 interface AgentsSectionProps {
   manualCreateTrigger?: number;
-  onAICreate?: () => void;
-  onManualCreate?: () => void;
-  onUploadFile?: () => void;
 }
 
-export default function AgentsSection({ manualCreateTrigger, onAICreate, onManualCreate, onUploadFile }: AgentsSectionProps) {
+export default function AgentsSection({ manualCreateTrigger }: AgentsSectionProps) {
   const { agents, refresh } = useDiscoveryStore();
-  const { toolboxSearchQuery, setToolboxSearchQuery, disabledAgents, toggleAgentEnabled, closeToolbox } = useSettingsStore();
+  const { toolboxSearchQuery, disabledAgents, toggleAgentEnabled, closeToolbox } = useSettingsStore();
   const startNewConversation = useChatStore((s) => s.startNewConversation);
   const setPendingInput = useChatStore((s) => s.setPendingInput);
   const setPendingAgent = useChatStore((s) => s.setPendingAgent);
@@ -75,7 +69,6 @@ export default function AgentsSection({ manualCreateTrigger, onAICreate, onManua
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [editorAgent, setEditorAgent] = useState<SubagentDefinition | 'new' | null>(null);
   const [menuAgent, setMenuAgent] = useState<string | null>(null);
-  const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [contentViewMode, setContentViewMode] = useState<'preview' | 'source'>('preview');
 
   // Open blank editor when manual create is triggered from parent
@@ -141,13 +134,13 @@ export default function AgentsSection({ manualCreateTrigger, onAICreate, onManua
     }
   };
 
-  // Close menus when clicking outside
+  // Close the "..." menu when clicking outside
   useEffect(() => {
-    if (!menuAgent && !showCreateMenu) return;
-    const handleClick = () => { setMenuAgent(null); setShowCreateMenu(false); };
+    if (!menuAgent) return;
+    const handleClick = () => setMenuAgent(null);
     document.addEventListener('click', handleClick);
     return () => document.removeEventListener('click', handleClick);
-  }, [menuAgent, showCreateMenu]);
+  }, [menuAgent]);
 
   const renderAgentCard = (agent: SubagentDefinition) => (
     <ToolCard
@@ -157,8 +150,16 @@ export default function AgentsSection({ manualCreateTrigger, onAICreate, onManua
         name: displayName(agent, locale),
         description: localizedDescription(agent, locale),
         avatar: <AgentAvatar agent={agent} />,
-        tags: localizedTags(agent, locale),
-        dimmed: disabledSet.has(agent.name),
+        toggle: (
+          <span onClick={(e) => e.stopPropagation()}>
+            <Toggle
+              checked={!disabledSet.has(agent.name)}
+              onChange={() => toggleAgentEnabled(agent.name)}
+              size="sm"
+              tone="green"
+            />
+          </span>
+        ),
       }}
       onClick={() => setSelectedAgent(agent.name)}
     />
@@ -189,55 +190,13 @@ export default function AgentsSection({ manualCreateTrigger, onAICreate, onManua
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-[var(--abu-bg-base)]">
-      {/* Toolbar: search + create */}
-      <ToolboxToolbar searchQuery={toolboxSearchQuery} onSearchChange={setToolboxSearchQuery}>
-        <div className="relative">
-          <button
-            onClick={(e) => { e.stopPropagation(); setShowCreateMenu(!showCreateMenu); }}
-            className="p-1 text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
-          {showCreateMenu && (
-            <div className="absolute z-50 top-full right-0 mt-1 w-44 bg-[var(--abu-bg-base)] rounded-lg shadow-lg border border-[var(--abu-border)] py-1">
-              {onAICreate && (
-                <button
-                  onClick={() => { setShowCreateMenu(false); onAICreate(); }}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-active)] transition-colors"
-                >
-                  <Wand2 className="h-3.5 w-3.5 text-[var(--abu-clay)]" />
-                  <span>{t.toolbox.createWithAbu}</span>
-                </button>
-              )}
-              {onManualCreate && (
-                <button
-                  onClick={() => { setShowCreateMenu(false); onManualCreate(); }}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-active)] transition-colors"
-                >
-                  <PenLine className="h-3.5 w-3.5 text-[var(--abu-text-muted)]" />
-                  <span>{t.toolbox.createManually}</span>
-                </button>
-              )}
-              {onUploadFile && (
-                <button
-                  onClick={() => { setShowCreateMenu(false); onUploadFile(); }}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-active)] transition-colors"
-                >
-                  <Upload className="h-3.5 w-3.5 text-[var(--abu-text-muted)]" />
-                  <span>{t.toolbox.uploadFile}</span>
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      </ToolboxToolbar>
-
-      {/* Card grid */}
-      <div className="flex-1 overflow-y-auto overlay-scroll px-6 pb-6">
+      {/* Card grid — horizontally inset to match the header row above (ToolboxModal's
+          TopTabNav), with a centered max-width so cards don't stretch edge-to-edge. */}
+      <div className="flex-1 overflow-y-scroll overlay-scroll px-8 pb-6">
         {filteredAgents.length === 0 ? (
           <div className="text-sm text-[var(--abu-text-muted)] py-16 text-center">{t.toolbox.noAgentsFound}</div>
         ) : (
-          <div className="space-y-6">
+          <div className="max-w-5xl mx-auto space-y-6">
             {/* My agents (user-created) */}
             {userAgents.length > 0 && (
               <div>
@@ -279,6 +238,7 @@ export default function AgentsSection({ manualCreateTrigger, onAICreate, onManua
             <Toggle
               checked={!disabledSet.has(selected.name)}
               onChange={() => toggleAgentEnabled(selected.name)}
+              tone="green"
             />
             {/* "..." menu — only for user agents (edit / delete). */}
             {!isSystemAgent(selected) && (

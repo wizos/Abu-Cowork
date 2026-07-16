@@ -11,7 +11,6 @@ import { open } from '@tauri-apps/plugin-shell';
 import ToolCard from '@/components/toolbox/ToolCard';
 import ToolGrid from '@/components/toolbox/ToolGrid';
 import ToolDetailModal from '@/components/toolbox/ToolDetailModal';
-import ToolboxToolbar from '@/components/toolbox/ToolboxToolbar';
 
 const urlPattern = /https?:\/\/[^\s]+/;
 
@@ -69,7 +68,6 @@ interface MCPSectionProps {
 
 export default function MCPSection({ showAddForm: externalShowAddForm, onAddFormChange }: MCPSectionProps = {}) {
   const toolboxSearchQuery = useSettingsStore((s) => s.toolboxSearchQuery);
-  const setToolboxSearchQuery = useSettingsStore((s) => s.setToolboxSearchQuery);
   const servers = useMCPStore((s) => s.servers);
   const addServer = useMCPStore((s) => s.addServer);
   const removeServer = useMCPStore((s) => s.removeServer);
@@ -416,15 +414,16 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
     } finally { setTestingServer(null); }
   };
 
-  // Status icon color helper
-  const statusIconClass = (entry: MCPServerEntry) => {
+  // Connection-status indicator dot (card top-right) — the icon itself stays a
+  // neutral colour so it doesn't flicker green/red as the connection changes.
+  const statusDotClass = (entry: MCPServerEntry) => {
     const { status } = entry;
     const isConn = connectingServer === entry.config.name;
-    if (status === 'reconnecting') return 'text-orange-400 animate-pulse';
-    if (isConn || status === 'connecting') return 'text-amber-400 animate-pulse';
-    if (status === 'connected') return 'text-green-500';
-    if (status === 'error') return 'text-red-400';
-    return 'text-[var(--abu-text-muted)]';
+    if (status === 'reconnecting') return 'bg-orange-400 animate-pulse';
+    if (isConn || status === 'connecting') return 'bg-amber-400 animate-pulse';
+    if (status === 'connected') return 'bg-green-500';
+    if (status === 'error') return 'bg-red-400';
+    return 'bg-[var(--abu-text-placeholder)]';
   };
 
   // Get selected server entry or template
@@ -451,7 +450,8 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
           id: c.name,
           name: c.name,
           description,
-          avatar: <Server className={cn('h-6 w-6', statusIconClass(entry))} />,
+          avatar: <Server className="h-6 w-6 text-[var(--abu-text-muted)]" />,
+          badge: <span className={cn('block w-2 h-2 rounded-full', statusDotClass(entry))} title={entry.status} />,
         }}
         onClick={() => setSelected({ kind: 'server', name: c.name })}
       />
@@ -466,7 +466,6 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
         name: pickLocale(locale, tmpl.name, tmpl.nameEn),
         description: pickLocale(locale, tmpl.description, tmpl.descriptionEn),
         avatar: <Server className="h-6 w-6 text-[var(--abu-text-placeholder)]" />,
-        tags: tmpl.transport === 'http' ? ['HTTP'] : undefined,
       }}
       onClick={() => setSelected({ kind: 'template', id: tmpl.id })}
     />
@@ -474,19 +473,13 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-[var(--abu-bg-base)]">
-      {/* Toolbar: search + add */}
-      <ToolboxToolbar searchQuery={toolboxSearchQuery} onSearchChange={setToolboxSearchQuery}>
-        <button onClick={() => setShowAddForm(true)} className="p-1 text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] transition-colors">
-          <Plus className="h-4 w-4" />
-        </button>
-      </ToolboxToolbar>
-
-      {/* Card grid */}
-      <div className="flex-1 overflow-y-auto overlay-scroll px-6 pb-6">
+      {/* Card grid — horizontally inset to match the header row above (ToolboxModal's
+          TopTabNav), with a centered max-width so cards don't stretch edge-to-edge. */}
+      <div className="flex-1 overflow-y-scroll overlay-scroll px-8 pb-6">
         {customServers.length === 0 && exampleItems.length === 0 ? (
           <div className="text-sm text-[var(--abu-text-muted)] py-16 text-center">{t.toolbox.noServersConnected}</div>
         ) : (
-          <div className="space-y-6">
+          <div className="max-w-5xl mx-auto space-y-6">
             {/* "我的" — user-added custom servers */}
             {customServers.length > 0 && (
               <div>
@@ -508,30 +501,63 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
       </div>
 
       {/* Detail modal */}
-      <ToolDetailModal open={!!selected} onClose={() => setSelected(null)} maxWidth="max-w-2xl">
+      <ToolDetailModal
+        open={!!selected}
+        onClose={() => setSelected(null)}
+        maxWidth="max-w-2xl"
+        avatar={selected ? <Server className="h-6 w-6 text-[var(--abu-text-muted)]" /> : undefined}
+        title={
+          selectedServer ? selectedServer.config.name
+          : selectedTemplate ? (
+              <span className="inline-flex items-center gap-2">
+                {pickLocale(locale, selectedTemplate.name, selectedTemplate.nameEn)}
+                {selectedTemplate.transport === 'http' && (
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">HTTP</span>
+                )}
+              </span>
+            )
+          : undefined
+        }
+        subtitle={selectedServer ? (
+          <span className={cn('font-medium', serverStatusMeta(selectedServer, connectingServer, testingServer, t).statusColor)}>
+            {serverStatusMeta(selectedServer, connectingServer, testingServer, t).statusLabel}
+          </span>
+        ) : undefined}
+        headerActions={
+          selectedServer ? (
+            <ServerHeaderActions
+              entry={selectedServer}
+              connectingServer={connectingServer}
+              testingServer={testingServer}
+              onToggleLogs={() => setShowLogs(!showLogs)}
+              onToggleConnection={() => handleToggleConnection(selectedServer)}
+              onTestConnection={() => handleTestConnection(selectedServer)}
+              onRemove={() => handleRemoveServer(selectedServer.config.name)}
+              onEdit={() => handleEditServer(selectedServer)}
+            />
+          ) : selectedTemplate ? (
+            <button onClick={() => handleInstallTemplate(selectedTemplate)} disabled={installingTemplate === selectedTemplate.id}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium bg-[var(--abu-clay)] text-white hover:bg-[var(--abu-clay-hover)] disabled:opacity-50 transition-colors">
+              {installingTemplate === selectedTemplate.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+              {t.toolbox.install}
+            </button>
+          ) : undefined
+        }
+      >
         {selectedServer ? (
           <ServerDetail
             entry={selectedServer}
-            connectingServer={connectingServer}
             serverErrors={serverErrors}
-            testingServer={testingServer}
             testResults={testResults}
             expandedTools={expandedTools}
             showLogs={showLogs}
             onToggleTools={() => setExpandedTools(!expandedTools)}
-            onToggleLogs={() => setShowLogs(!showLogs)}
-            onToggleConnection={() => handleToggleConnection(selectedServer)}
-            onTestConnection={() => handleTestConnection(selectedServer)}
-            onRemove={() => handleRemoveServer(selectedServer.config.name)}
-            onEdit={() => handleEditServer(selectedServer)}
           />
         ) : selectedTemplate ? (
           <TemplateDetail
             template={selectedTemplate}
             templateArgs={templateArgs}
             setTemplateArgs={setTemplateArgs}
-            installingTemplate={installingTemplate}
-            onInstall={() => handleInstallTemplate(selectedTemplate)}
           />
         ) : null}
       </ToolDetailModal>
@@ -657,19 +683,40 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
 
 // --- Server Detail Panel ---
 
-function ServerDetail({
-  entry, connectingServer, serverErrors, testingServer, testResults,
-  expandedTools, showLogs,
-  onToggleTools, onToggleLogs, onToggleConnection, onTestConnection, onRemove, onEdit,
+/** Shared connection-status meta so the (hoisted) modal header and the detail
+ *  body describe a server's state consistently. */
+function serverStatusMeta(
+  entry: MCPServerEntry,
+  connectingServer: string | null,
+  testingServer: string | null,
+  t: ReturnType<typeof useI18n>['t'],
+) {
+  const { config, status } = entry;
+  const isConnected = status === 'connected';
+  const isReconnecting = status === 'reconnecting';
+  const isConnecting = connectingServer === config.name || status === 'connecting' || isReconnecting;
+  const isTesting = testingServer === config.name;
+  const statusLabel = isReconnecting ? t.toolbox.reconnecting
+    : isConnecting ? t.toolbox.connecting
+    : isConnected ? t.toolbox.connected
+    : status === 'error' ? 'Error'
+    : t.toolbox.disconnected;
+  const statusColor = isReconnecting ? 'text-orange-500'
+    : isConnecting ? 'text-amber-500'
+    : isConnected ? 'text-green-600'
+    : status === 'error' ? 'text-red-500'
+    : 'text-[var(--abu-text-muted)]';
+  return { isConnected, isConnecting, isTesting, statusLabel, statusColor };
+}
+
+/** Header action buttons for a server, hoisted into ToolDetailModal.headerActions. */
+function ServerHeaderActions({
+  entry, connectingServer, testingServer,
+  onToggleLogs, onToggleConnection, onTestConnection, onRemove, onEdit,
 }: {
   entry: MCPServerEntry;
   connectingServer: string | null;
-  serverErrors: Record<string, string>;
   testingServer: string | null;
-  testResults: Record<string, { success: boolean; message: string }>;
-  expandedTools: boolean;
-  showLogs: boolean;
-  onToggleTools: () => void;
   onToggleLogs: () => void;
   onToggleConnection: () => void;
   onTestConnection: () => void;
@@ -677,64 +724,54 @@ function ServerDetail({
   onEdit: () => void;
 }) {
   const { t } = useI18n();
+  const { isConnected, isConnecting, isTesting } = serverStatusMeta(entry, connectingServer, testingServer, t);
+  return (
+    <>
+      <button onClick={onToggleLogs} className="p-1.5 rounded-lg text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)] transition-colors" title={t.toolbox.viewLogs}>
+        <ScrollText className="h-4 w-4" />
+      </button>
+      <button onClick={onEdit} className="p-1.5 rounded-lg text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)] transition-colors" title={t.toolbox.skillEdit}>
+        <Pencil className="h-4 w-4" />
+      </button>
+      <button onClick={onTestConnection} disabled={isTesting || isConnecting}
+        className="p-1.5 rounded-lg text-[var(--abu-text-muted)] hover:text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50" title={t.toolbox.testConnection}>
+        {isTesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+      </button>
+      <button onClick={onToggleConnection} disabled={isConnecting}
+        className={cn('p-1.5 rounded-lg transition-colors',
+          isConnecting ? 'text-amber-500 cursor-wait' : isConnected ? 'text-green-600 hover:text-green-700 hover:bg-green-50' : 'text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)]'
+        )} title={isConnecting ? t.toolbox.connecting : isConnected ? t.toolbox.disconnect : t.toolbox.connect}>
+        {isConnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : isConnected ? <PlugZap className="h-4 w-4" /> : <Plug className="h-4 w-4" />}
+      </button>
+      <button onClick={onRemove} className="p-1.5 rounded-lg text-[var(--abu-text-muted)] hover:text-red-500 hover:bg-red-50 transition-colors">
+        <Trash2 className="h-4 w-4" />
+      </button>
+    </>
+  );
+}
+
+function ServerDetail({
+  entry, serverErrors, testResults,
+  expandedTools, showLogs,
+  onToggleTools,
+}: {
+  entry: MCPServerEntry;
+  serverErrors: Record<string, string>;
+  testResults: Record<string, { success: boolean; message: string }>;
+  expandedTools: boolean;
+  showLogs: boolean;
+  onToggleTools: () => void;
+}) {
+  const { t } = useI18n();
   const { config, status, tools } = entry;
   const isConnected = status === 'connected';
-  const isReconnecting = status === 'reconnecting';
-  const isConnecting = connectingServer === config.name || status === 'connecting' || isReconnecting;
   const error = serverErrors[config.name] || (status === 'error' ? entry.error : undefined);
-  const isTesting = testingServer === config.name;
   const testResult = testResults[config.name];
   const toolDetails = (tools ?? []) as { name: string; description?: string }[];
   const isHttp = !!(config.url || config.transport === 'http');
 
-  const statusLabel = isReconnecting ? t.toolbox.reconnecting
-    : isConnecting ? t.toolbox.connecting
-    : isConnected ? t.toolbox.connected
-    : status === 'error' ? 'Error'
-    : t.toolbox.disconnected;
-
-  const statusColor = isReconnecting ? 'text-orange-500'
-    : isConnecting ? 'text-amber-500'
-    : isConnected ? 'text-green-600'
-    : status === 'error' ? 'text-red-500'
-    : 'text-[var(--abu-text-muted)]';
-
   return (
-    <div className="px-6 py-6">
-      {/* Header: Name + Actions / Status */}
-      <div className="flex flex-col gap-1.5 mb-5">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <Server className="h-5 w-5 shrink-0 text-[var(--abu-text-muted)]" />
-            <h2 className="text-xl font-semibold text-[var(--abu-text-primary)] truncate" title={config.name}>{config.name}</h2>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-          <button onClick={onToggleLogs} className="p-1.5 rounded-lg text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)] transition-colors" title={t.toolbox.viewLogs}>
-            <ScrollText className="h-4 w-4" />
-          </button>
-          <button onClick={onEdit} className="p-1.5 rounded-lg text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)] transition-colors" title={t.toolbox.skillEdit}>
-            <Pencil className="h-4 w-4" />
-          </button>
-          <button onClick={onTestConnection} disabled={isTesting || isConnecting}
-            className="p-1.5 rounded-lg text-[var(--abu-text-muted)] hover:text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50" title={t.toolbox.testConnection}>
-            {isTesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-          </button>
-          <button onClick={onToggleConnection} disabled={isConnecting}
-            className={cn('p-1.5 rounded-lg transition-colors',
-              isConnecting ? 'text-amber-500 cursor-wait' : isConnected ? 'text-green-600 hover:text-green-700 hover:bg-green-50' : 'text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)]'
-            )} title={isConnecting ? t.toolbox.connecting : isConnected ? t.toolbox.disconnect : t.toolbox.connect}>
-            {isConnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : isConnected ? <PlugZap className="h-4 w-4" /> : <Plug className="h-4 w-4" />}
-          </button>
-          <button onClick={onRemove} className="p-1.5 rounded-lg text-[var(--abu-text-muted)] hover:text-red-500 hover:bg-red-50 transition-colors">
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-        </div>
-        <div className="flex items-center gap-2 pl-8">
-          <span className={cn('text-xs font-medium', statusColor)}>{statusLabel}</span>
-        </div>
-      </div>
-
+    <>
       {/* Error */}
       {error && (
         <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 flex items-start gap-2">
@@ -787,44 +824,26 @@ function ServerDetail({
 
       {/* Logs */}
       {showLogs && <ServerLogsPanel serverName={config.name} />}
-    </div>
+    </>
   );
 }
 
 // --- Template Detail Panel ---
 
 function TemplateDetail({
-  template, templateArgs, setTemplateArgs, installingTemplate, onInstall,
+  template, templateArgs, setTemplateArgs,
 }: {
   template: typeof mcpTemplates[0];
   templateArgs: Record<string, string>;
   setTemplateArgs: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  installingTemplate: string | null;
-  onInstall: () => void;
 }) {
   const { t, locale } = useI18n();
-  const isInstalling = installingTemplate === template.id;
-  const isHttp = template.transport === 'http';
   const hasConfigurableArgs = template.configurableArgs && template.configurableArgs.length > 0;
   const hasEnvVars = template.requiredEnvVars && template.requiredEnvVars.length > 0;
   const hasSetupHint = !!template.setupHint;
 
   return (
-    <div className="px-6 py-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <div className="flex items-center gap-3">
-          <Server className="h-5 w-5 text-[var(--abu-text-placeholder)]" />
-          <h2 className="text-xl font-semibold text-[var(--abu-text-primary)]">{pickLocale(locale, template.name, template.nameEn)}</h2>
-          {isHttp && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">HTTP</span>}
-        </div>
-        <button onClick={onInstall} disabled={isInstalling}
-          className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium bg-[var(--abu-clay)] text-white hover:bg-[var(--abu-clay-hover)] disabled:opacity-50 transition-colors">
-          {isInstalling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-          {t.toolbox.install}
-        </button>
-      </div>
-
+    <>
       {/* Description */}
       <div className="mb-5">
         <span className="text-xs text-[var(--abu-text-muted)]">Description</span>
@@ -862,7 +881,7 @@ function TemplateDetail({
           ))}
         </div>
       )}
-    </div>
+    </>
   );
 }
 

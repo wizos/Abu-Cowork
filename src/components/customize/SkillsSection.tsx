@@ -12,7 +12,7 @@ import SkillCategoryBlocksPanel from './SkillCategoryBlocksPanel';
 import SkillHistoryModal from './SkillHistoryModal';
 import SkillUploadModal from './SkillUploadModal';
 import { Toggle } from '@/components/ui/toggle';
-import { Trash2, FileText, Pencil, MoreHorizontal, Eye, Code, Info, MessageCircle, Plus, Wand2, PenLine, Upload, Download, Clock, ChevronDown, ChevronRight, Folder } from 'lucide-react';
+import { Trash2, FileText, Pencil, MoreHorizontal, Eye, Code, Info, MessageCircle, Download, Clock, ChevronDown, ChevronRight, Folder } from 'lucide-react';
 import { remove } from '@tauri-apps/plugin-fs';
 import { save as saveDialog } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
@@ -22,25 +22,23 @@ import { getParentDir } from '@/utils/pathUtils';
 import type { Skill, SkillUXCategory } from '@/types';
 import { sourceToUXCategory } from '@/core/skill/uxCategory';
 import MarkdownRenderer from '@/components/chat/MarkdownRenderer';
-import { cn } from '@/lib/utils';
 import ToolCard from '@/components/toolbox/ToolCard';
 import ToolGrid from '@/components/toolbox/ToolGrid';
 import ToolDetailModal from '@/components/toolbox/ToolDetailModal';
-import ToolboxToolbar from '@/components/toolbox/ToolboxToolbar';
 
 // Build a set of system skill names from marketplace templates
 /**
  * Map a skill source to its visual badge (Task #22). User-scope skills
  * get no badge — that's the "my skills" default and adding a pill there
  * would be pure noise. Only surface sources where the distinction matters:
- *   - builtin         → "内置" (comes with Abu)
  *   - workspace-auto  → "本项目自治" (agent-written, accepted via card)
  *   - project*        → "项目" (workspace's own .abu/skills git-tracked)
  *   - standard        → "标准" (~/.agents/skills cross-client)
+ * builtin gets NO badge — those cards already sit under the "市场" category
+ * group, so a per-card source pill there is redundant.
  */
-type SourceBadge = { labelKey: 'skillSourceBuiltin' | 'skillSourceWorkspaceAuto' | 'skillSourceProject' | 'skillSourceStandard'; tone: 'neutral' | 'clay' | 'blue' | 'slate' } | null;
+type SourceBadge = { labelKey: 'skillSourceWorkspaceAuto' | 'skillSourceProject' | 'skillSourceStandard'; tone: 'clay' | 'blue' | 'slate' } | null;
 function sourceBadge(skill: Skill): SourceBadge {
-  if (skill.source === 'builtin') return { labelKey: 'skillSourceBuiltin', tone: 'neutral' };
   if (skill.source === 'workspace-auto') return { labelKey: 'skillSourceWorkspaceAuto', tone: 'clay' };
   if (skill.source === 'project' || skill.source === 'project-standard') return { labelKey: 'skillSourceProject', tone: 'blue' };
   if (skill.source === 'standard') return { labelKey: 'skillSourceStandard', tone: 'slate' };
@@ -147,17 +145,20 @@ function FileTreeItem({
 
 interface SkillsSectionProps {
   manualCreateTrigger?: number;
-  onAICreate?: () => void;
-  onManualCreate?: () => void;
+  /** Unified upload dialog (folder / .askill / .zip) — opened from ToolboxModal's
+   *  header create-menu ("导入技能"). Controlled from outside like MCPSection's
+   *  showAddForm, with an internal fallback so the component still works standalone. */
+  showUploadModal?: boolean;
+  onUploadModalChange?: (open: boolean) => void;
 }
 
-export default function SkillsSection({ manualCreateTrigger, onAICreate, onManualCreate }: SkillsSectionProps) {
+export default function SkillsSection({ manualCreateTrigger, showUploadModal: externalShowUploadModal, onUploadModalChange }: SkillsSectionProps) {
   const { skills, refresh } = useDiscoveryStore();
   // We subscribe to drafts count here (not SkillDraftsPanel itself) so
   // the 阿布沉淀 category's visibility condition accounts for pending
   // drafts even when there are no workspace-auto skills yet.
   const draftsCount = useSkillDraftsStore((s) => s.drafts.length);
-  const { toolboxSearchQuery, setToolboxSearchQuery, disabledSkills, toggleSkillEnabled, closeToolbox } = useSettingsStore();
+  const { toolboxSearchQuery, disabledSkills, toggleSkillEnabled, closeToolbox } = useSettingsStore();
   const startNewConversation = useChatStore((s) => s.startNewConversation);
   const setPendingInput = useChatStore((s) => s.setPendingInput);
   const { t } = useI18n();
@@ -167,8 +168,6 @@ export default function SkillsSection({ manualCreateTrigger, onAICreate, onManua
   const [editorSkill, setEditorSkill] = useState<Skill | 'new' | null>(null);
   const [menuSkill, setMenuSkill] = useState<string | null>(null);
   const [historySkill, setHistorySkill] = useState<Skill | null>(null);
-  // Create-menu UI state (search UI state now lives in ToolboxToolbar)
-  const [showCreateMenu, setShowCreateMenu] = useState(false);
   // Content view mode: preview (rendered) or source (raw)
   const [contentViewMode, setContentViewMode] = useState<'preview' | 'source'>('preview');
   // Supporting-file browsing inside the detail modal. `activeFilePath` = 'SKILL.md'
@@ -177,7 +176,12 @@ export default function SkillsSection({ manualCreateTrigger, onAICreate, onManua
   const [activeFilePath, setActiveFilePath] = useState<string>('SKILL.md');
   const [activeFileContent, setActiveFileContent] = useState<string | null>(null);
   // Unified upload dialog (folder / .askill / .zip via click or drag-drop)
-  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [internalShowUploadModal, setInternalShowUploadModal] = useState(false);
+  const showUploadModal = externalShowUploadModal ?? internalShowUploadModal;
+  const setShowUploadModal = (open: boolean) => {
+    onUploadModalChange?.(open);
+    setInternalShowUploadModal(open);
+  };
 
   // Open blank editor when manual create is triggered from parent
   useEffect(() => {
@@ -293,13 +297,13 @@ export default function SkillsSection({ manualCreateTrigger, onAICreate, onManua
     }
   };
 
-  // Close menus when clicking outside
+  // Close the "..." menu when clicking outside
   useEffect(() => {
-    if (!menuSkill && !showCreateMenu) return;
-    const handleClick = () => { setMenuSkill(null); setShowCreateMenu(false); };
+    if (!menuSkill) return;
+    const handleClick = () => setMenuSkill(null);
     document.addEventListener('click', handleClick);
     return () => document.removeEventListener('click', handleClick);
-  }, [menuSkill, showCreateMenu]);
+  }, [menuSkill]);
 
   const renderSkillCard = (skill: Skill) => {
     const isEnabled = !disabledSet.has(skill.name);
@@ -311,14 +315,17 @@ export default function SkillsSection({ manualCreateTrigger, onAICreate, onManua
           id: skill.name,
           name: skill.name,
           description: skill.description,
-          avatar: <FileText className={cn('h-5 w-5', !isEnabled ? 'text-[var(--abu-text-placeholder)]' : 'text-[var(--abu-text-muted)]')} />,
-          tags: skill.tags,
-          dimmed: !isEnabled,
+          avatar: <FileText className="h-6 w-6 text-[var(--abu-text-muted)]" />,
           badge: badge ? (
             <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium ${SOURCE_BADGE_TONE[badge.tone]}`}>
               {t.toolbox[badge.labelKey]}
             </span>
           ) : undefined,
+          toggle: (
+            <span onClick={(e) => e.stopPropagation()}>
+              <Toggle checked={isEnabled} onChange={() => toggleSkillEnabled(skill.name)} size="sm" tone="green" />
+            </span>
+          ),
         }}
         onClick={() => setSelectedSkill(skill.name)}
       />
@@ -338,60 +345,19 @@ export default function SkillsSection({ manualCreateTrigger, onAICreate, onManua
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-[var(--abu-bg-base)]">
-      {/* Toolbar: search + create */}
-      <ToolboxToolbar searchQuery={toolboxSearchQuery} onSearchChange={setToolboxSearchQuery}>
-        <div className="relative">
-          <button
-            data-testid="skill-create-trigger"
-            onClick={(e) => { e.stopPropagation(); setShowCreateMenu(!showCreateMenu); }}
-            className="p-1 text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
-          {showCreateMenu && (
-            <div data-testid="skill-create-menu" className="absolute z-50 top-full right-0 mt-1 w-44 bg-[var(--abu-bg-base)] rounded-lg shadow-lg border border-[var(--abu-border)] py-1">
-              {onAICreate && (
-                <button
-                  onClick={() => { setShowCreateMenu(false); onAICreate(); }}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-active)] transition-colors"
-                >
-                  <Wand2 className="h-3.5 w-3.5 text-[var(--abu-clay)]" />
-                  <span>{t.toolbox.createWithAbu}</span>
-                </button>
-              )}
-              {onManualCreate && (
-                <button
-                  onClick={() => { setShowCreateMenu(false); onManualCreate(); }}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-active)] transition-colors"
-                >
-                  <PenLine className="h-3.5 w-3.5 text-[var(--abu-text-muted)]" />
-                  <span>{t.toolbox.createManually}</span>
-                </button>
-              )}
-              <button
-                onClick={() => { setShowCreateMenu(false); setShowUploadModal(true); }}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-active)] transition-colors"
-              >
-                <Upload className="h-3.5 w-3.5 text-[var(--abu-text-muted)]" />
-                <span>{t.toolbox.importEntry}</span>
-              </button>
-            </div>
-          )}
-        </div>
-      </ToolboxToolbar>
-
       {/* Category blocks manager (Task #45 · reject-category undo) —
           hidden when the workspace has no blocks. Kept at the top
           because it's a global "management" surface (not tied to any
           one skill), and doesn't belong inside the 阿布沉淀 category. */}
       <SkillCategoryBlocksPanel />
 
-      {/* Card grid */}
-      <div className="flex-1 overflow-y-auto overlay-scroll px-6 pb-6">
+      {/* Card grid — horizontally inset to match the header row above (ToolboxModal's
+          TopTabNav), with a centered max-width so cards don't stretch edge-to-edge. */}
+      <div className="flex-1 overflow-y-scroll overlay-scroll px-8 pb-6">
         {filteredSkills.length === 0 ? (
           <div className="text-sm text-[var(--abu-text-muted)] py-16 text-center">{t.toolbox.noSkillsFound}</div>
         ) : (
-          <div className="space-y-6">
+          <div className="max-w-5xl mx-auto space-y-6">
             {/* Category · Mine — user's own or team-shipped skills.
                 Groups user/standard/project/project-standard into one
                 bucket matching the user's mental model ("I or my
@@ -445,6 +411,7 @@ export default function SkillsSection({ manualCreateTrigger, onAICreate, onManua
             <Toggle
               checked={!disabledSet.has(selected.name)}
               onChange={() => toggleSkillEnabled(selected.name)}
+              tone="green"
             />
             {/* "..." menu: export always available; user skills also have edit/delete */}
             <div className="relative">
