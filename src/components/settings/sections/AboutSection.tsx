@@ -82,7 +82,7 @@ export default function AboutSection() {
     : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-8">
       {/* Logo & name */}
       <div className="flex flex-col items-center text-center space-y-3">
         <img src={abuAvatar} alt="Abu" className="w-20 h-20 rounded-2xl" />

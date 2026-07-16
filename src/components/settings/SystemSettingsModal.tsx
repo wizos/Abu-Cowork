@@ -149,7 +149,7 @@ export default function SystemSettingsView() {
         </nav>
 
         {/* Right Content */}
-        <div className="flex-1 overflow-y-auto overlay-scroll p-6">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden overlay-scroll p-6">
           {renderContent()}
         </div>
       </div>

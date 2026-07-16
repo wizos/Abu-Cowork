@@ -80,11 +80,16 @@ export default function TriggerView() {
 
   return (
     <div className="flex flex-col h-full bg-[var(--abu-bg-base)]">
-      {/* Action row — the toolbox top-tab already labels this view, so the
-          redundant title is dropped; only render the bar when there are triggers. */}
-      {sortedTriggers.length > 0 && (
-        <div className="flex items-center justify-end px-6 pt-4 pb-2">
-          <div className="flex items-center gap-2">
+      {/* Header row: run-condition hint on the left (no background) + create
+          actions on the right (only when there are triggers). The toolbox top-tab
+          already labels the view, so no redundant title. */}
+      <div className="flex items-center justify-between gap-3 px-6 pt-4 pb-2">
+        <div className="flex items-center gap-1.5 text-[12px] text-[var(--abu-text-tertiary)] min-w-0">
+          <Info className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">{t.trigger.infoBanner}</span>
+        </div>
+        {sortedTriggers.length > 0 && (
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleAskAbu}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)] hover:bg-[var(--abu-border)] transition-colors shrink-0"
@@ -100,13 +105,7 @@ export default function TriggerView() {
               {t.trigger.newTrigger}
             </button>
           </div>
-        </div>
-      )}
-
-      {/* Info banner */}
-      <div className="mx-6 mt-4 flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--abu-bg-active)]/80 border border-[var(--abu-border-subtle)]">
-        <Info className="h-3.5 w-3.5 text-[var(--abu-text-tertiary)] shrink-0" />
-        <span className="text-[12px] text-[var(--abu-text-tertiary)]">{t.trigger.infoBanner}</span>
+        )}
       </div>
 
       {/* Trigger list or empty state */}
