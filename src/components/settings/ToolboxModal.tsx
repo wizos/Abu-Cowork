@@ -4,7 +4,6 @@ import { useChatStore } from '@/stores/chatStore';
 import { useDiscoveryStore } from '@/stores/discoveryStore';
 import { useI18n, format } from '@/i18n';
 import { Sparkles, Bot, Server, Building2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { useToastStore } from '@/stores/toastStore';
 import { installSkillFromFolder } from '@/core/skill/installer';
@@ -14,6 +13,7 @@ import { getEnterpriseMount } from '@/core/enterprise/mounts-registry';
 import SkillsSection from '../customize/SkillsSection';
 import AgentsSection from '../customize/AgentsSection';
 import MCPSection from '../customize/MCPSection';
+import TopTabNav from '@/components/toolbox/TopTabNav';
 // Enterprise skill/MCP tab implementations are registered by the enterprise-modules
 // entry point (real impls in the enterprise build, no-op in the OSS build). The
 // consumers below read them via getEnterpriseMount(), which returns a NullComponent
@@ -163,39 +163,13 @@ export default function ToolboxView() {
 
   return (
     <div className="h-full bg-[var(--abu-bg-base)] flex flex-col">
-      {/* Top Navigation — horizontal tab bar for toolbox types (underline style).
-          When the sidebar is collapsed, the window's floating controls (sidebar
-          toggle / search / new-task) + macOS traffic lights sit over the card's
-          top-left, so pad the tabs right to clear them. */}
-      <nav
-        className={cn(
-          'shrink-0 flex items-center gap-1 pt-3 pr-4 border-b border-[var(--abu-border)]',
-          sidebarCollapsed ? 'pl-[184px]' : 'pl-4'
-        )}
-      >
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeExtTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => handleTabChange(item.id)}
-              className={cn(
-                'flex items-center gap-2 px-3 py-2 -mb-px border-b-2 text-sm font-medium transition-colors',
-                isActive
-                  ? 'border-[var(--abu-clay)] text-[var(--abu-text-primary)]'
-                  : 'border-transparent text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)]'
-              )}
-            >
-              <Icon className={cn(
-                'h-4 w-4 shrink-0',
-                isActive ? 'text-[var(--abu-clay)]' : 'text-[var(--abu-text-muted)]'
-              )} />
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
+      {/* Top Navigation — horizontal tab bar for toolbox types (underline style). */}
+      <TopTabNav
+        items={navItems}
+        activeId={activeExtTab}
+        onSelect={handleTabChange}
+        sidebarCollapsed={sidebarCollapsed}
+      />
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">

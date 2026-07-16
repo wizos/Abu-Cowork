@@ -5,12 +5,13 @@ import { useI18n } from '@/i18n';
 import { mcpTemplates } from '@/data/marketplace/mcp';
 import { mcpManager, type MCPServerConfig, type MCPLogEntry } from '@/core/mcp/client';
 import { parseArgs } from '@/utils/argsParser';
-import { Trash2, Plus, Loader2, Check, X, Plug, PlugZap, ChevronDown, ChevronRight, Wrench, Zap, AlertCircle, ScrollText, Server, Search, Pencil } from 'lucide-react';
+import { Trash2, Plus, Loader2, Check, X, Plug, PlugZap, ChevronDown, ChevronRight, Wrench, Zap, AlertCircle, ScrollText, Server, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { open } from '@tauri-apps/plugin-shell';
 import ToolCard from '@/components/toolbox/ToolCard';
 import ToolGrid from '@/components/toolbox/ToolGrid';
 import ToolDetailModal from '@/components/toolbox/ToolDetailModal';
+import ToolboxToolbar from '@/components/toolbox/ToolboxToolbar';
 
 const urlPattern = /https?:\/\/[^\s]+/;
 
@@ -32,7 +33,7 @@ function renderSetupHint(text: string) {
   );
 }
 
-/** Locale-aware pick between zh (default) and en fields — mirrors TemplateDetail's local `pick`. */
+/** Locale-aware pick between zh (default) and en fields. */
 function pickLocale(locale: string, zh: string, en?: string): string {
   return locale.startsWith('zh') ? zh : (en ?? zh);
 }
@@ -97,9 +98,6 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
 
   // Server logs viewer
   const [showLogs, setShowLogs] = useState(false);
-
-  // Search & create UI
-  const [showSearch, setShowSearch] = useState(false);
 
   // New/Edit server form
   const [internalShowAddForm, setInternalShowAddForm] = useState(false);
@@ -477,33 +475,11 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
   return (
     <div className="flex flex-col h-full overflow-hidden bg-[var(--abu-bg-base)]">
       {/* Toolbar: search + add */}
-      <div className="shrink-0 px-6 pt-4 pb-3 flex items-center justify-end gap-1">
-        {showSearch ? (
-          <div className="relative w-full max-w-xs">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--abu-text-tertiary)]" />
-            <input
-              autoFocus type="text" placeholder={t.toolbox.searchPlaceholder}
-              value={toolboxSearchQuery}
-              onChange={(e) => setToolboxSearchQuery(e.target.value)}
-              onBlur={() => { if (!toolboxSearchQuery) setShowSearch(false); }}
-              onKeyDown={(e) => { if (e.key === 'Escape') { setToolboxSearchQuery(''); setShowSearch(false); } }}
-              className="w-full pl-7 pr-7 py-1 text-sm border border-[var(--abu-border)] rounded-md bg-[var(--abu-bg-base)] focus:outline-none focus:ring-1 focus:ring-[var(--abu-clay-ring)] text-[var(--abu-text-primary)]"
-            />
-            <button onClick={() => { setToolboxSearchQuery(''); setShowSearch(false); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)]">
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        ) : (
-          <>
-            <button onClick={() => setShowSearch(true)} className="p-1 text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] transition-colors">
-              <Search className="h-3.5 w-3.5" />
-            </button>
-            <button onClick={() => setShowAddForm(true)} className="p-1 text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] transition-colors">
-              <Plus className="h-4 w-4" />
-            </button>
-          </>
-        )}
-      </div>
+      <ToolboxToolbar searchQuery={toolboxSearchQuery} onSearchChange={setToolboxSearchQuery}>
+        <button onClick={() => setShowAddForm(true)} className="p-1 text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] transition-colors">
+          <Plus className="h-4 w-4" />
+        </button>
+      </ToolboxToolbar>
 
       {/* Card grid */}
       <div className="flex-1 overflow-y-auto overlay-scroll px-6 pb-6">
@@ -827,7 +803,6 @@ function TemplateDetail({
   onInstall: () => void;
 }) {
   const { t, locale } = useI18n();
-  const pick = (zh: string, en?: string) => (locale.startsWith('zh') ? zh : (en ?? zh));
   const isInstalling = installingTemplate === template.id;
   const isHttp = template.transport === 'http';
   const hasConfigurableArgs = template.configurableArgs && template.configurableArgs.length > 0;
@@ -840,7 +815,7 @@ function TemplateDetail({
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
           <Server className="h-5 w-5 text-[var(--abu-text-placeholder)]" />
-          <h2 className="text-xl font-semibold text-[var(--abu-text-primary)]">{pick(template.name, template.nameEn)}</h2>
+          <h2 className="text-xl font-semibold text-[var(--abu-text-primary)]">{pickLocale(locale, template.name, template.nameEn)}</h2>
           {isHttp && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">HTTP</span>}
         </div>
         <button onClick={onInstall} disabled={isInstalling}
@@ -853,14 +828,14 @@ function TemplateDetail({
       {/* Description */}
       <div className="mb-5">
         <span className="text-xs text-[var(--abu-text-muted)]">Description</span>
-        <p className="text-sm text-[var(--abu-text-primary)] mt-1">{pick(template.description, template.descriptionEn)}</p>
+        <p className="text-sm text-[var(--abu-text-primary)] mt-1">{pickLocale(locale, template.description, template.descriptionEn)}</p>
       </div>
 
       {/* Setup hint */}
       {hasSetupHint && (
         <div className="mb-5 p-3 rounded-lg bg-amber-50 border border-amber-200/60">
           <p className="text-xs text-amber-700 leading-relaxed whitespace-pre-wrap break-words">
-            {renderSetupHint(pick(template.setupHint!, template.setupHintEn))}
+            {renderSetupHint(pickLocale(locale, template.setupHint!, template.setupHintEn))}
           </p>
         </div>
       )}
@@ -870,19 +845,19 @@ function TemplateDetail({
         <div className="space-y-3">
           <span className="text-xs text-[var(--abu-text-muted)]">{t.toolbox.serverArgs}</span>
           {template.configurableArgs?.map((arg) => (
-            <input key={arg.index} type="text" placeholder={pick(arg.placeholder, arg.placeholderEn)}
+            <input key={arg.index} type="text" placeholder={pickLocale(locale, arg.placeholder, arg.placeholderEn)}
               value={templateArgs[`${template.id}-${arg.index}`] || ''}
               onChange={(e) => setTemplateArgs((prev) => ({ ...prev, [`${template.id}-${arg.index}`]: e.target.value }))}
               className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all" />
           ))}
           {template.requiredEnvVars?.map((envVar) => (
             <div key={envVar.name}>
-              <label className="block text-xs text-[var(--abu-text-tertiary)] mb-1">{pick(envVar.label, envVar.labelEn)}</label>
-              <input type="password" placeholder={pick(envVar.placeholder, envVar.placeholderEn)}
+              <label className="block text-xs text-[var(--abu-text-tertiary)] mb-1">{pickLocale(locale, envVar.label, envVar.labelEn)}</label>
+              <input type="password" placeholder={pickLocale(locale, envVar.placeholder, envVar.placeholderEn)}
                 value={templateArgs[`${template.id}-env-${envVar.name}`] || ''}
                 onChange={(e) => setTemplateArgs((prev) => ({ ...prev, [`${template.id}-env-${envVar.name}`]: e.target.value }))}
                 className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all font-mono" />
-              {envVar.description && <p className="text-[11px] text-[var(--abu-text-muted)] mt-0.5">{pick(envVar.description, envVar.descriptionEn)}</p>}
+              {envVar.description && <p className="text-[11px] text-[var(--abu-text-muted)] mt-0.5">{pickLocale(locale, envVar.description, envVar.descriptionEn)}</p>}
             </div>
           ))}
         </div>

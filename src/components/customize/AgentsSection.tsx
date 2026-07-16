@@ -6,7 +6,7 @@ import { useI18n } from '@/i18n';
 import { agentRegistry } from '@/core/agent/registry';
 import AgentEditor from './AgentEditor';
 import { Toggle } from '@/components/ui/toggle';
-import { MoreHorizontal, Pencil, Trash2, MessageCircle, Eye, Code, Search, Plus, X, Wand2, PenLine, Upload, Check } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, MessageCircle, Eye, Code, Plus, Wand2, PenLine, Upload, Check } from 'lucide-react';
 import { remove } from '@tauri-apps/plugin-fs';
 import { getParentDir } from '@/utils/pathUtils';
 import type { SubagentDefinition } from '@/types';
@@ -14,6 +14,7 @@ import MarkdownRenderer from '@/components/chat/MarkdownRenderer';
 import ToolCard from '@/components/toolbox/ToolCard';
 import ToolGrid from '@/components/toolbox/ToolGrid';
 import ToolDetailModal from '@/components/toolbox/ToolDetailModal';
+import ToolboxToolbar from '@/components/toolbox/ToolboxToolbar';
 import abuAvatar from '@/assets/abu-avatar.png';
 
 function isSystemAgent(agent: SubagentDefinition): boolean {
@@ -74,7 +75,6 @@ export default function AgentsSection({ manualCreateTrigger, onAICreate, onManua
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [editorAgent, setEditorAgent] = useState<SubagentDefinition | 'new' | null>(null);
   const [menuAgent, setMenuAgent] = useState<string | null>(null);
-  const [showSearch, setShowSearch] = useState(false);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [contentViewMode, setContentViewMode] = useState<'preview' | 'source'>('preview');
 
@@ -190,77 +190,47 @@ export default function AgentsSection({ manualCreateTrigger, onAICreate, onManua
   return (
     <div className="flex flex-col h-full overflow-hidden bg-[var(--abu-bg-base)]">
       {/* Toolbar: search + create */}
-      <div className="shrink-0 px-6 pt-4 pb-3 flex items-center justify-end gap-1">
-        {showSearch ? (
-          <div className="relative w-full max-w-xs">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--abu-text-tertiary)]" />
-            <input
-              autoFocus
-              type="text"
-              placeholder={t.toolbox.searchPlaceholder}
-              value={toolboxSearchQuery}
-              onChange={(e) => setToolboxSearchQuery(e.target.value)}
-              onBlur={() => { if (!toolboxSearchQuery) setShowSearch(false); }}
-              onKeyDown={(e) => { if (e.key === 'Escape') { setToolboxSearchQuery(''); setShowSearch(false); } }}
-              className="w-full pl-7 pr-7 py-1 text-sm border border-[var(--abu-border)] rounded-md bg-[var(--abu-bg-base)] focus:outline-none focus:ring-1 focus:ring-[var(--abu-clay-ring)] text-[var(--abu-text-primary)]"
-            />
-            <button
-              onClick={() => { setToolboxSearchQuery(''); setShowSearch(false); }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)]"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        ) : (
-          <>
-            <button
-              onClick={() => setShowSearch(true)}
-              className="p-1 text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] transition-colors"
-            >
-              <Search className="h-3.5 w-3.5" />
-            </button>
-            <div className="relative">
-              <button
-                onClick={(e) => { e.stopPropagation(); setShowCreateMenu(!showCreateMenu); }}
-                className="p-1 text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-              {showCreateMenu && (
-                <div className="absolute z-50 top-full right-0 mt-1 w-44 bg-[var(--abu-bg-base)] rounded-lg shadow-lg border border-[var(--abu-border)] py-1">
-                  {onAICreate && (
-                    <button
-                      onClick={() => { setShowCreateMenu(false); onAICreate(); }}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-active)] transition-colors"
-                    >
-                      <Wand2 className="h-3.5 w-3.5 text-[var(--abu-clay)]" />
-                      <span>{t.toolbox.createWithAbu}</span>
-                    </button>
-                  )}
-                  {onManualCreate && (
-                    <button
-                      onClick={() => { setShowCreateMenu(false); onManualCreate(); }}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-active)] transition-colors"
-                    >
-                      <PenLine className="h-3.5 w-3.5 text-[var(--abu-text-muted)]" />
-                      <span>{t.toolbox.createManually}</span>
-                    </button>
-                  )}
-                  {onUploadFile && (
-                    <button
-                      onClick={() => { setShowCreateMenu(false); onUploadFile(); }}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-active)] transition-colors"
-                    >
-                      <Upload className="h-3.5 w-3.5 text-[var(--abu-text-muted)]" />
-                      <span>{t.toolbox.uploadFile}</span>
-                    </button>
-                  )}
-                </div>
+      <ToolboxToolbar searchQuery={toolboxSearchQuery} onSearchChange={setToolboxSearchQuery}>
+        <div className="relative">
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowCreateMenu(!showCreateMenu); }}
+            className="p-1 text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+          {showCreateMenu && (
+            <div className="absolute z-50 top-full right-0 mt-1 w-44 bg-[var(--abu-bg-base)] rounded-lg shadow-lg border border-[var(--abu-border)] py-1">
+              {onAICreate && (
+                <button
+                  onClick={() => { setShowCreateMenu(false); onAICreate(); }}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-active)] transition-colors"
+                >
+                  <Wand2 className="h-3.5 w-3.5 text-[var(--abu-clay)]" />
+                  <span>{t.toolbox.createWithAbu}</span>
+                </button>
+              )}
+              {onManualCreate && (
+                <button
+                  onClick={() => { setShowCreateMenu(false); onManualCreate(); }}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-active)] transition-colors"
+                >
+                  <PenLine className="h-3.5 w-3.5 text-[var(--abu-text-muted)]" />
+                  <span>{t.toolbox.createManually}</span>
+                </button>
+              )}
+              {onUploadFile && (
+                <button
+                  onClick={() => { setShowCreateMenu(false); onUploadFile(); }}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-active)] transition-colors"
+                >
+                  <Upload className="h-3.5 w-3.5 text-[var(--abu-text-muted)]" />
+                  <span>{t.toolbox.uploadFile}</span>
+                </button>
               )}
             </div>
-          </>
-        )}
-      </div>
+          )}
+        </div>
+      </ToolboxToolbar>
 
       {/* Card grid */}
       <div className="flex-1 overflow-y-auto overlay-scroll px-6 pb-6">
