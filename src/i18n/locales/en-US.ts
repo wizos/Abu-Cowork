@@ -1478,6 +1478,11 @@ const enUS: TranslationDict = {
     newTabPage: 'New Tab',
     terminalTitle: 'Terminal',
     browserTitle: 'Browser',
+    summaryTitle: 'Task Summary',
+    summaryDesc: 'Progress, outputs, and related info',
+    browserDesc: 'Browse and debug web pages',
+    terminalDesc: 'Run commands and scripts',
+    startHere: 'Start from here',
     terminalProcessExited: '[process exited]',
     terminalStartFailed: 'Failed to start terminal: {error}',
     browser: {

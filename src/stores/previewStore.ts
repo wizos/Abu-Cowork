@@ -7,6 +7,7 @@ import { create } from 'zustand';
  * `docs/2026-07-17-workspace-tabs-design.md`).
  */
 export type WorkspaceTab =
+  | { id: string; kind: 'summary' }
   | { id: string; kind: 'preview'; filePath: string }
   | { id: string; kind: 'browser'; url: string }
   | { id: string; kind: 'terminal' };
@@ -51,6 +52,10 @@ interface PreviewState {
   // that don't pass an onChange callback.
   reloadNonce: number;
 
+  // Open (or activate an existing) the singleton "task summary" tab — the
+  // default right-panel tab (progress / workspace files / context). Created at
+  // the FRONT so it stays leftmost.
+  openSummary: () => void;
   // Open (or activate an existing) preview tab for `filePath`. Call sites
   // (~11 across the app) are unchanged from the pre-tabs single-preview API.
   openPreview: (filePath: string) => void;
@@ -104,6 +109,19 @@ export const usePreviewStore = create<PreviewState>((set, get) => ({
   fileTreeMode: false,
   previewFilePath: null,
   reloadNonce: 0,
+
+  openSummary: () => {
+    const { tabs } = get();
+    const existing = tabs.find((t) => t.kind === 'summary');
+    if (existing) {
+      set({ activeTabId: existing.id, previewFilePath: null });
+      return;
+    }
+    const id = genId();
+    // Summary is the default tab — put it first so it stays leftmost.
+    const nextTabs: WorkspaceTab[] = [{ id, kind: 'summary' }, ...tabs];
+    set({ tabs: nextTabs, activeTabId: id, previewFilePath: null });
+  },
 
   openPreview: (filePath) => {
     const { tabs } = get();

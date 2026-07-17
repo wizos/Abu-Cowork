@@ -116,10 +116,10 @@ function App() {
   const toggleRightPanel = useSettingsStore((s) => s.toggleRightPanel);
   const viewMode = useSettingsStore((s) => s.viewMode);
   const setViewMode = useSettingsStore((s) => s.setViewMode);
-  // Preview split (TRAE-style): when the workspace panel has any open tab
-  // (preview/browser/terminal), the chat column takes a stable, resizable
-  // width and the workspace flex-fills the rest.
-  const hasWorkspaceTabs = usePreviewStore((s) => s.tabs.length > 0);
+  // Preview split (TRAE-style): when the workspace panel has WIDE content
+  // (preview/browser/terminal — not the narrow summary tab), the chat column
+  // takes a stable, resizable width and the workspace flex-fills the rest.
+  const hasWorkspaceTabs = usePreviewStore((s) => s.tabs.some((t) => t.kind !== 'summary'));
   const chatWidth = usePreviewStore((s) => s.chatWidth);
   const viewportWidth = useViewportWidth();
   const showTodosInbox = useLabsFlag(LABS_TODOS_INBOX);

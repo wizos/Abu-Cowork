@@ -5,6 +5,7 @@ function reset() {
   usePreviewStore.setState({
     tabs: [],
     activeTabId: null,
+    menuOpen: false,
     previewFilePath: null,
     chatWidth: null,
     reloadNonce: 0,
@@ -58,6 +59,23 @@ describe('previewStore', () => {
       usePreviewStore.getState().openPreview('/a/2.md');
       usePreviewStore.getState().openPreview('/a/3.md');
       expect(usePreviewStore.getState().tabs).toHaveLength(3);
+    });
+  });
+
+  describe('openSummary', () => {
+    it('creates a single summary tab at the FRONT and activates it', () => {
+      usePreviewStore.getState().openPreview('/a/1.md');
+      usePreviewStore.getState().openSummary();
+      const s = usePreviewStore.getState();
+      expect(s.tabs[0]).toMatchObject({ kind: 'summary' });
+      expect(s.activeTabId).toBe(s.tabs[0].id);
+      expect(s.previewFilePath).toBeNull();
+    });
+
+    it('dedups — a second openSummary activates the existing one, no new tab', () => {
+      usePreviewStore.getState().openSummary();
+      usePreviewStore.getState().openSummary();
+      expect(usePreviewStore.getState().tabs.filter((t) => t.kind === 'summary')).toHaveLength(1);
     });
   });
 

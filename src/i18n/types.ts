@@ -1609,6 +1609,11 @@ export interface TranslationDict {
     newTabPage: string;
     terminalTitle: string;
     browserTitle: string;
+    summaryTitle: string;
+    summaryDesc: string;
+    browserDesc: string;
+    terminalDesc: string;
+    startHere: string;
     terminalProcessExited: string;
     terminalStartFailed: string;
     browser: {

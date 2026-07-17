@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { FileText, Globe, SquareTerminal, X, Plus } from 'lucide-react';
+import { FileText, Globe, SquareTerminal, ListChecks, X, Plus } from 'lucide-react';
 import { usePreviewStore, type WorkspaceTab } from '@/stores/previewStore';
 import { getBaseName } from '@/utils/pathUtils';
 import { useI18n } from '@/i18n';
@@ -11,12 +11,14 @@ import { cn } from '@/lib/utils';
 const MENU_WIDTH = 150; // px — used to right-align / clamp popover menus
 
 function tabIcon(tab: WorkspaceTab) {
+  if (tab.kind === 'summary') return ListChecks;
   if (tab.kind === 'preview') return FileText;
   if (tab.kind === 'browser') return Globe;
   return SquareTerminal;
 }
 
 function tabTitle(tab: WorkspaceTab, t: ReturnType<typeof useI18n>['t']): string {
+  if (tab.kind === 'summary') return t.workspace.summaryTitle;
   if (tab.kind === 'preview') return getBaseName(tab.filePath);
   if (tab.kind === 'browser') {
     if (!tab.url) return t.workspace.newTabPage;
@@ -50,6 +52,7 @@ export default function TabStrip() {
   const closeOtherTabs = usePreviewStore((s) => s.closeOtherTabs);
   const closeAllTabs = usePreviewStore((s) => s.closeAllTabs);
   const reorderTabs = usePreviewStore((s) => s.reorderTabs);
+  const openSummary = usePreviewStore((s) => s.openSummary);
   const openBrowser = usePreviewStore((s) => s.openBrowser);
   const openTerminal = usePreviewStore((s) => s.openTerminal);
   const setMenuOpen = usePreviewStore((s) => s.setMenuOpen);
@@ -219,6 +222,10 @@ export default function TabStrip() {
                 className="fixed z-[60] min-w-[150px] rounded-md border border-[var(--abu-border)] bg-[var(--abu-bg-muted)] shadow-md py-1"
                 style={{ top: newTabMenuPos.top, left: newTabMenuPos.left }}
               >
+                <button type="button" className={menuItemCls} onClick={() => { openSummary(); closeMenus(); }}>
+                  <ListChecks className="w-3.5 h-3.5" strokeWidth={1.5} />
+                  {t.workspace.summaryTitle}
+                </button>
                 <button type="button" className={menuItemCls} onClick={() => { openBrowser(); closeMenus(); }}>
                   <Globe className="w-3.5 h-3.5" strokeWidth={1.5} />
                   {t.workspace.newBrowserTab}

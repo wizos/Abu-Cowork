@@ -1479,6 +1479,11 @@ const zhCN: TranslationDict = {
     newTabPage: '新标签页',
     terminalTitle: '终端',
     browserTitle: '浏览器',
+    summaryTitle: '任务摘要',
+    summaryDesc: '查看任务进展、产物与关联信息',
+    browserDesc: '浏览及调试网页',
+    terminalDesc: '运行命令及脚本',
+    startHere: '从这里开始',
     terminalProcessExited: '[进程已退出]',
     terminalStartFailed: '终端启动失败：{error}',
     browser: {
