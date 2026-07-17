@@ -8,6 +8,7 @@ import TaskProgressPanel from './TaskProgressPanel';
 import WorkspaceSection from './WorkspaceSection';
 import ContextSection from './ContextSection';
 import WorkspacePanel from './workspace/WorkspacePanel';
+import WorkspaceLauncher from './workspace/WorkspaceLauncher';
 import {
   PREVIEW_MIN_WIDTH,
   clampChatWidth,
@@ -215,8 +216,10 @@ export default function RightPanel() {
       ) : (
         // Normal mode - show details sections
         <>
-          {/* Scrollable content — pt-8 to clear overlay title bar area */}
-          <ScrollArea className="flex-1 min-h-0 pt-5">
+          {/* Direct terminal/browser launchers (no file needed to reach them) */}
+          <WorkspaceLauncher />
+          {/* Scrollable content */}
+          <ScrollArea className="flex-1 min-h-0 pt-2">
             <div className="p-4 space-y-5">
               {/* Progress - only show when has planned steps */}
               <TaskProgressPanel />

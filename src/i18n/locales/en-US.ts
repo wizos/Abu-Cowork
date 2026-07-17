@@ -1476,6 +1476,7 @@ const enUS: TranslationDict = {
     closeAllTabs: 'Close all tabs',
     newTabPage: 'New Tab',
     terminalTitle: 'Terminal',
+    browserTitle: 'Browser',
     terminalProcessExited: '[process exited]',
     terminalStartFailed: 'Failed to start terminal: {error}',
     browser: {

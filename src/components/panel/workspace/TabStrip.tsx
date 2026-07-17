@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { FileText, Globe, SquareTerminal, X, Plus } from 'lucide-react';
 import { usePreviewStore, type WorkspaceTab } from '@/stores/previewStore';
 import { getBaseName } from '@/utils/pathUtils';
@@ -6,6 +7,8 @@ import { useI18n } from '@/i18n';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+
+const MENU_WIDTH = 150; // px — used to right-align / clamp popover menus
 
 function tabIcon(tab: WorkspaceTab) {
   if (tab.kind === 'preview') return FileText;
@@ -31,6 +34,12 @@ function tabTitle(tab: WorkspaceTab, t: ReturnType<typeof useI18n>['t']): string
  * hover close, active-tab styling, trailing `+` new-tab menu, middle-click
  * close, and lightweight pointer-based drag-to-reorder (no dnd-kit — mirrors
  * TRAE's `swapOpenedTab(i, j)`). See docs/2026-07-17-workspace-tabs-design.md.
+ *
+ * The two popover menus (new-tab `+` and per-tab right-click) are rendered via
+ * a portal to `document.body`: the strip itself is `overflow-x-auto` (so many
+ * tabs scroll horizontally), and CSS forces `overflow-y` to `auto` too, which
+ * would clip any dropdown rendered below the strip. Portaling + fixed
+ * positioning escapes that clip.
  */
 export default function TabStrip() {
   const { t } = useI18n();
@@ -44,15 +53,36 @@ export default function TabStrip() {
   const openBrowser = usePreviewStore((s) => s.openBrowser);
   const openTerminal = usePreviewStore((s) => s.openTerminal);
 
-  const [newTabMenuOpen, setNewTabMenuOpen] = useState(false);
-  const newTabMenuRef = useRef<HTMLDivElement>(null);
-  const [contextMenuTabId, setContextMenuTabId] = useState<string | null>(null);
-  const contextMenuRef = useRef<HTMLDivElement>(null);
+  // Popover state holds a viewport-fixed position (or null when closed).
+  const [newTabMenuPos, setNewTabMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ tabId: string; top: number; left: number } | null>(null);
+  const plusBtnRef = useRef<HTMLButtonElement>(null);
   const draggingIdRef = useRef<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
 
-  const closeNewTabMenu = () => setNewTabMenuOpen(false);
-  const closeContextMenu = () => setContextMenuTabId(null);
+  const closeMenus = () => {
+    setNewTabMenuPos(null);
+    setContextMenu(null);
+  };
+
+  const toggleNewTabMenu = () => {
+    setContextMenu(null);
+    setNewTabMenuPos((cur) => {
+      if (cur) return null;
+      const r = plusBtnRef.current?.getBoundingClientRect();
+      if (!r) return null;
+      // Right-align the menu to the button (the `+` sits at the panel's right
+      // edge), clamped into the viewport.
+      const left = Math.max(8, Math.min(r.right - MENU_WIDTH, window.innerWidth - MENU_WIDTH - 8));
+      return { top: r.bottom + 4, left };
+    });
+  };
+
+  const openContextMenu = (tabId: string, x: number, y: number) => {
+    setNewTabMenuPos(null);
+    const left = Math.max(8, Math.min(x, window.innerWidth - MENU_WIDTH - 8));
+    setContextMenu({ tabId, top: y, left });
+  };
 
   const handlePointerDown = (id: string) => (e: React.PointerEvent) => {
     if (e.button !== 0) return;
@@ -88,6 +118,27 @@ export default function TabStrip() {
     };
   }, []);
 
+  // Close popovers on Escape, and on scroll/resize (their fixed position would
+  // otherwise drift away from the anchor).
+  useEffect(() => {
+    if (!newTabMenuPos && !contextMenu) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeMenus();
+    };
+    const onScrollResize = () => closeMenus();
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('resize', onScrollResize);
+    window.addEventListener('scroll', onScrollResize, true);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', onScrollResize);
+      window.removeEventListener('scroll', onScrollResize, true);
+    };
+  }, [newTabMenuPos, contextMenu]);
+
+  const menuItemCls =
+    'flex items-center gap-2 w-full text-left px-3 py-1.5 text-[12px] text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]';
+
   return (
     <div className="relative shrink-0 mt-7 flex items-center border-b border-[var(--abu-bg-pressed)] bg-[var(--abu-bg-subtle)] pr-1 overflow-x-auto">
       {tabs.map((tab) => {
@@ -108,7 +159,7 @@ export default function TabStrip() {
             }}
             onContextMenu={(e) => {
               e.preventDefault();
-              setContextMenuTabId(tab.id);
+              openContextMenu(tab.id, e.clientX, e.clientY);
             }}
             className={cn(
               'group flex items-center gap-1.5 h-8 px-2.5 max-w-[160px] shrink-0 cursor-pointer select-none',
@@ -132,92 +183,69 @@ export default function TabStrip() {
             >
               <X className="w-3 h-3" strokeWidth={1.5} />
             </button>
+          </div>
+        );
+      })}
 
-            {contextMenuTabId === tab.id && (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            ref={plusBtnRef}
+            variant="ghost"
+            size="icon-xs"
+            onClick={toggleNewTabMenu}
+            className="ml-0.5 shrink-0 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-clay)]"
+          >
+            <Plus className="w-3.5 h-3.5" strokeWidth={1.5} />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">{t.workspace.newTab}</TooltipContent>
+      </Tooltip>
+
+      {/* Portaled popovers — escape the strip's overflow clip. */}
+      {(newTabMenuPos || contextMenu) &&
+        createPortal(
+          <>
+            <div className="fixed inset-0 z-[55]" onClick={closeMenus} onContextMenu={(e) => { e.preventDefault(); closeMenus(); }} />
+            {newTabMenuPos && (
               <div
-                ref={contextMenuRef}
-                className="absolute top-9 z-30 min-w-[140px] rounded-md border border-[var(--abu-border)] bg-[var(--abu-bg-muted)] shadow-md py-1"
-                onClick={(e) => e.stopPropagation()}
+                className="fixed z-[60] min-w-[150px] rounded-md border border-[var(--abu-border)] bg-[var(--abu-bg-muted)] shadow-md py-1"
+                style={{ top: newTabMenuPos.top, left: newTabMenuPos.left }}
+              >
+                <button type="button" className={menuItemCls} onClick={() => { openBrowser(); closeMenus(); }}>
+                  <Globe className="w-3.5 h-3.5" strokeWidth={1.5} />
+                  {t.workspace.newBrowserTab}
+                </button>
+                <button type="button" className={menuItemCls} onClick={() => { openTerminal(); closeMenus(); }}>
+                  <SquareTerminal className="w-3.5 h-3.5" strokeWidth={1.5} />
+                  {t.workspace.newTerminalTab}
+                </button>
+              </div>
+            )}
+            {contextMenu && (
+              <div
+                className="fixed z-[60] min-w-[150px] rounded-md border border-[var(--abu-border)] bg-[var(--abu-bg-muted)] shadow-md py-1"
+                style={{ top: contextMenu.top, left: contextMenu.left }}
               >
                 <button
                   type="button"
-                  onClick={() => {
-                    closeOtherTabs(tab.id);
-                    closeContextMenu();
-                  }}
                   className="w-full text-left px-3 py-1.5 text-[12px] text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]"
+                  onClick={() => { closeOtherTabs(contextMenu.tabId); closeMenus(); }}
                 >
                   {t.workspace.closeOtherTabs}
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    closeAllTabs();
-                    closeContextMenu();
-                  }}
                   className="w-full text-left px-3 py-1.5 text-[12px] text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]"
+                  onClick={() => { closeAllTabs(); closeMenus(); }}
                 >
                   {t.workspace.closeAllTabs}
                 </button>
               </div>
             )}
-          </div>
-        );
-      })}
-
-      <div className="relative ml-0.5" ref={newTabMenuRef}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => setNewTabMenuOpen((v) => !v)}
-              className="text-[var(--abu-text-tertiary)] hover:text-[var(--abu-clay)]"
-            >
-              <Plus className="w-3.5 h-3.5" strokeWidth={1.5} />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">{t.workspace.newTab}</TooltipContent>
-        </Tooltip>
-
-        {newTabMenuOpen && (
-          <div className="absolute top-8 left-0 z-30 min-w-[140px] rounded-md border border-[var(--abu-border)] bg-[var(--abu-bg-muted)] shadow-md py-1">
-            <button
-              type="button"
-              onClick={() => {
-                openBrowser();
-                closeNewTabMenu();
-              }}
-              className="flex items-center gap-2 w-full text-left px-3 py-1.5 text-[12px] text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]"
-            >
-              <Globe className="w-3.5 h-3.5" strokeWidth={1.5} />
-              {t.workspace.newBrowserTab}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                openTerminal();
-                closeNewTabMenu();
-              }}
-              className="flex items-center gap-2 w-full text-left px-3 py-1.5 text-[12px] text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]"
-            >
-              <SquareTerminal className="w-3.5 h-3.5" strokeWidth={1.5} />
-              {t.workspace.newTerminalTab}
-            </button>
-          </div>
+          </>,
+          document.body,
         )}
-      </div>
-
-      {/* Outside-click closers for the two popover menus above. */}
-      {(newTabMenuOpen || contextMenuTabId) && (
-        <div
-          className="fixed inset-0 z-20"
-          onClick={() => {
-            closeNewTabMenu();
-            closeContextMenu();
-          }}
-        />
-      )}
     </div>
   );
 }

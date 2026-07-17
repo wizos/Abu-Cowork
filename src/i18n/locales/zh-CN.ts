@@ -1477,6 +1477,7 @@ const zhCN: TranslationDict = {
     closeAllTabs: '关闭所有标签页',
     newTabPage: '新标签页',
     terminalTitle: '终端',
+    browserTitle: '浏览器',
     terminalProcessExited: '[进程已退出]',
     terminalStartFailed: '终端启动失败：{error}',
     browser: {
