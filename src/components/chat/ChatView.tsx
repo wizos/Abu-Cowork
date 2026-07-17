@@ -1,4 +1,4 @@
-import { useState, useCallback, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
+import { useState, useCallback, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
 import { Virtuoso, type Components, type VirtuosoHandle } from 'react-virtuoso';
 import { useChatStore, useActiveConversation } from '@/stores/chatStore';
 import type { Message, ImageAttachment } from '@/types';
@@ -142,6 +142,15 @@ export default function ChatView() {
   const renameConversation = useChatStore((s) => s.renameConversation);
   const [isRenamingTitle, setIsRenamingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
+
+  // Cancel any in-progress title rename when the active conversation changes.
+  // The rename state is component-local; without this reset a draft started on
+  // one conversation would carry over to whatever conversation becomes active
+  // (e.g. a background/programmatic switch that doesn't fire the Input's onBlur)
+  // and the next Enter/blur would commit it against the WRONG conversation's id.
+  useEffect(() => {
+    setIsRenamingTitle(false);
+  }, [activeConvId]);
   const createConversation = useChatStore((s) => s.createConversation);
   // Subscribe to messages count so ChatView re-renders when background processes
   // (IM agentLoop) add messages — even if the conversation object reference is stale
