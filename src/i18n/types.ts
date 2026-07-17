@@ -1504,6 +1504,7 @@ export interface TranslationDict {
     openInApp: string;
     openInAppFailed: string;
     previewMode: string;
+    reloadPreview: string;
     sourceMode: string;
     unsupportedFileType: string;
     showInFinder: string;
@@ -1596,6 +1597,36 @@ export interface TranslationDict {
       deleteFailed: string;
       invalidName: string;
       alreadyExists: string;
+    };
+  };
+
+  // Workspace tabs (preview / browser / terminal tab strip)
+  workspace: {
+    newTab: string;
+    newBrowserTab: string;
+    newTerminalTab: string;
+    closeTab: string;
+    closeOtherTabs: string;
+    closeAllTabs: string;
+    newTabPage: string;
+    terminalTitle: string;
+    browserTitle: string;
+    summaryTitle: string;
+    summaryDesc: string;
+    browserDesc: string;
+    terminalDesc: string;
+    startHere: string;
+    terminalProcessExited: string;
+    terminalStartFailed: string;
+    browser: {
+      back: string;
+      forward: string;
+      reload: string;
+      openExternal: string;
+      addressPlaceholder: string;
+      startPrompt: string;
+      framingHint: string;
+      dismissHint: string;
     };
   };
 

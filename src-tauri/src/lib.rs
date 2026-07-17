@@ -28,6 +28,8 @@ mod sleep_prevention;
 mod clipboard_files;
 mod preview_server;
 mod trash;
+mod pty;
+mod browser;
 
 /// Maximum number of output lines to collect from a shell command.
 /// Prevents OOM when commands produce unbounded output.
@@ -1275,6 +1277,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .manage(McpState::default())
+        .manage(pty::PtyState::default())
         .setup(|app| {
             // Initialize encrypted secret storage. On macOS the ciphertext
             // file lives in app_data_dir (created lazily); on Windows/Linux
@@ -1393,6 +1396,19 @@ pub fn run() {
             mcp_spawn,
             mcp_write,
             mcp_kill,
+            pty::pty_spawn,
+            pty::pty_write,
+            pty::pty_resize,
+            pty::pty_kill,
+            browser::browser_create,
+            browser::browser_set_bounds,
+            browser::browser_navigate,
+            browser::browser_back,
+            browser::browser_forward,
+            browser::browser_reload,
+            browser::browser_hide,
+            browser::browser_show,
+            browser::browser_close,
             get_env_vars,
             app_exit,
             window_hide,

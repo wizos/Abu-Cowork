@@ -14,7 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import MarkdownRenderer from '@/components/chat/MarkdownRenderer';
 import CodeMirrorEditor from './CodeMirrorEditor';
 import { VersionHistoryMenu } from './VersionHistoryMenu';
-import { Loader2, FolderOpen, Code, Eye, SquareArrowOutUpRight, History, FileCode, FileText, FileImage, FileSpreadsheet, FileType, File, Maximize2, Minimize2 } from 'lucide-react';
+import { Loader2, X, FolderOpen, Code, Eye, SquareArrowOutUpRight, History, FileCode, FileText, FileImage, FileSpreadsheet, FileType, File, Maximize2, Minimize2, RotateCw, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DocSelectionLayer } from '@/features/reference/DocSelectionLayer';
 import { cn } from '@/lib/utils';
@@ -87,9 +87,22 @@ function LazyFallback() {
   );
 }
 
-export default function PreviewPanel() {
-  const { previewFilePath, reloadNonce } = usePreviewStore();
-  usePreviewFileWatch(previewFilePath);
+export default function PreviewPanel({
+  filePath: filePathProp,
+  tabId,
+  embedded = false,
+}: { filePath?: string; tabId?: string; embedded?: boolean } = {}) {
+  // Back-compat: without a `filePath` prop (older call sites, before
+  // workspace tabs existed), fall back to the store's single previewFilePath.
+  const storePreviewFilePath = usePreviewStore((s) => s.previewFilePath);
+  const closePreview = usePreviewStore((s) => s.closePreview);
+  const closeTab = usePreviewStore((s) => s.closeTab);
+  const previewFilePath = filePathProp ?? storePreviewFilePath;
+  // Each instance owns its own reload nonce (keep-alive multi-tab preview —
+  // see docs/2026-07-17-workspace-tabs-design.md) instead of reading a
+  // single global one off the store.
+  const [reloadNonce, setReloadNonce] = useState(0);
+  usePreviewFileWatch(previewFilePath, () => setReloadNonce((n) => n + 1));
   const { t } = useI18n();
   const [content, setContent] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -107,9 +120,7 @@ export default function PreviewPanel() {
   const versionHistoryRef = useRef<HTMLDivElement>(null);
   // App-fullscreen toggle (Task 6) — expands the panel to a fixed overlay
   // covering the whole window instead of just its column in RightPanel.
-  // Fullscreen state lives in previewStore so the right-panel tab bar can toggle it.
-  const isFullscreen = usePreviewStore((s) => s.previewFullscreen);
-  const setPreviewFullscreen = usePreviewStore((s) => s.setPreviewFullscreen);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Editable buffer for code/text/html/markdown (P2). `draft` is what
   // CodeMirror shows and edits; it's debounce-autosaved to disk below.
@@ -305,10 +316,10 @@ export default function PreviewPanel() {
   // Esc exits app-fullscreen — only listen while fullscreen is active.
   useEffect(() => {
     if (!isFullscreen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPreviewFullscreen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsFullscreen(false); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [isFullscreen, setPreviewFullscreen]);
+  }, [isFullscreen]);
 
   // Debounced autosave: write the editable buffer to disk 1s after the user
   // stops typing. `selfEchoRef` is set right before the write so the fs-watch
@@ -436,17 +447,27 @@ export default function PreviewPanel() {
       'flex flex-col',
       isFullscreen ? 'fixed inset-0 z-50 bg-[var(--abu-bg-base)]' : 'h-full',
     )}>
-      {/* Header — flush at the card top (card's own top margin clears the title bar).
-          In fullscreen the overlay is inset-0, so the header collides with the macOS
-          traffic lights — pad it left to clear them. */}
+      {/* Header — flush at the top (the floating card + tab strip clear the title
+          bar). In fullscreen the overlay is inset-0, so pad left to clear the
+          macOS traffic lights. */}
       <div className={cn(
         'shrink-0 px-3 py-2.5 border-b border-[var(--abu-bg-pressed)] flex items-center gap-2',
         isFullscreen && isMacOS() && 'pl-20',
       )}>
-        <Icon className="w-4 h-4 text-[var(--abu-text-tertiary)] shrink-0" />
-        <span className="text-[13px] font-medium text-[var(--abu-text-primary)] truncate flex-1">
-          {fileName}
-        </span>
+        {/* Filename shown only when NOT embedded in a tab (the tab strip already
+            shows it — avoid a duplicate title), except in fullscreen where the
+            tab strip is covered so the title is needed again. Otherwise an empty
+            spacer keeps the toolbar right-aligned. */}
+        {!embedded || isFullscreen ? (
+          <>
+            <Icon className="w-4 h-4 text-[var(--abu-text-tertiary)] shrink-0" />
+            <span className="text-[13px] font-medium text-[var(--abu-text-primary)] truncate flex-1">
+              {fileName}
+            </span>
+          </>
+        ) : (
+          <div className="flex-1" />
+        )}
         {toolbarButtons.viewToggle && (
           <div className="flex items-center bg-[var(--abu-bg-hover)] rounded p-0.5 mr-1">
             <button
@@ -496,21 +517,50 @@ export default function PreviewPanel() {
             <SquareArrowOutUpRight className="h-3.5 w-3.5" strokeWidth={1.5} />
           </Button>
         )}
-        {/* Fullscreen stays here (not in the tab bar): it's gated per renderer type and
-            must remain clickable inside the fullscreen overlay it toggles. Close (×) and
-            panel-collapse live in the tab bar. */}
         {toolbarButtons.fullscreen && (
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setPreviewFullscreen(!isFullscreen)}
+            onClick={() => setIsFullscreen((v) => !v)}
             className="h-6 w-6 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-clay)]"
             title={isFullscreen ? t.panel.exitFullscreen : t.panel.fullscreen}
           >
             {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" strokeWidth={1.5} /> : <Maximize2 className="h-3.5 w-3.5" strokeWidth={1.5} />}
           </Button>
         )}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => (tabId ? closeTab(tabId) : closePreview())}
+          className="h-6 w-6 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)]"
+          title={t.panel.closePreview}
+        >
+          <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </Button>
       </div>
+
+      {/* Browser-style address bar for HTML preview (TRAE-like): reload + the
+          file path, so an HTML file reads as "opened in a browser". Real
+          back/forward + a CDP console panel are Electron-only (the loopback
+          iframe is cross-origin, so its navigation history isn't observable) —
+          documented as out of scope; use the browser tab for free navigation. */}
+      {rendererType === 'html' && viewMode === 'preview' && (
+        <div className="shrink-0 flex items-center gap-1.5 px-2 py-1.5 border-b border-[var(--abu-bg-pressed)] bg-[var(--abu-bg-subtle)]">
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            onClick={() => setReloadNonce((n) => n + 1)}
+            className="text-[var(--abu-text-tertiary)] hover:text-[var(--abu-clay)]"
+            title={t.panel.reloadPreview}
+          >
+            <RotateCw className="w-3.5 h-3.5" strokeWidth={1.5} />
+          </Button>
+          <div className="flex-1 min-w-0 flex items-center gap-1.5 h-6 px-2 rounded-md bg-[var(--abu-bg-base)] border border-[var(--abu-bg-pressed)]">
+            <Globe className="w-3 h-3 text-[var(--abu-text-tertiary)] shrink-0" strokeWidth={1.5} />
+            <span className="truncate text-[11px] text-[var(--abu-text-secondary)]">{previewFilePath}</span>
+          </div>
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex-1 min-h-0 overflow-hidden">

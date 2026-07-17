@@ -119,10 +119,11 @@ function App() {
   const setViewMode = useSettingsStore((s) => s.setViewMode);
   const startNewConversation = useChatStore((s) => s.startNewConversation);
   const setFileTreeMode = usePreviewStore((s) => s.setFileTreeMode);
-  // Preview split (TRAE-style): when a file preview is open, the chat column takes a
-  // stable, resizable width and the preview flex-fills the rest.
-  const previewFilePath = usePreviewStore((s) => s.previewFilePath);
-  const activeRightTab = usePreviewStore((s) => s.activeRightTab);
+  // Preview split (TRAE-style): when the workspace panel has WIDE content
+  // (preview/browser/terminal — not the narrow summary tab), the chat column
+  // takes a stable, resizable width and the workspace flex-fills the rest.
+  const hasAnyTab = usePreviewStore((s) => s.tabs.length > 0);
+  const hasWideContent = usePreviewStore((s) => s.tabs.some((t) => t.kind !== 'summary'));
   const chatWidth = usePreviewStore((s) => s.chatWidth);
   const viewportWidth = useViewportWidth();
   const showTodosInbox = useLabsFlag(LABS_TODOS_INBOX);
@@ -157,10 +158,10 @@ function App() {
 
   // Right panel toggle only when there's an active conversation with messages
   // The overlay panel toggle is now ONLY the "reopen panel" affordance: when the right
-  // panel is open it carries its own collapse button in the tab bar (RightPanelTabBar),
-  // so the overlay would just double it up. Show the overlay only while the panel is
-  // collapsed (and there's a conversation to show a panel for).
-  const showRightPanelToggle = viewMode === 'chat' && ((activeConv?.messages?.length ?? 0) > 0 || !!previewFilePath) && rightPanelCollapsed;
+  // panel is open it carries its own collapse button in the workspace tab strip, so the
+  // overlay would just double it up. Show the overlay only while the panel is collapsed
+  // (and there's a conversation to show a panel for).
+  const showRightPanelToggle = viewMode === 'chat' && ((activeConv?.messages?.length ?? 0) > 0 || hasAnyTab) && rightPanelCollapsed;
   const [showCloseDialog, setShowCloseDialog] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [pendingAnnouncements, setPendingAnnouncements] = useState<AnnouncementItem[]>([]);
@@ -590,7 +591,7 @@ function App() {
   // right panel is showing — then the chat holds a stable width and preview flex-fills.
   // Chat takes a fixed width only when the preview is actually shown (preview tab active);
   // on the summary tab the chat flex-fills and the panel is a fixed details column.
-  const previewSplit = viewMode === 'chat' && !!previewFilePath && activeRightTab === 'preview' && !rightPanelCollapsed;
+  const previewSplit = viewMode === 'chat' && hasWideContent && !rightPanelCollapsed;
   const previewChatWidth = resolveChatWidth(chatWidth, viewportWidth, !sidebarCollapsed);
   // Whether the right panel actually sits BESIDE the chat (either tab) — mirrors
   // RightPanel's own render gate. Drives the chat's right margin: a tight 4px
@@ -598,7 +599,7 @@ function App() {
   const rightPanelBeside =
     viewMode === 'chat' &&
     !rightPanelCollapsed &&
-    (((activeConv?.messages?.length ?? 0) > 0) || !!previewFilePath);
+    (((activeConv?.messages?.length ?? 0) > 0) || hasAnyTab);
 
   return (
     <ErrorBoundary>
