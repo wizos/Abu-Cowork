@@ -12,6 +12,7 @@ import { useI18n } from '@/i18n';
 import MessageGroup from './MessageGroup';
 import CompactDivider from './CompactDivider';
 import { isCompactBoundary } from '@/core/context/compactBoundary';
+import { getMessageText } from '@/core/context/contextUtils';
 import { compactConversationManually } from '@/core/context/compactionService';
 import { useToastStore } from '@/stores/toastStore';
 import ChatInput from './ChatInput';
@@ -138,6 +139,7 @@ const virtuosoComponents: Components<Message[], MessageListContext> = {
 export default function ChatView() {
   const activeConvId = useChatStore((s) => s.activeConversationId);
   const activeConv = useActiveConversation();
+  const pendingSearchJump = useChatStore((s) => s.pendingSearchJump);
   const sidebarCollapsed = useSettingsStore((s) => s.sidebarCollapsed);
   const renameConversation = useChatStore((s) => s.renameConversation);
   const [isRenamingTitle, setIsRenamingTitle] = useState(false);
@@ -269,25 +271,113 @@ export default function ChatView() {
   // scroller.
   const [scrollParentEl, setScrollParentEl] = useState<HTMLDivElement | null>(null);
   const virtuosoRef = useRef<VirtuosoHandle>(null);
+  // Bottom-lock (stick-to-bottom) state: while pinned, every list-height change
+  // (late-measured widgets/iframes/images) re-sticks the view to the newest
+  // message via `totalListHeightChanged`. Unpinned only by explicit upward user
+  // intent (wheel/touch up); re-pinned when the user reaches the bottom again.
+  // Event-driven — no timers guessing when heavy content finishes measuring.
+  const pinnedRef = useRef(true);
+  // Render mirror of pinnedRef — gates the "back to bottom" button. While the
+  // lock is engaged the button is meaningless (we're headed to the bottom), and
+  // Virtuoso transiently reports atBottom=false while mounting/measuring a
+  // freshly-switched conversation, which used to flash the button.
+  const [pinned, setPinned] = useState(true);
+  const updatePinned = useCallback((v: boolean) => {
+    pinnedRef.current = v;
+    setPinned(v);
+  }, []);
+  // Fade timer for the search-hit highlight. Kept in a ref (NOT an effect
+  // cleanup) — consuming the pending jump re-runs the effect, and a cleanup
+  // would cancel the fade, leaving the highlight stuck on.
+  const highlightFadeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   // Mirrors Virtuoso's own atBottomStateChange callback — drives the
   // "jump to latest" floating button. Starts true so the button doesn't
   // flash on first mount before Virtuoso reports its initial state.
   const [isAtBottom, setIsAtBottom] = useState(true);
+  // Message id to briefly highlight after a search-hit jump (see effect below).
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+
+  // Imperative stick-to-bottom: raw scrollTop assignment on the scroll parent,
+  // deferred one frame. scrollToIndex is NOT reliable here — called during
+  // Virtuoso's measurement storm, its target gets clobbered by Virtuoso's own
+  // scroll compensation in the same cycle, and once measuring stops no further
+  // event re-corrects the position. Raw scrollTop = scrollHeight bypasses
+  // virtualization state entirely and always lands on the true bottom.
+  const stickRafRef = useRef(0);
+  const stickToBottom = useCallback((el: HTMLElement | null) => {
+    if (!el) return;
+    cancelAnimationFrame(stickRafRef.current);
+    stickRafRef.current = requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+  }, []);
 
   const scrollToLatest = useCallback((behavior: 'smooth' | 'auto' = 'smooth') => {
+    // Explicit "go to bottom" — re-engage the bottom lock.
+    updatePinned(true);
     virtuosoRef.current?.scrollToIndex({ index: 'LAST', align: 'end', behavior });
     // Optimistic — atBottomStateChange will confirm once the scroll settles.
     setIsAtBottom(true);
-  }, []);
+  }, [updatePinned]);
 
-  // Scroll to bottom when switching conversations.
-  // useLayoutEffect runs after DOM commit but before paint,
-  // so the user never sees the wrong scroll position.
+  // Conversation switch: engage the bottom lock (unless a search jump is about
+  // to position the view on a hit) and reset the jump-button state so it doesn't
+  // flash with the previous conversation's scrolled-up state. Layout effect —
+  // must apply before paint or the stale unpinned/not-at-bottom state from the
+  // previous conversation paints for one frame (the button flash).
   useLayoutEffect(() => {
-    if (activeConvId) {
-      scrollToLatest('auto');
-    }
-  }, [activeConvId, scrollToLatest]);
+    const jumpPending = useChatStore.getState().pendingSearchJump?.convId === activeConvId;
+    updatePinned(!jumpPending);
+    setIsAtBottom(true);
+    if (pinnedRef.current) stickToBottom(scrollParentEl);
+  }, [activeConvId, scrollParentEl, stickToBottom, updatePinned]);
+
+  // Unpin on explicit upward user intent. Content growing under the viewport
+  // must NOT unpin (that's the whole point of the lock), so we listen for user
+  // gestures rather than scroll-position changes.
+  useEffect(() => {
+    if (!scrollParentEl) return;
+    const unpin = () => updatePinned(false);
+    const onWheel = (e: WheelEvent) => { if (e.deltaY < 0) unpin(); };
+    scrollParentEl.addEventListener('wheel', onWheel, { passive: true });
+    scrollParentEl.addEventListener('touchmove', unpin, { passive: true });
+    return () => {
+      scrollParentEl.removeEventListener('wheel', onWheel);
+      scrollParentEl.removeEventListener('touchmove', unpin);
+    };
+  }, [scrollParentEl, updatePinned]);
+
+  // Search-jump: when a full-text search hit is picked, scroll to and briefly
+  // highlight the first message whose text matches the query. Waits until the
+  // target conversation's messages are loaded (an LRU miss loads async), then
+  // consumes the pending jump exactly once.
+  useEffect(() => {
+    const jump = pendingSearchJump;
+    if (!jump || jump.convId !== activeConvId) return;
+    const conv = useChatStore.getState().conversations[activeConvId];
+    if (!conv || conv.messages.length === 0) return; // not loaded yet — retry on next messageCount change
+    const q = jump.query.trim().toLowerCase();
+    const target = conv.messages.find(
+      (m) => !m.isSystem && getMessageText(m.content).toLowerCase().includes(q),
+    );
+    // Consume regardless of match so a missing target doesn't retry forever.
+    useChatStore.getState().setPendingSearchJump(null);
+    if (!target) return;
+    const groups = groupMessagesByLoop(conv.messages.filter((m) => !m.isSystem));
+    const index = groups.findIndex((g) => g.some((m) => m.id === target.id));
+    if (index < 0) return;
+    // Release the bottom lock so late height-measurements don't yank the view
+    // from the hit back to the bottom.
+    updatePinned(false);
+    setHighlightedMessageId(target.id);
+    // Defer a frame so Virtuoso (freshly remounted via `key`) is mounted and can
+    // resolve the index before we scroll.
+    requestAnimationFrame(() => {
+      virtuosoRef.current?.scrollToIndex({ index, align: 'center', behavior: 'auto' });
+    });
+    clearTimeout(highlightFadeTimerRef.current);
+    highlightFadeTimerRef.current = setTimeout(() => setHighlightedMessageId(null), 2600);
+  }, [pendingSearchJump, activeConvId, messageCount, updatePinned]);
 
   const handleSend = async (text: string, images?: ImageAttachment[], workspacePath?: string | null) => {
     // Block sending if API key is not configured (Ollama doesn't need one)
@@ -570,8 +660,14 @@ export default function ChatView() {
       <div className="relative flex-1 min-h-0 overflow-y-auto" ref={setScrollParentEl}>
         <div className="w-full max-w-4xl mx-auto px-6 md:px-10 pt-5 pb-16 overflow-hidden">
           <Virtuoso
+            // Remount per conversation so `initialTopMostItemIndex` re-applies
+            // on every switch — the view lands at the newest message without a
+            // visible flash-then-jump.
+            key={activeConvId}
             ref={virtuosoRef}
             data={messageGroups}
+            // Mount already scrolled to the last message, bottom-aligned.
+            initialTopMostItemIndex={{ index: 'LAST', align: 'end' }}
             customScrollParent={scrollParentEl ?? undefined}
             computeItemKey={(index, group) => group[0]?.id ?? index}
             components={virtuosoComponents}
@@ -582,8 +678,19 @@ export default function ChatView() {
             // as continuous motion without fighting a CSS scroll animation
             // that's still in flight when the next chunk lands.
             followOutput="auto"
-            atBottomStateChange={setIsAtBottom}
+            atBottomStateChange={(atBottom) => {
+              setIsAtBottom(atBottom);
+              // Reaching the bottom (by any means) re-engages the lock.
+              if (atBottom) updatePinned(true);
+            }}
             atBottomThreshold={100}
+            // The bottom lock: whenever late-measured content (widget iframes,
+            // images, charts) changes the total list height while the user is
+            // pinned, re-stick to the newest message. Event-driven — replaces
+            // any "scroll again after N ms" guesswork.
+            totalListHeightChanged={() => {
+              if (pinnedRef.current) stickToBottom(scrollParentEl);
+            }}
             // Keep ~one viewport of rows mounted above/below the visible window.
             // Rows still virtualize (far-off messages stay unmounted), but this
             // widens the live band so inline iframe widgets (HtmlWidgetBlock)
@@ -603,7 +710,7 @@ export default function ChatView() {
               group.length === 1 && isCompactBoundary(group[0]) ? (
                 <CompactDivider message={group[0]} />
               ) : (
-                <MessageGroup messages={group} isLastGroup={index === messageGroups.length - 1} />
+                <MessageGroup messages={group} isLastGroup={index === messageGroups.length - 1} highlightMessageId={highlightedMessageId} />
               )
             }
           />
@@ -612,8 +719,11 @@ export default function ChatView() {
           <div className="h-px w-full" />
         </div>
 
-        {/* Scroll-to-bottom button */}
-        {!isAtBottom && (
+        {/* Scroll-to-bottom button — only when the user has actually left the
+            bottom (unpinned). While the lock is engaged we're headed to the
+            bottom anyway, and Virtuoso's transient atBottom=false during
+            mount/measure would otherwise flash the button on every switch. */}
+        {!isAtBottom && !pinned && (
           <button
             onClick={() => scrollToLatest('smooth')}
             className="sticky bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--abu-bg-base)]/90 border border-[var(--abu-border)] text-[13px] text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-base)] transition-all backdrop-blur-sm"

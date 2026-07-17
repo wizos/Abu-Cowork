@@ -103,12 +103,17 @@ export default function ConversationSearchModal({ open, onClose }: { open: boole
 
   if (!open) return null;
 
-  const pick = (id: string) => {
+  const pick = (id: string, jumpQuery?: string) => {
     switchConversation(id);
     setViewMode('chat');
     setFileTreeMode(false);
     clearBadge(id);
     clearCompletedStatus(id);
+    // Body-content hits carry the query so ChatView can scroll to + highlight
+    // the matching message. Title/recents picks pass nothing (no in-body target).
+    if (jumpQuery) {
+      useChatStore.getState().setPendingSearchJump({ convId: id, query: jumpQuery });
+    }
     onClose();
   };
 
@@ -166,7 +171,7 @@ export default function ConversationSearchModal({ open, onClose }: { open: boole
               {bodyHits.map((h) => (
                 <button
                   key={h.conv_id}
-                  onClick={() => pick(h.conv_id)}
+                  onClick={() => pick(h.conv_id, trimmed)}
                   className="flex flex-col items-start gap-0.5 w-full px-4 py-2 text-left hover:bg-[var(--abu-bg-hover)]"
                 >
                   <div className="flex items-center gap-2.5 w-full min-w-0">

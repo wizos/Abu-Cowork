@@ -31,6 +31,9 @@ import { cn } from '@/lib/utils';
 interface MessageGroupProps {
   messages: Message[];
   isLastGroup?: boolean;
+  // When set and this group contains that message, briefly ring-highlight the
+  // group (search-hit jump target). Cleared by the parent after a timeout.
+  highlightMessageId?: string | null;
 }
 
 // Home dir is resolved once per app session and cached at module level so the
@@ -318,7 +321,7 @@ export function streamingTurnHasRenderableContent(msg: Message | undefined): boo
  * User messages render standalone, assistant messages share one avatar.
  * Renders text → merged tool steps, with consecutive tool-only turns combined.
  */
-export default function MessageGroup({ messages, isLastGroup: isLastGroupProp = false }: MessageGroupProps) {
+export default function MessageGroup({ messages, isLastGroup: isLastGroupProp = false, highlightMessageId = null }: MessageGroupProps) {
   const { t } = useI18n();
   // Separate user and assistant messages
   const userMsg = messages.find((m) => m.role === 'user');
@@ -722,7 +725,18 @@ export default function MessageGroup({ messages, isLastGroup: isLastGroupProp = 
   };
 
   return (
-    <div ref={groupRef} className="message-group space-y-4 w-full">
+    <div
+      ref={groupRef}
+      className={cn(
+        // transition-colors lives on the base class so the highlight fades both
+        // in AND out (a conditional transition class vanishes with the bg and
+        // makes the removal instant).
+        'message-group space-y-4 w-full rounded-lg transition-colors duration-700',
+        highlightMessageId != null &&
+          messages.some((m) => m.id === highlightMessageId) &&
+          'bg-[var(--abu-clay-bg-15)]',
+      )}
+    >
       {/* User message renders standalone */}
       {userMsg && <MessageErrorBoundary><MessageBubble message={userMsg} /></MessageErrorBoundary>}
 
