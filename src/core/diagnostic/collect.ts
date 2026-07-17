@@ -20,6 +20,7 @@ import { useDiagnosticStore } from '@/stores/diagnosticStore';
 import { useScheduleStore } from '@/stores/scheduleStore';
 import { skillLoader } from '@/core/skill/loader';
 import { getRecentLogs, getLogDirPath } from '@/core/logging/logger';
+import { catalogGetCount } from '@/core/session/conversationStorage';
 import { APP_VERSION } from '@/utils/version';
 import { platform } from '@tauri-apps/plugin-os';
 import { scrubSecrets, scrubMessage } from './scrub';
@@ -133,12 +134,21 @@ export function resolveConversationIds(
  * conversation is already under the cap). Pure — returns the original array
  * reference untouched when no capping is needed. Reports the true total so the
  * bundle can note that older messages were dropped (never a silent truncation).
+ *
+ * `authoritativeTotal` (message-storage P1 step 4): when the in-memory
+ * `messages` array is a partial window (Layer 1 windowing), `messages.length`
+ * understates the real history size. Callers can pass the catalog's
+ * authoritative message_count so the reported `total` (and the derived
+ * "included N of TOTAL" note) reflects the full conversation, not just the
+ * loaded window. Falls back to `messages.length` when omitted/undefined, so
+ * every existing caller keeps its exact prior behavior.
  */
 export function capDiagnosticMessages<T>(
   messages: T[],
   cap: number | 'all',
+  authoritativeTotal?: number,
 ): { messages: T[]; total: number; capped: boolean } {
-  const total = messages.length;
+  const total = authoritativeTotal ?? messages.length;
   if (cap === 'all') return { messages, total, capped: false };
   // cap <= 0 → embed no messages (diagnostic-only). Guard explicitly:
   // slice(-0) === slice(0) would otherwise return EVERYTHING.
@@ -303,9 +313,15 @@ export async function collectBundleFiles(opts: CollectOptions): Promise<CollectR
     // an explicit note — never silently. The effective cap is also clamped
     // to whatever remains of the global multi-conversation budget.
     const effectiveCap = Math.max(0, Math.min(requestedCapNumeric, remainingMessageBudget));
+    // Prefer the catalog's authoritative message_count for the reported total:
+    // conv.messages can be a partial window, so its length understates true
+    // history size. catalogGetCount returns null on any failure, in which case
+    // capDiagnosticMessages falls back to conv.messages.length (prior behavior).
+    const authoritativeTotal = (await catalogGetCount(convId)) ?? undefined;
     const { messages: capped, total, capped: wasCapped } = capDiagnosticMessages(
       conv.messages,
       effectiveCap,
+      authoritativeTotal,
     );
     remainingMessageBudget = Math.max(0, remainingMessageBudget - capped.length);
 

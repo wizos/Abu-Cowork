@@ -152,6 +152,8 @@ const enUS: TranslationDict = {
     memoryGuideTip: 'Tip: Personal and project memory are accumulated automatically by Abu during conversations — you can view and edit them anytime. Project instructions need to be written by you manually.',
     todos: 'Todos',
     inbox: 'Inbox',
+    searchResults: 'Search results',
+    searchNoResults: 'No matches found',
   },
 
   todos: {
@@ -558,6 +560,12 @@ const enUS: TranslationDict = {
     languageDescription: 'Select display language',
     followSystem: 'Follow System',
     // Image Generation — independent backend list (design doc §3.1, "C-a")
+    imageGenVendor: 'Vendor',
+    imageGenVendorAuto: 'Auto-detect (default)',
+    imageGenVendorOpenAI: 'OpenAI (DALL·E)',
+    imageGenVendorVolcengine: 'Volcengine (Seedream)',
+    imageGenVendorSiliconFlow: 'SiliconFlow',
+    imageGenVendorZhipu: 'Zhipu (CogView)',
     imageGenApiKey: 'API Key',
     imageGenApiKeyPlaceholder: "Enter this backend's API key",
     imageGenBaseUrl: 'API Base URL',

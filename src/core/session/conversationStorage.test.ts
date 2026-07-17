@@ -198,6 +198,281 @@ describe('conversationStorage', () => {
     });
   });
 
+  describe('SQLite catalog write-through (message-storage P0)', () => {
+    it('bumps the catalog count on each append, best-effort after the JSONL write', async () => {
+      const calls: Array<{ cmd: string; args?: Record<string, unknown> }> = [];
+      (invoke as ReturnType<typeof vi.fn>).mockImplementation(async (
+        cmd: string,
+        args?: Record<string, unknown>,
+      ) => {
+        calls.push({ cmd, args });
+        // append_file_text unavailable → exercises the atomic-write fallback,
+        // matching every other test in this file.
+        if (cmd === 'append_file_text') throw new Error('native append unavailable in test');
+        if (cmd === 'atomic_write_text' && (args as { path?: string })?.path !== undefined) {
+          return undefined;
+        }
+        return undefined;
+      });
+
+      await storage.appendMessage('conv-cat', makeMsg({ id: 'c1', timestamp: 111 }));
+      await storage.appendMessage('conv-cat', makeMsg({ id: 'c2', timestamp: 222 }));
+      await storage.flushWrites();
+
+      const bumps = calls.filter((c) => c.cmd === 'catalog_bump_count');
+      expect(bumps).toHaveLength(2);
+      expect(bumps[0].args).toMatchObject({ convId: 'conv-cat', delta: 1, updatedAt: 111, lastMessageId: 'c1' });
+      expect(bumps[1].args).toMatchObject({ convId: 'conv-cat', delta: 1, updatedAt: 222, lastMessageId: 'c2' });
+      expect(bumps[0].args?.conversationsRoot).toEqual(expect.stringContaining('conversations'));
+    });
+
+    it('a failing catalog_bump_count never breaks the JSONL append', async () => {
+      (invoke as ReturnType<typeof vi.fn>).mockImplementation(async (
+        cmd: string,
+        args?: { path?: string; content?: string },
+      ) => {
+        if (cmd === 'catalog_bump_count') throw new Error('catalog DB unavailable');
+        if (cmd === 'append_file_text') throw new Error('native append unavailable in test');
+        // atomic_write fallback routes to the memory fs via writeTextFile in the
+        // default mock; re-implement the minimal write here so loadMessages sees it.
+        if (cmd === 'atomic_write_text' && args?.path !== undefined) {
+          await (writeTextFile as ReturnType<typeof vi.fn>)(args.path, args.content ?? '');
+          return undefined;
+        }
+        return undefined;
+      });
+
+      await expect(
+        storage.appendMessage('conv-safe', makeMsg({ id: 's1', content: 'kept' })),
+      ).resolves.toBeUndefined();
+      await storage.flushWrites();
+
+      const loaded = await storage.loadMessages('conv-safe');
+      expect(loaded).toHaveLength(1);
+      expect(loaded[0].content).toBe('kept');
+    });
+
+    // Regression (code-review fix #9): appendMessage must NOT await the
+    // catalog bump — it is best-effort and already swallows its own errors,
+    // so there is nothing for the JSONL hot path to gain by waiting on it.
+    // Before the fix, `await catalogBumpCount(...)` inside appendMessage meant
+    // a never-settling (or merely slow) catalog_bump_count invoke would hang
+    // every message append behind it. This test proves the opposite: with a
+    // catalog_bump_count invoke that never resolves, appendMessage still
+    // resolves promptly.
+    it('does not await the catalog bump — appendMessage resolves even if catalog_bump_count never settles', async () => {
+      let bumpCalled = false;
+      let resolveBump: () => void = () => {};
+      const bumpPromise = new Promise<void>((resolve) => {
+        resolveBump = resolve;
+      });
+
+      (invoke as ReturnType<typeof vi.fn>).mockImplementation(async (
+        cmd: string,
+      ) => {
+        if (cmd === 'append_file_text') throw new Error('native append unavailable in test');
+        if (cmd === 'catalog_bump_count') {
+          bumpCalled = true;
+          await bumpPromise; // deliberately never resolves during this test
+          return undefined;
+        }
+        return undefined;
+      });
+
+      // If appendMessage awaited catalogBumpCount, this would hang until the
+      // test's timeout since bumpPromise never settles. Resolving here proves
+      // the catalog bump is fire-and-forget.
+      await storage.appendMessage('conv-fire-forget', makeMsg({ id: 'ff1' }));
+      expect(bumpCalled).toBe(true);
+
+      resolveBump(); // let the dangling promise settle so it doesn't leak into other tests
+    });
+
+    it('reconcileCatalog invokes catalog_reconcile with the conversations root', async () => {
+      const calls: Array<{ cmd: string; args?: Record<string, unknown> }> = [];
+      (invoke as ReturnType<typeof vi.fn>).mockImplementation(async (
+        cmd: string,
+        args?: Record<string, unknown>,
+      ) => {
+        calls.push({ cmd, args });
+        return undefined;
+      });
+      await storage.reconcileCatalog();
+      const reconcile = calls.filter((c) => c.cmd === 'catalog_reconcile');
+      expect(reconcile).toHaveLength(1);
+      expect(reconcile[0].args?.conversationsRoot).toEqual(expect.stringContaining('conversations'));
+    });
+
+    describe('catalogGetCount', () => {
+      it('resolves the message_count from catalog_get_conversation', async () => {
+        (invoke as ReturnType<typeof vi.fn>).mockImplementation(async (
+          cmd: string,
+          args?: Record<string, unknown>,
+        ) => {
+          if (cmd === 'catalog_get_conversation') {
+            expect(args?.convId).toBe('conv-count');
+            return { conv_id: 'conv-count', message_count: 42 };
+          }
+          return undefined;
+        });
+
+        await expect(storage.catalogGetCount('conv-count')).resolves.toBe(42);
+      });
+
+      it('returns null when the row is missing', async () => {
+        (invoke as ReturnType<typeof vi.fn>).mockImplementation(async () => null);
+        await expect(storage.catalogGetCount('conv-missing')).resolves.toBeNull();
+      });
+
+      it('returns null when invoke throws', async () => {
+        (invoke as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+          throw new Error('IPC failure');
+        });
+        await expect(storage.catalogGetCount('conv-error')).resolves.toBeNull();
+      });
+    });
+
+    // message-storage hybrid P2: FTS5 conversation search wrapper.
+    describe('catalogSearch', () => {
+      it('resolves the hits returned by catalog_search, passing query and limit through', async () => {
+        const calls: Array<{ cmd: string; args?: Record<string, unknown> }> = [];
+        (invoke as ReturnType<typeof vi.fn>).mockImplementation(async (
+          cmd: string,
+          args?: Record<string, unknown>,
+        ) => {
+          calls.push({ cmd, args });
+          if (cmd === 'catalog_search') {
+            return [
+              { conv_id: 'conv-1', title: 'Widget Launch', snippet: '<mark>widget</mark> launch plan', rank: 0.5 },
+            ];
+          }
+          return undefined;
+        });
+
+        const hits = await storage.catalogSearch('widget', 10);
+        expect(hits).toEqual([
+          { conv_id: 'conv-1', title: 'Widget Launch', snippet: '<mark>widget</mark> launch plan', rank: 0.5 },
+        ]);
+        const searchCall = calls.find((c) => c.cmd === 'catalog_search');
+        expect(searchCall?.args).toEqual({ query: 'widget', limit: 10 });
+      });
+
+      it('returns [] when invoke throws', async () => {
+        (invoke as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+          throw new Error('IPC failure');
+        });
+        await expect(storage.catalogSearch('widget')).resolves.toEqual([]);
+      });
+
+      it('returns [] when catalog_search resolves nothing useful', async () => {
+        (invoke as ReturnType<typeof vi.fn>).mockImplementation(async () => undefined);
+        await expect(storage.catalogSearch('ab')).resolves.toEqual([]);
+      });
+    });
+
+    // message-storage hybrid P2: live-freshness single-conversation reindex.
+    describe('catalogReindexConversation', () => {
+      it('flushes the index then invokes catalog_reindex_conversation with convId + conversationsRoot', async () => {
+        const calls: Array<{ cmd: string; args?: Record<string, unknown> }> = [];
+        (invoke as ReturnType<typeof vi.fn>).mockImplementation(async (
+          cmd: string,
+          args?: Record<string, unknown>,
+        ) => {
+          calls.push({ cmd, args });
+          return undefined;
+        });
+
+        // Populate indexCache the way a real caller would: both
+        // renameConversation and turn-end call updateIndexEntry() immediately
+        // before catalogReindexConversation. Without this, indexCache stays
+        // null and flushIndex() is a correct no-op (nothing to flush).
+        await storage.updateIndexEntry({
+          id: 'conv-live',
+          title: 'Widget Launch',
+          createdAt: 1,
+          updatedAt: 2,
+          messageCount: 1,
+        });
+        calls.length = 0;
+
+        await storage.catalogReindexConversation('conv-live');
+
+        const reindexCalls = calls.filter((c) => c.cmd === 'catalog_reindex_conversation');
+        expect(reindexCalls).toHaveLength(1);
+        expect(reindexCalls[0].args?.convId).toBe('conv-live');
+        expect(reindexCalls[0].args?.conversationsRoot).toEqual(expect.stringContaining('conversations'));
+
+        // The index flush (atomic_write_text against index.json) must happen
+        // BEFORE the reindex invoke — otherwise the Rust side would read a
+        // stale on-disk title/timestamp for a rename that just updated the
+        // in-memory indexCache but hasn't hit disk yet (debounced up to 2s).
+        const flushIdx = calls.findIndex((c) => c.cmd === 'atomic_write_text' && typeof c.args?.path === 'string' && (c.args.path as string).includes('index.json'));
+        const reindexIdx = calls.findIndex((c) => c.cmd === 'catalog_reindex_conversation');
+        expect(flushIdx).toBeGreaterThanOrEqual(0);
+        expect(flushIdx).toBeLessThan(reindexIdx);
+      });
+
+      it('swallows errors from invoke and never throws', async () => {
+        (invoke as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+          throw new Error('IPC failure');
+        });
+        await expect(storage.catalogReindexConversation('conv-error')).resolves.toBeUndefined();
+      });
+
+      // Fix #3: catalogReindexConversation must also drain the pending
+      // message-append write queue (flushWrites), not just the index queue —
+      // otherwise a turn-end reindex can race a still-queued final message
+      // and scan a messages.jsonl missing the very content it's meant to index.
+      it('drains the pending message-append queue before invoking catalog_reindex_conversation', async () => {
+        const calls: Array<{ cmd: string; args?: Record<string, unknown> }> = [];
+        (invoke as ReturnType<typeof vi.fn>).mockImplementation(async (
+          cmd: string,
+          args?: Record<string, unknown>,
+        ) => {
+          calls.push({ cmd, args });
+          if (cmd === 'append_file_text') {
+            throw new Error('native append unavailable in test');
+          }
+          return undefined;
+        });
+
+        await storage.updateIndexEntry({
+          id: 'conv-live2',
+          title: 'Widget Launch 2',
+          createdAt: 1,
+          updatedAt: 2,
+          messageCount: 1,
+        });
+        calls.length = 0;
+
+        // Enqueue a message write WITHOUT flushing it — this sits in the
+        // 100ms-debounced write queue exactly like a real turn-end append
+        // does when setConversationStatus fires the reindex immediately after.
+        const appendPromise = storage.appendMessage('conv-live2', {
+          id: 'm-late',
+          role: 'assistant',
+          content: 'final reply',
+          timestamp: Date.now(),
+        });
+
+        await storage.catalogReindexConversation('conv-live2');
+        await appendPromise;
+
+        const writeIdx = calls.findIndex(
+          (c) =>
+            c.cmd === 'atomic_write_text' &&
+            typeof c.args?.path === 'string' &&
+            (c.args.path as string).includes('conv-live2') &&
+            (c.args.path as string).includes('messages.jsonl'),
+        );
+        const reindexIdx = calls.findIndex((c) => c.cmd === 'catalog_reindex_conversation');
+        expect(writeIdx).toBeGreaterThanOrEqual(0);
+        expect(reindexIdx).toBeGreaterThanOrEqual(0);
+        expect(writeIdx).toBeLessThan(reindexIdx);
+      });
+    });
+  });
+
   describe('loadMessages · corruption resilience', () => {
     // Path shape matches ensureBase() + messagesPath() (see conversationStorage.ts).
     // appDataDir is mocked globally to '/Users/testuser/.abu'.
@@ -355,6 +630,31 @@ describe('conversationStorage', () => {
 
       const reloaded = await storage.loadMessages('conv-2');
       expect(reloaded).toHaveLength(1); // Still 1, not 2
+    });
+
+    // Regression (code-review fix #8): chatStore's ghost-message deletion
+    // path (agentLoop.ts) checks isMessageWrittenToDisk before bumping the
+    // catalog by -1, to avoid an unbalanced decrement when the +1 from
+    // appendMessage never fired (message never durably reached disk).
+    describe('isMessageWrittenToDisk', () => {
+      it('is false before appendMessage runs and true after', async () => {
+        const msg = makeMsg({ id: 'ghost-1', content: '' });
+        expect(storage.isMessageWrittenToDisk('ghost-1')).toBe(false);
+        await storage.appendMessage('conv-1', msg);
+        expect(storage.isMessageWrittenToDisk('ghost-1')).toBe(true);
+      });
+
+      it('is true for a preexisting id populated from a disk load', async () => {
+        const msg = makeMsg({ id: 'preexisting-2', content: 'From disk' });
+        const path = '/Users/testuser/.abu/conversations/conv-3/messages.jsonl';
+        memFs.files.set(path, JSON.stringify(msg) + '\n');
+        memFs.dirs.add('/Users/testuser/.abu/conversations/conv-3');
+        memFs.dirs.add('/Users/testuser/.abu/conversations');
+
+        expect(storage.isMessageWrittenToDisk('preexisting-2')).toBe(false);
+        await storage.loadMessages('conv-3');
+        expect(storage.isMessageWrittenToDisk('preexisting-2')).toBe(true);
+      });
     });
   });
 
