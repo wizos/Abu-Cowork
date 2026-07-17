@@ -63,8 +63,14 @@ export default function TabStrip() {
   const [newTabMenuPos, setNewTabMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [contextMenu, setContextMenu] = useState<{ tabId: string; top: number; left: number } | null>(null);
   const plusBtnRef = useRef<HTMLButtonElement>(null);
-  const draggingIdRef = useRef<string | null>(null);
+  // Drag-to-reorder: `draggingId` = the tab being dragged, `dragDx` = how far it
+  // has followed the cursor (px), `dragOverId` = the tab it will drop onto.
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragDx, setDragDx] = useState(0);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const dragStartXRef = useRef(0);
+  const dragOverIdRef = useRef<string | null>(null);
+  const dragMovedRef = useRef(false);
 
   const closeMenus = () => {
     setNewTabMenuPos(null);
@@ -90,39 +96,53 @@ export default function TabStrip() {
     setContextMenu({ tabId, top: y, left });
   };
 
-  const handlePointerDown = (id: string) => (e: React.PointerEvent) => {
+  const handleTabPointerDown = (id: string) => (e: React.PointerEvent) => {
     if (e.button !== 0) return;
-    draggingIdRef.current = id;
+    dragStartXRef.current = e.clientX;
+    dragMovedRef.current = false;
+    setDraggingId(id);
+    setDragDx(0);
   };
 
-  const handlePointerEnter = (id: string) => () => {
-    if (!draggingIdRef.current || draggingIdRef.current === id) return;
-    setDragOverId(id);
-  };
-
-  const handlePointerUp = (id: string) => () => {
-    const fromId = draggingIdRef.current;
-    draggingIdRef.current = null;
-    setDragOverId(null);
-    if (fromId && fromId !== id) reorderTabs(fromId, id);
-  };
-
-  // Releasing a drag outside any tab (over the `+` button, the strip padding,
-  // or off-strip) never fires a tab's onPointerUp, which would otherwise leave
-  // draggingIdRef set — causing phantom hover-highlighting and an accidental
-  // reorder on the next release. A window-level reset covers those cases.
+  // While dragging, the tab follows the cursor (translateX) and lifts (shadow);
+  // window listeners track movement and the drop target (via elementFromPoint),
+  // so a release anywhere resolves correctly. Reorder happens on release.
   useEffect(() => {
-    const reset = () => {
-      draggingIdRef.current = null;
+    if (!draggingId) return;
+    document.body.style.cursor = 'grabbing';
+    document.body.style.userSelect = 'none';
+    const onMove = (e: PointerEvent) => {
+      const dx = e.clientX - dragStartXRef.current;
+      if (Math.abs(dx) > 3) dragMovedRef.current = true;
+      setDragDx(dx);
+      const overTab = (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest(
+        '[data-tab-id]',
+      ) as HTMLElement | null;
+      const overId = overTab?.dataset.tabId ?? null;
+      const next = overId && overId !== draggingId ? overId : null;
+      dragOverIdRef.current = next;
+      setDragOverId(next);
+    };
+    const onUp = () => {
+      if (dragOverIdRef.current && dragOverIdRef.current !== draggingId) {
+        reorderTabs(draggingId, dragOverIdRef.current);
+      }
+      setDraggingId(null);
+      setDragDx(0);
       setDragOverId(null);
+      dragOverIdRef.current = null;
     };
-    window.addEventListener('pointerup', reset);
-    window.addEventListener('pointercancel', reset);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
     return () => {
-      window.removeEventListener('pointerup', reset);
-      window.removeEventListener('pointercancel', reset);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
     };
-  }, []);
+  }, [draggingId, reorderTabs]);
 
   // Tell the store when a popover is open so a native browser webview (which
   // paints over React) hides instead of occluding the menu.
@@ -159,12 +179,15 @@ export default function TabStrip() {
         return (
           <div
             key={tab.id}
+            data-tab-id={tab.id}
             role="tab"
             aria-selected={active}
-            onPointerDown={handlePointerDown(tab.id)}
-            onPointerEnter={handlePointerEnter(tab.id)}
-            onPointerUp={handlePointerUp(tab.id)}
-            onClick={() => activateTab(tab.id)}
+            onPointerDown={handleTabPointerDown(tab.id)}
+            onClick={() => {
+              // Suppress the click that follows an actual drag (would re-activate).
+              if (dragMovedRef.current) return;
+              activateTab(tab.id);
+            }}
             onAuxClick={(e) => {
               // Middle-click closes the tab.
               if (e.button === 1) closeTab(tab.id);
@@ -174,13 +197,17 @@ export default function TabStrip() {
               openContextMenu(tab.id, e.clientX, e.clientY);
             }}
             className={cn(
-              'group flex items-center gap-1.5 h-8 px-2.5 max-w-[160px] shrink-0 cursor-pointer select-none',
-              'border-r border-[var(--abu-bg-pressed)] text-[12px]',
+              'group flex items-center gap-1.5 h-8 px-2.5 max-w-[160px] shrink-0 select-none',
+              'border-r border-[var(--abu-bg-pressed)] text-[12px] transition-shadow',
+              draggingId === tab.id ? 'cursor-grabbing' : 'cursor-grab',
               active
                 ? 'bg-[var(--abu-bg-base)] text-[var(--abu-text-primary)]'
                 : 'text-[var(--abu-text-tertiary)] hover:bg-[var(--abu-bg-hover)]',
+              // The dragged tab lifts off the strip; a drop target gets highlighted.
+              draggingId === tab.id && 'relative z-20 shadow-lg opacity-90 rounded-md bg-[var(--abu-bg-base)]',
               dragOverId === tab.id && 'bg-[var(--abu-clay-20)]',
             )}
+            style={draggingId === tab.id ? { transform: `translateX(${dragDx}px)` } : undefined}
           >
             <Icon className="w-3.5 h-3.5 shrink-0" strokeWidth={1.5} />
             <span className="truncate flex-1">{tabTitle(tab, t)}</span>

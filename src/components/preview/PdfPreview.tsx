@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { readFile } from '@tauri-apps/plugin-fs';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { useI18n } from '@/i18n';
@@ -60,6 +60,12 @@ export default function PdfPreview({ filePath }: { filePath: string }) {
   }, [filePath]);
 
   const loading = !pdfData && !error;
+
+  // Memoize the file object so react-pdf loads the document ONCE. A fresh
+  // `{ data }` object each render makes react-pdf reload, and pdf.js transfers
+  // the buffer to the worker on load (detaching `pdfData`) — the reload then
+  // tries to post the detached array and throws "The object can not be cloned".
+  const fileProp = useMemo(() => (pdfData ? { data: pdfData } : null), [pdfData]);
 
   const onDocumentLoadSuccess = ({ numPages: n }: { numPages: number }) => {
     setNumPages(n);
@@ -142,9 +148,9 @@ export default function PdfPreview({ filePath }: { filePath: string }) {
           {loading && (
             <LoadingIndicator label={t.panel.loadingDocument} />
           )}
-          {pdfData && (
+          {fileProp && (
             <Document
-              file={{ data: pdfData }}
+              file={fileProp}
               onLoadSuccess={onDocumentLoadSuccess}
               onLoadError={onDocumentLoadError}
               loading={<LoadingIndicator label={t.panel.loadingDocument} />}
