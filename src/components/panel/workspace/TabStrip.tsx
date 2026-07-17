@@ -52,6 +52,7 @@ export default function TabStrip() {
   const reorderTabs = usePreviewStore((s) => s.reorderTabs);
   const openBrowser = usePreviewStore((s) => s.openBrowser);
   const openTerminal = usePreviewStore((s) => s.openTerminal);
+  const setMenuOpen = usePreviewStore((s) => s.setMenuOpen);
 
   // Popover state holds a viewport-fixed position (or null when closed).
   const [newTabMenuPos, setNewTabMenuPos] = useState<{ top: number; left: number } | null>(null);
@@ -117,6 +118,12 @@ export default function TabStrip() {
       window.removeEventListener('pointercancel', reset);
     };
   }, []);
+
+  // Tell the store when a popover is open so a native browser webview (which
+  // paints over React) hides instead of occluding the menu.
+  useEffect(() => {
+    setMenuOpen(!!(newTabMenuPos || contextMenu));
+  }, [newTabMenuPos, contextMenu, setMenuOpen]);
 
   // Close popovers on Escape, and on scroll/resize (their fixed position would
   // otherwise drift away from the anchor).

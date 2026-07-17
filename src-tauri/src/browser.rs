@@ -20,6 +20,20 @@ fn wv_label(id: &str) -> String {
     format!("browser-{}", id)
 }
 
+/// Injected into every page: a native child webview has no default handler for
+/// `window.open` / `target="_blank"`, so such links (e.g. Baidu's 资讯) would
+/// silently do nothing. Redirect them into this same webview instead.
+const NEW_WINDOW_SHIM: &str = r#"(function(){
+  try {
+    window.open = function(u){ if(u){ location.href = String(u); } return null; };
+    document.addEventListener('click', function(e){
+      var el = e.target;
+      var a = el && el.closest ? el.closest('a[target="_blank"]') : null;
+      if (a && a.href){ e.preventDefault(); location.href = a.href; }
+    }, true);
+  } catch (_) {}
+})();"#;
+
 fn parse_url(url: &str) -> Result<tauri::Url, String> {
     url.parse().map_err(|e| format!("invalid url '{}': {}", url, e))
 }
@@ -54,14 +68,14 @@ pub fn browser_create(
 
     let app_nav = app.clone();
     let id_nav = id.clone();
-    let builder = WebviewBuilder::new(&label, WebviewUrl::External(parsed)).on_navigation(
-        move |u| {
+    let builder = WebviewBuilder::new(&label, WebviewUrl::External(parsed))
+        .initialization_script(NEW_WINDOW_SHIM)
+        .on_navigation(move |u| {
             // Report real (incl. in-page/link) navigations so the address bar
             // and back/forward availability can follow.
             let _ = app_nav.emit(&format!("browser://nav/{}", id_nav), u.to_string());
             true
-        },
-    );
+        });
 
     window
         .add_child(

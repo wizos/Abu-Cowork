@@ -26,6 +26,10 @@ interface PreviewState {
   tabs: WorkspaceTab[];
   // Currently active tab id, or null when there are no tabs.
   activeTabId: string | null;
+  // True while a workspace popover (tab-strip `+` / context menu) is open. The
+  // native browser webview paints OVER React, so it must hide while a menu is
+  // up or the menu is occluded. Ephemeral UI signal.
+  menuOpen: boolean;
   // Resizable chat-column width (px) while the workspace is open; null = use default.
   // The workspace column flex-fills whatever the chat leaves.
   chatWidth: number | null;
@@ -87,11 +91,15 @@ interface PreviewState {
   refreshPreview: () => void;
   // Toggle the sidebar file-tree mode.
   setFileTreeMode: (on: boolean) => void;
+  // Mark a workspace popover as open/closed (so the native browser webview can
+  // hide while it's up).
+  setMenuOpen: (open: boolean) => void;
 }
 
 export const usePreviewStore = create<PreviewState>((set, get) => ({
   tabs: [],
   activeTabId: null,
+  menuOpen: false,
   chatWidth: null,
   fileTreeMode: false,
   previewFilePath: null,
@@ -239,6 +247,10 @@ export const usePreviewStore = create<PreviewState>((set, get) => ({
 
   setFileTreeMode: (on) => {
     set({ fileTreeMode: on });
+  },
+
+  setMenuOpen: (open) => {
+    set({ menuOpen: open });
   },
 }));
 

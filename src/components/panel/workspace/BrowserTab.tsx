@@ -34,6 +34,9 @@ export default function BrowserTab({ tabId, url }: { tabId: string; url: string 
   // A full-window React overlay would be painted UNDER the native webview, so
   // force-hide the webview while settings is open.
   const systemSettingsOpen = useSettingsStore((s) => s.systemSettingsOpen);
+  // A workspace popover (tab-strip menu) is also a React overlay the native
+  // webview would paint over — hide while one is up.
+  const menuOpen = usePreviewStore((s) => s.menuOpen);
 
   const [addressInput, setAddressInput] = useState(url);
   const [committedUrl, setCommittedUrl] = useState(url);
@@ -56,7 +59,8 @@ export default function BrowserTab({ tabId, url }: { tabId: string; url: string 
     const r = el.getBoundingClientRect();
     // A CSS-hidden ancestor (inactive keep-alive tab) yields a zero rect; a
     // full-window modal should also force-hide even though the rect is valid.
-    const visible = r.width >= 1 && r.height >= 1 && el.offsetParent !== null && !systemSettingsOpen;
+    const visible =
+      r.width >= 1 && r.height >= 1 && el.offsetParent !== null && !systemSettingsOpen && !menuOpen;
 
     if (!visible) {
       if (shownRef.current) {
@@ -75,7 +79,7 @@ export default function BrowserTab({ tabId, url }: { tabId: string; url: string 
       shownRef.current = true;
       void invoke('browser_show', { id: tabId }).catch(() => {});
     }
-  }, [tabId, systemSettingsOpen]);
+  }, [tabId, systemSettingsOpen, menuOpen]);
 
   // Create (lazily) the native webview for `committedUrl`, or navigate an
   // existing one. Called on first commit and on subsequent address changes.
