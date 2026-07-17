@@ -475,8 +475,10 @@ export default function ChatView() {
       {/* Computer Use Status Bar — visible during screen control */}
       <ComputerUseStatusBar onStop={() => useChatStore.getState().cancelStreaming(activeConv.id)} />
 
-      {/* Messages Area */}
-      <div className="relative flex-1 min-h-0 overflow-y-auto overlay-scroll" ref={containerRef}>
+      {/* Messages Area — overflow-y-scroll (not auto) so the overlay scrollbar's
+          gutter is always reserved; opening the preview narrows the chat without
+          a sudden scrollbar/gutter appearing and shifting the content. */}
+      <div className="relative flex-1 min-h-0 overflow-y-scroll overlay-scroll" ref={containerRef}>
         <div className="w-full max-w-4xl mx-auto px-6 md:px-10 pt-5 pb-16 overflow-hidden">
           <div className="space-y-5">
             {messageGroups.map((group, idx) =>
