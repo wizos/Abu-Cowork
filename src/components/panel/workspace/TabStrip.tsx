@@ -218,6 +218,9 @@ export default function TabStrip() {
             <span className="truncate flex-1">{tabTitle(tab, t)}</span>
             <button
               type="button"
+              // Don't let pressing × start a tab drag (which would flip the tab to
+              // pointer-events-none and swallow this click).
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
                 closeTab(tab.id);
