@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { FileText, Globe, SquareTerminal, ListChecks, X, Plus } from 'lucide-react';
+import { FileText, AppWindow, SquareTerminal, ListChecks, X, Plus } from 'lucide-react';
 import { usePreviewStore, type WorkspaceTab } from '@/stores/previewStore';
 import { getBaseName } from '@/utils/pathUtils';
 import { useI18n } from '@/i18n';
@@ -13,7 +13,7 @@ const MENU_WIDTH = 150; // px — used to right-align / clamp popover menus
 function tabIcon(tab: WorkspaceTab) {
   if (tab.kind === 'summary') return ListChecks;
   if (tab.kind === 'preview') return FileText;
-  if (tab.kind === 'browser') return Globe;
+  if (tab.kind === 'browser') return AppWindow;
   return SquareTerminal;
 }
 
@@ -227,7 +227,7 @@ export default function TabStrip() {
                   {t.workspace.summaryTitle}
                 </button>
                 <button type="button" className={menuItemCls} onClick={() => { openBrowser(); closeMenus(); }}>
-                  <Globe className="w-3.5 h-3.5" strokeWidth={1.5} />
+                  <AppWindow className="w-3.5 h-3.5" strokeWidth={1.5} />
                   {t.workspace.newBrowserTab}
                 </button>
                 <button type="button" className={menuItemCls} onClick={() => { openTerminal(); closeMenus(); }}>

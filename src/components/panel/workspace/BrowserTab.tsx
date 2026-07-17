@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { ArrowLeft, ArrowRight, RotateCw, ExternalLink, Globe } from 'lucide-react';
+import { ArrowLeft, ArrowRight, RotateCw, AppWindow, Compass } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { openUrl } from '@tauri-apps/plugin-opener';
@@ -234,7 +234,7 @@ export default function BrowserTab({ tabId, url }: { tabId: string; url: string 
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="icon-xs" disabled={!committedUrl} onClick={() => void handleOpenExternal()} className="text-[var(--abu-text-tertiary)]">
-              <ExternalLink className="w-3.5 h-3.5" strokeWidth={1.5} />
+              <Compass className="w-3.5 h-3.5" strokeWidth={1.5} />
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom">{t.workspace.browser.openExternal}</TooltipContent>
@@ -246,7 +246,7 @@ export default function BrowserTab({ tabId, url }: { tabId: string; url: string 
       <div ref={containerRef} className="flex-1 min-h-0 bg-white">
         {!committedUrl && (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-center p-4">
-            <Globe className="w-6 h-6 text-[var(--abu-text-tertiary)]" strokeWidth={1.5} />
+            <AppWindow className="w-6 h-6 text-[var(--abu-text-tertiary)]" strokeWidth={1.5} />
             <p className="text-[13px] font-medium text-[var(--abu-text-secondary)]">{t.workspace.browser.startPrompt}</p>
           </div>
         )}

@@ -1,4 +1,4 @@
-import { ListChecks, Globe, SquareTerminal } from 'lucide-react';
+import { ListChecks, AppWindow, SquareTerminal } from 'lucide-react';
 import { usePreviewStore } from '@/stores/previewStore';
 import { useI18n } from '@/i18n';
 import TabStrip from './TabStrip';
@@ -19,7 +19,7 @@ function WorkspaceEmptyState() {
 
   const rows = [
     { key: 'summary', Icon: ListChecks, label: t.workspace.summaryTitle, desc: t.workspace.summaryDesc, onClick: () => openSummary() },
-    { key: 'browser', Icon: Globe, label: t.workspace.browserTitle, desc: t.workspace.browserDesc, onClick: () => openBrowser() },
+    { key: 'browser', Icon: AppWindow, label: t.workspace.browserTitle, desc: t.workspace.browserDesc, onClick: () => openBrowser() },
     { key: 'terminal', Icon: SquareTerminal, label: t.workspace.terminalTitle, desc: t.workspace.terminalDesc, onClick: () => openTerminal() },
   ];
 
