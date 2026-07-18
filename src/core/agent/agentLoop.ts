@@ -7,8 +7,7 @@ import { OpenAICompatibleAdapter } from '../llm/openai-compatible';
 import { getAllTools, type ConfirmationInfo, type FilePermissionCallback } from '../tools/registry';
 import type { ToolDefinition } from '../../types';
 import { useChatStore, flushTokenBuffer } from '../../stores/chatStore';
-import { getEffectiveModel, getActiveApiKey, getActiveProvider, resolveAgentModel, providerRequiresApiKey } from '../../stores/settingsStore';
-import { createInProcessSettingsReader, type SettingsReader } from './ports/settingsReader';
+import { useSettingsStore, getEffectiveModel, getActiveApiKey, getActiveProvider, resolveAgentModel, providerRequiresApiKey } from '../../stores/settingsStore';
 import { useDiscoveredCapsStore } from '../../stores/discoveredCapabilitiesStore';
 import { useWorkspaceStore } from '../../stores/workspaceStore';
 import { useTaskExecutionStore } from '../../stores/taskExecutionStore';
@@ -577,9 +576,6 @@ export interface AgentLoopOptions {
   blockedTools?: string[];
   /** IM headless context — injected into system prompt to replace UI-dependent workspace logic */
   imContext?: IMContext;
-  /** Settings port — defaults to the in-process Zustand-backed reader. Injection point for
-   *  a future out-of-process agent runtime (see SettingsReader docstring). */
-  settingsReader?: SettingsReader;
 }
 
 /** Exit reason returned by runAgentLoop so callers (scheduler, trigger) can
@@ -710,8 +706,6 @@ export function shouldContinueTruncatedToolCalls(
 
 
 export async function runAgentLoop(conversationId: string, userMessage: string, options?: AgentLoopOptions): Promise<AgentLoopResult> {
-  const settingsReader = options?.settingsReader ?? createInProcessSettingsReader();
-
   // ── Concurrency guard: one live loop per conversation ────────────────────
   // The entry sequence below (clearAbortController → getAbortController)
   // replaces the controller WITHOUT aborting the previous loop, so a second
@@ -744,7 +738,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
   clearPlanMode(conversationId);
 
   const chatStore = useChatStore.getState();
-  const settings = settingsReader.getSnapshot();
+  const settings = useSettingsStore.getState();
   const taskExecutionStore = useTaskExecutionStore.getState();
 
   // ── Per-conversation model pin ──────────────────────────────────────────
@@ -1118,7 +1112,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
   const imageBase64Cache: ImageBase64Cache = new Map();
   // maxTurns priority: skill > agent definition > global setting > sane default
   // (never unlimited — see resolveMaxTurns). Headless runs get a tighter cap.
-  const globalMaxTurns = settingsReader.getSnapshot().agentMaxTurns;
+  const globalMaxTurns = useSettingsStore.getState().agentMaxTurns;
   const maxTurns = resolveMaxTurns({
     skillMaxTurns: route.skill?.maxTurns,
     definitionMaxTurns: route.definition?.maxTurns,
@@ -1276,7 +1270,7 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
 
     try {
       // ── Per-turn: refresh tools and dynamic prompt sections ──
-      const freshSettings = settingsReader.getSnapshot();
+      const freshSettings = useSettingsStore.getState();
       // Provider identity (id/baseUrl/apiKey/apiFormat) is pinned to the ENTRY
       // snapshot (`settings`), NOT freshSettings: the model name (effectiveModelId),
       // the adapter (chosen once at loop start), and the provider must stay a
@@ -2272,8 +2266,9 @@ export async function runAgentLoop(conversationId: string, userMessage: string, 
         ) {
           try {
             const { computeProposalSignal } = await import('./proposalSignal');
+            const { useSettingsStore } = await import('../../stores/settingsStore');
             const proactivity =
-              settingsReader.getSnapshot().soul?.proactivity ?? 'companion';
+              useSettingsStore.getState().soul?.proactivity ?? 'companion';
             const loopMsgs = (convRecord?.messages ?? []).filter((m) => m.loopId === loopId);
             const signal = computeProposalSignal(loopMsgs, proactivity);
             if (signal) {

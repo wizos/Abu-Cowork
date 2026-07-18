@@ -343,7 +343,7 @@ export type ToolboxTab = 'skills' | 'agents' | 'mcp';
 // State & Actions interfaces
 // ============================================================
 
-export interface SettingsState {
+interface SettingsState {
   // ── Provider & Model (V2) ──
   providers: ProviderInstance[];
   activeModel: ActiveModel;
