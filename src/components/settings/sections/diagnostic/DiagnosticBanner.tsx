@@ -64,9 +64,9 @@ export default function DiagnosticBanner() {
     <div className={cn('rounded-lg border p-3 flex items-center gap-3', style.bg)}>
       <Icon className={cn('h-5 w-5 shrink-0', style.iconColor, overall === 'checking' && 'animate-spin')} />
       <div className="flex-1 min-w-0">
-        <div className="text-[14px] font-medium">{verdict}</div>
+        <div className="text-h-sm font-medium">{verdict}</div>
         {lastCheckedAt && overall !== 'no-data' && (
-          <div className="text-[11px] text-[var(--abu-text-muted)] mt-0.5">
+          <div className="text-caption text-[var(--abu-text-muted)] mt-0.5">
             {i18nFormat(t.diagnostic.lastChecked, { when: formatRelativeTime(lastCheckedAt) })}
           </div>
         )}
@@ -75,7 +75,7 @@ export default function DiagnosticBanner() {
         type="button"
         onClick={runAll}
         disabled={isChecking}
-        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium bg-[var(--abu-bg-base)] border border-[var(--abu-border)] text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-minor font-medium bg-[var(--abu-bg-base)] border border-[var(--abu-border)] text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <RefreshCw className={cn('h-3.5 w-3.5', isChecking && 'animate-spin')} />
         {overall === 'no-data' ? t.diagnostic.runAll : t.diagnostic.runAllAgain}

@@ -37,10 +37,10 @@ export default function ProactivityPicker() {
   return (
     <div className="rounded-xl border border-[var(--abu-border)] bg-[var(--abu-bg-elevated)] p-4">
       <div>
-        <h4 className="text-[14px] font-semibold text-[var(--abu-text-primary)]">
+        <h4 className="text-h-sm font-semibold text-[var(--abu-text-primary)]">
           {t.soul.proactivityTitle}
         </h4>
-        <p className="text-[12px] text-[var(--abu-text-muted)] mt-1 leading-relaxed">
+        <p className="text-minor text-[var(--abu-text-muted)] mt-1 leading-relaxed">
           {t.soul.proactivityDesc}
         </p>
       </div>
@@ -59,12 +59,12 @@ export default function ProactivityPicker() {
               )}
             >
               <div className="flex items-center gap-1.5">
-                <span className="text-base leading-none">{opt.emoji}</span>
-                <span className="text-[12px] font-semibold text-[var(--abu-text-primary)]">
+                <span className="text-h-sm leading-none">{opt.emoji}</span>
+                <span className="text-minor font-semibold text-[var(--abu-text-primary)]">
                   {t.toolbox[opt.titleKey]}
                 </span>
               </div>
-              <p className="text-[11px] text-[var(--abu-text-muted)] leading-snug">
+              <p className="text-caption text-[var(--abu-text-muted)] leading-snug">
                 {t.toolbox[opt.descKey]}
               </p>
             </button>

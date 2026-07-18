@@ -11,7 +11,7 @@ export default function EnterpriseStatusBadge() {
   const config = mode.kind === 'enterprise' ? mode.config : mode.kind === 'offline' ? mode.lastConfig : null
   return (
     <div className={[
-      'inline-flex items-center gap-2 px-2 py-1 rounded text-[10px]',
+      'inline-flex items-center gap-2 px-2 py-1 rounded text-caption',
       mode.kind === 'offline' ? 'bg-amber-500/20 text-amber-300' : 'bg-orange-500/15 text-orange-400',
     ].join(' ')}>
       <MountPoint slot="brandSlot" binding={binding} config={config} size="sm" />

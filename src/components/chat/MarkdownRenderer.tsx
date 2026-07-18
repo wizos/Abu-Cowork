@@ -44,7 +44,7 @@ function CitationBadge({ index, title, onClick }: {
   return (
     <span
       onClick={handleClick}
-      className="inline-flex items-center justify-center mx-[2px] px-[5px] py-[1px] text-[11px] text-[var(--abu-clay)] bg-[var(--abu-clay-bg)] rounded cursor-pointer hover:bg-[var(--abu-clay-bg-15)] transition-colors leading-tight align-baseline"
+      className="inline-flex items-center justify-center mx-[2px] px-[5px] py-[1px] text-caption text-[var(--abu-clay)] bg-[var(--abu-clay-bg)] rounded cursor-pointer hover:bg-[var(--abu-clay-bg-15)] transition-colors leading-tight align-baseline"
       title={title}
     >
       {index}
@@ -231,7 +231,7 @@ export function CollapsibleCodeBlock({ codeString, language }: { codeString: str
           <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-[var(--abu-bg-muted)] to-transparent flex items-end justify-center pb-2">
             <button
               onClick={() => setCollapsed(false)}
-              className="flex items-center gap-1 px-3 py-1 rounded-full bg-black/5 hover:bg-black/10 text-xs text-[var(--abu-text-secondary)] transition-colors"
+              className="flex items-center gap-1 px-3 py-1 rounded-full bg-black/5 hover:bg-black/10 text-minor text-[var(--abu-text-secondary)] transition-colors"
             >
               <ChevronDown className="h-3.5 w-3.5" />
               {format(t.chat.codeBlockExpand, { lines: String(lineCount) })}
@@ -240,7 +240,7 @@ export function CollapsibleCodeBlock({ codeString, language }: { codeString: str
         )}
       </div>
       {/* Bottom toolbar — always visible */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-[var(--abu-bg-active)] text-xs text-[var(--abu-text-tertiary)] border-t border-[var(--abu-border-subtle)]">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-[var(--abu-bg-active)] text-minor text-[var(--abu-text-tertiary)] border-t border-[var(--abu-border-subtle)]">
         <div className="flex items-center gap-2">
           {language && <span>{language}</span>}
           {shouldCollapse && !isCollapsed && (
@@ -328,7 +328,7 @@ function buildMarkdownComponents(
       if (renderer) {
         const BlockComponent = renderer.component;
         return (
-          <Suspense fallback={<div className="my-3 rounded-lg bg-[var(--abu-bg-muted)] p-6 text-center text-sm text-[var(--abu-text-muted)]">…</div>}>
+          <Suspense fallback={<div className="my-3 rounded-lg bg-[var(--abu-bg-muted)] p-6 text-center text-body text-[var(--abu-text-muted)]">…</div>}>
             <BlockComponent code={codeString} />
           </Suspense>
         );
@@ -346,16 +346,16 @@ function buildMarkdownComponents(
       return null;
     },
     p({ children }: { children?: ReactNode }) {
-      return <p className={isUser ? 'my-1 leading-relaxed text-[14.5px]' : 'my-2 leading-7 text-[15px] text-[var(--abu-text-secondary)]'}>{processChildren(children, sr, onCitationClick)}</p>;
+      return <p className={isUser ? 'my-1 leading-relaxed text-body' : 'my-2 leading-7 text-body text-[var(--abu-text-secondary)]'}>{processChildren(children, sr, onCitationClick)}</p>;
     },
     h1({ children }: { children?: ReactNode }) {
-      return <h1 className="text-xl font-semibold mt-5 mb-2 text-[var(--abu-text-primary)]">{children}</h1>;
+      return <h1 className="text-h-md font-semibold mt-5 mb-2 text-[var(--abu-text-primary)]">{children}</h1>;
     },
     h2({ children }: { children?: ReactNode }) {
-      return <h2 className="text-lg font-semibold mt-4 mb-2 text-[var(--abu-text-primary)]">{children}</h2>;
+      return <h2 className="text-h-sm font-semibold mt-4 mb-2 text-[var(--abu-text-primary)]">{children}</h2>;
     },
     h3({ children }: { children?: ReactNode }) {
-      return <h3 className="text-base font-semibold mt-3 mb-1 text-[var(--abu-text-primary)]">{children}</h3>;
+      return <h3 className="text-h-xs font-semibold mt-3 mb-1 text-[var(--abu-text-primary)]">{children}</h3>;
     },
     ul({ children }: { children?: ReactNode }) {
       return <ul className="my-2 pl-6 list-outside list-disc space-y-1">{children}</ul>;
@@ -364,7 +364,7 @@ function buildMarkdownComponents(
       return <ol className="my-2 pl-6 list-outside list-decimal space-y-1">{children}</ol>;
     },
     li({ children }: { children?: ReactNode }) {
-      return <li className={isUser ? 'leading-relaxed text-[14.5px]' : 'leading-7 text-[15px] text-[var(--abu-text-secondary)]'}>{processChildren(children, sr, onCitationClick)}</li>;
+      return <li className={isUser ? 'leading-relaxed text-body' : 'leading-7 text-body text-[var(--abu-text-secondary)]'}>{processChildren(children, sr, onCitationClick)}</li>;
     },
     blockquote({ children }: { children?: ReactNode }) {
       return (
@@ -388,7 +388,7 @@ function buildMarkdownComponents(
     table({ children }: { children?: ReactNode }) {
       return (
         <div className="my-3 overflow-x-auto rounded-lg bg-[var(--abu-bg-muted)] border border-[var(--abu-border-subtle)]">
-          <table className="min-w-full text-sm">{children}</table>
+          <table className="min-w-full text-body">{children}</table>
         </div>
       );
     },

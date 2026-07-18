@@ -38,7 +38,7 @@ export default function ScratchpadSection() {
       >
         <div className="flex items-center gap-2">
           <FileText className="h-4 w-4 text-[var(--abu-text-tertiary)]" />
-          <span className="text-[13px] font-medium text-[var(--abu-text-primary)]">Scratchpad</span>
+          <span className="text-body font-medium text-[var(--abu-text-primary)]">Scratchpad</span>
         </div>
         <ChevronDown
           className={cn(
@@ -55,7 +55,7 @@ export default function ScratchpadSection() {
             <ScratchpadEntryRow key={entry.id} entry={entry} />
           ))}
           {entries.length > 5 && (
-            <div className="text-[11px] text-[var(--abu-text-muted)] pl-7">
+            <div className="text-caption text-[var(--abu-text-muted)] pl-7">
               +{entries.length - 5} more
             </div>
           )}
@@ -122,12 +122,12 @@ function ScratchpadEntryRow({ entry }: ScratchpadEntryRowProps) {
         <div className="shrink-0">{getFileIcon()}</div>
 
         {/* File name */}
-        <span className="flex-1 text-[13px] text-[var(--abu-text-tertiary)] truncate">
+        <span className="flex-1 text-body text-[var(--abu-text-tertiary)] truncate">
           {getDisplayName()}
         </span>
 
         {/* Viewed status */}
-        <span className="text-[11px] text-[var(--abu-text-muted)] shrink-0">
+        <span className="text-caption text-[var(--abu-text-muted)] shrink-0">
           {entry.isViewed ? 'viewed' : 'new'}
         </span>
       </div>
@@ -135,7 +135,7 @@ function ScratchpadEntryRow({ entry }: ScratchpadEntryRowProps) {
       {/* Expanded detail */}
       {showDetail && (
         <div className="ml-7 mt-1 p-2 bg-[var(--abu-bg-muted)] rounded">
-          <div className="font-mono text-[11px] text-[var(--abu-text-tertiary)] break-all max-h-[200px] overflow-y-auto whitespace-pre-wrap">
+          <div className="font-mono text-caption text-[var(--abu-text-tertiary)] break-all max-h-[200px] overflow-y-auto whitespace-pre-wrap">
             {entry.content.length > 1000
               ? entry.content.slice(0, 1000) + '...'
               : entry.content}

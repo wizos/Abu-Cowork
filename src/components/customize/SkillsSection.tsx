@@ -113,7 +113,7 @@ function FileTreeItem({
     return (
       <div>
         <div
-          className="flex items-center gap-2 py-1 px-2 rounded-md cursor-pointer hover:bg-[var(--abu-bg-active)]/60 text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] text-[13px] transition-colors"
+          className="flex items-center gap-2 py-1 px-2 rounded-md cursor-pointer hover:bg-[var(--abu-bg-active)]/60 text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] text-body transition-colors"
           style={{ marginLeft: ml }}
           onClick={() => setExpanded(!expanded)}
         >
@@ -131,7 +131,7 @@ function FileTreeItem({
   const isActive = selectedFile === node.path;
   return (
     <div
-      className={`flex items-center gap-2 py-1 px-2 rounded-md cursor-pointer text-[13px] transition-colors ${
+      className={`flex items-center gap-2 py-1 px-2 rounded-md cursor-pointer text-body transition-colors ${
         isActive ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]' : 'text-[var(--abu-text-muted)] hover:bg-[var(--abu-bg-active)]/60 hover:text-[var(--abu-text-primary)]'
       }`}
       style={{ marginLeft: ml }}
@@ -317,7 +317,7 @@ export default function SkillsSection({ manualCreateTrigger, showUploadModal: ex
           description: skill.description,
           avatar: <FileText className="h-6 w-6 text-[var(--abu-text-muted)]" />,
           badge: badge ? (
-            <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium ${SOURCE_BADGE_TONE[badge.tone]}`}>
+            <span className={`shrink-0 px-1.5 py-0.5 rounded text-caption font-medium ${SOURCE_BADGE_TONE[badge.tone]}`}>
               {t.toolbox[badge.labelKey]}
             </span>
           ) : undefined,
@@ -355,7 +355,7 @@ export default function SkillsSection({ manualCreateTrigger, showUploadModal: ex
           TopTabNav), with a centered max-width so cards don't stretch edge-to-edge. */}
       <div className="flex-1 overflow-y-scroll overlay-scroll px-8 pb-6">
         {filteredSkills.length === 0 ? (
-          <div className="text-sm text-[var(--abu-text-muted)] py-16 text-center">{t.toolbox.noSkillsFound}</div>
+          <div className="text-body text-[var(--abu-text-muted)] py-16 text-center">{t.toolbox.noSkillsFound}</div>
         ) : (
           <div className="max-w-5xl mx-auto space-y-6">
             {/* Category · Mine — user's own or team-shipped skills.
@@ -365,7 +365,7 @@ export default function SkillsSection({ manualCreateTrigger, showUploadModal: ex
                 implementation-level SkillSource enum. */}
             {skillGroups.mine.length > 0 && (
               <div>
-                <div className="mb-3 text-[13px] font-medium text-[var(--abu-text-muted)]">{t.toolbox.categoryMine}</div>
+                <div className="mb-3 text-body font-medium text-[var(--abu-text-muted)]">{t.toolbox.categoryMine}</div>
                 <ToolGrid>{skillGroups.mine.map((skill) => renderSkillCard(skill))}</ToolGrid>
               </div>
             )}
@@ -378,10 +378,10 @@ export default function SkillsSection({ manualCreateTrigger, showUploadModal: ex
                 kept as-is rather than reshaped into ToolCards. */}
             {draftsCount > 0 && (
               <div>
-                <div className="mb-3 flex items-center gap-1.5 text-[13px] font-medium text-[var(--abu-text-muted)]">
+                <div className="mb-3 flex items-center gap-1.5 text-body font-medium text-[var(--abu-text-muted)]">
                   <span>{t.toolbox.categoryAgentEvolved}</span>
-                  <span className="px-1.5 py-0.5 text-[10px] rounded bg-purple-100 text-purple-700">{t.toolbox.categoryAgentEvolvedBadge}</span>
-                  <span className="text-[11px] text-[var(--abu-text-placeholder)]">{draftsCount}</span>
+                  <span className="px-1.5 py-0.5 text-caption rounded bg-purple-100 text-purple-700">{t.toolbox.categoryAgentEvolvedBadge}</span>
+                  <span className="text-caption text-[var(--abu-text-placeholder)]">{draftsCount}</span>
                 </div>
                 <SkillDraftsPanel />
               </div>
@@ -390,7 +390,7 @@ export default function SkillsSection({ manualCreateTrigger, showUploadModal: ex
             {/* Category · Built-in — bundled with Abu. Read-only. */}
             {skillGroups.builtin.length > 0 && (
               <div>
-                <div className="mb-3 text-[13px] font-medium text-[var(--abu-text-muted)]">{t.toolbox.categoryBuiltin}</div>
+                <div className="mb-3 text-body font-medium text-[var(--abu-text-muted)]">{t.toolbox.categoryBuiltin}</div>
                 <ToolGrid>{skillGroups.builtin.map((skill) => renderSkillCard(skill))}</ToolGrid>
               </div>
             )}
@@ -426,7 +426,7 @@ export default function SkillsSection({ manualCreateTrigger, showUploadModal: ex
                   {/* Try in chat - only when enabled */}
                   {!disabledSet.has(selected.name) && (
                     <button
-                      className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)] transition-colors"
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-minor text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)] transition-colors"
                       onClick={() => {
                         setMenuSkill(null);
                         startNewConversation();
@@ -440,7 +440,7 @@ export default function SkillsSection({ manualCreateTrigger, showUploadModal: ex
                   )}
                   {/* Export - available for all skills */}
                   <button
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)] transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-minor text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)] transition-colors"
                     onClick={() => { handleExport(selected); setMenuSkill(null); }}
                   >
                     <Download className="h-3 w-3" />
@@ -450,7 +450,7 @@ export default function SkillsSection({ manualCreateTrigger, showUploadModal: ex
                       builtin skills typically have no history, so
                       the modal's empty state explains this. */}
                   <button
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)] transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-minor text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)] transition-colors"
                     onClick={() => { setHistorySkill(selected); setMenuSkill(null); }}
                   >
                     <Clock className="h-3 w-3" />
@@ -460,14 +460,14 @@ export default function SkillsSection({ manualCreateTrigger, showUploadModal: ex
                   {selected.source !== 'builtin' && !isSystemSkill(selected) && (
                     <>
                       <button
-                        className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)] transition-colors"
+                        className="w-full flex items-center gap-2 px-3 py-1.5 text-minor text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)] transition-colors"
                         onClick={() => { setEditorSkill(selected); setMenuSkill(null); setSelectedSkill(null); }}
                       >
                         <Pencil className="h-3 w-3" />
                         {t.toolbox.skillEdit}
                       </button>
                       <button
-                        className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        className="w-full flex items-center gap-2 px-3 py-1.5 text-minor text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                         onClick={() => { handleDelete(selected); setMenuSkill(null); }}
                       >
                         <Trash2 className="h-3 w-3" />
@@ -485,8 +485,8 @@ export default function SkillsSection({ manualCreateTrigger, showUploadModal: ex
           <div className="space-y-5">
             {/* Added by */}
             <div>
-              <div className="text-xs text-[var(--abu-text-muted)] mb-0.5">{t.toolbox.skillAddedBy}</div>
-              <div className="text-sm font-medium text-[var(--abu-text-primary)]">{
+              <div className="text-minor text-[var(--abu-text-muted)] mb-0.5">{t.toolbox.skillAddedBy}</div>
+              <div className="text-body font-medium text-[var(--abu-text-primary)]">{
                 selected.source === 'builtin' ? t.toolbox.skillSourceBuiltin :
                 selected.source === 'user' ? t.toolbox.skillSourceUser :
                 selected.source === 'standard' ? t.toolbox.skillSourceStandard :
@@ -498,10 +498,10 @@ export default function SkillsSection({ manualCreateTrigger, showUploadModal: ex
             {/* Description */}
             <div>
               <div className="flex items-center gap-1 mb-1.5">
-                <span className="text-xs text-[var(--abu-text-muted)]">Description</span>
+                <span className="text-minor text-[var(--abu-text-muted)]">Description</span>
                 <Info className="h-3 w-3 text-[var(--abu-text-muted)]" />
               </div>
-              <p className="text-sm text-[var(--abu-text-primary)] leading-relaxed">{selected.description}</p>
+              <p className="text-body text-[var(--abu-text-primary)] leading-relaxed">{selected.description}</p>
             </div>
 
             {/* Files: SKILL.md + supporting files, with an on-demand viewer */}
@@ -515,7 +515,7 @@ export default function SkillsSection({ manualCreateTrigger, showUploadModal: ex
                   {modalFiles.length > 0 && (
                     <div className="max-h-40 overflow-y-auto overlay-scroll border-b border-[var(--abu-border)] p-1.5 space-y-0.5">
                       <div
-                        className={`flex items-center gap-2 py-1 px-2 rounded-md cursor-pointer text-[13px] transition-colors ${
+                        className={`flex items-center gap-2 py-1 px-2 rounded-md cursor-pointer text-body transition-colors ${
                           activeFilePath === 'SKILL.md' ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]' : 'text-[var(--abu-text-muted)] hover:bg-[var(--abu-bg-active)]/60 hover:text-[var(--abu-text-primary)]'
                         }`}
                         onClick={() => setActiveFilePath('SKILL.md')}
@@ -530,7 +530,7 @@ export default function SkillsSection({ manualCreateTrigger, showUploadModal: ex
                   )}
                   {/* Viewer header: active filename + preview/source toggle */}
                   <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-[var(--abu-bg-base)] border-b border-[var(--abu-border)]">
-                    <span className="text-xs font-medium text-[var(--abu-text-secondary)] truncate">{activeFilePath}</span>
+                    <span className="text-minor font-medium text-[var(--abu-text-secondary)] truncate">{activeFilePath}</span>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
                         onClick={() => setContentViewMode('preview')}
@@ -551,11 +551,11 @@ export default function SkillsSection({ manualCreateTrigger, showUploadModal: ex
                   {/* Content */}
                   <div className="px-4 py-4 bg-[var(--abu-bg-base)]">
                     {displayContent === null ? (
-                      <div className="text-xs text-[var(--abu-text-muted)] py-6 text-center">…</div>
+                      <div className="text-minor text-[var(--abu-text-muted)] py-6 text-center">…</div>
                     ) : contentViewMode === 'preview' && isMd ? (
                       <MarkdownRenderer content={displayContent} />
                     ) : (
-                      <pre className="text-xs text-[var(--abu-text-primary)] whitespace-pre-wrap break-words font-mono leading-relaxed">{displayContent}</pre>
+                      <pre className="text-minor text-[var(--abu-text-primary)] whitespace-pre-wrap break-words font-mono leading-relaxed">{displayContent}</pre>
                     )}
                   </div>
                 </div>

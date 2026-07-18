@@ -64,18 +64,18 @@ export default function ToolDetailModal({
         <div className="shrink-0 flex items-start justify-between gap-3 px-6 pt-6 pb-4">
           <div className="flex items-start gap-4 min-w-0">
             {avatar && (
-              <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-[var(--abu-bg-active)] text-3xl shrink-0 select-none">
+              <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-[var(--abu-bg-active)] text-h-xl shrink-0 select-none">
                 {avatar}
               </div>
             )}
             <div className="min-w-0 pt-1">
               {title && (
-                <h2 className="text-lg font-semibold text-[var(--abu-text-primary)] leading-snug truncate">
+                <h2 className="text-h-md font-semibold text-[var(--abu-text-primary)] leading-snug truncate">
                   {title}
                 </h2>
               )}
               {subtitle && (
-                <div className="mt-0.5 text-sm text-[var(--abu-text-tertiary)]">{subtitle}</div>
+                <div className="mt-0.5 text-body text-[var(--abu-text-tertiary)]">{subtitle}</div>
               )}
             </div>
           </div>

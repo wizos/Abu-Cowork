@@ -29,7 +29,7 @@ export default function ScheduleView() {
           shared content-area header. Inset with px-8 + max-w-5xl so it lines
           up with the list below (and with the header's tabs/actions above). */}
       <div className="px-8 pt-4 pb-2">
-        <div className="max-w-5xl mx-auto flex items-center gap-1.5 text-[12px] text-[var(--abu-text-tertiary)] min-w-0">
+        <div className="max-w-5xl mx-auto flex items-center gap-1.5 text-minor text-[var(--abu-text-tertiary)] min-w-0">
           <Info className="h-3.5 w-3.5 shrink-0" />
           <span className="truncate">{t.schedule.onlyRunWhileAwake}</span>
         </div>
@@ -41,10 +41,10 @@ export default function ScheduleView() {
           <div className="w-16 h-16 rounded-full bg-[var(--abu-bg-active)] flex items-center justify-center mb-4">
             <Clock className="h-7 w-7 text-[var(--abu-text-muted)]" />
           </div>
-          <p className="text-[15px] text-[var(--abu-text-primary)] font-medium mb-1.5">
+          <p className="text-h-sm text-[var(--abu-text-primary)] font-medium mb-1.5">
             {t.schedule.noTasks}
           </p>
-          <p className="text-[13px] text-[var(--abu-text-tertiary)]">
+          <p className="text-body text-[var(--abu-text-tertiary)]">
             {t.schedule.noTasksHint}
           </p>
         </div>

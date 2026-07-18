@@ -110,12 +110,12 @@ export default function ScheduleTaskDetail() {
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <h1 className="text-[18px] font-semibold text-[var(--abu-text-primary)] flex-1 truncate">
+        <h1 className="text-h-md font-semibold text-[var(--abu-text-primary)] flex-1 truncate">
           {task.name}
         </h1>
         <button
           onClick={handleEdit}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-muted)] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-body text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-muted)] transition-colors"
         >
           <Pencil className="h-3.5 w-3.5" />
           {t.schedule.edit}
@@ -129,7 +129,7 @@ export default function ScheduleTaskDetail() {
           <div className="bg-[var(--abu-bg-muted)] rounded-xl border border-[var(--abu-border)] p-4 space-y-3">
             {/* Status */}
             <div className="flex items-center justify-between">
-              <span className="text-[13px] text-[var(--abu-text-tertiary)]">{t.schedule.status}</span>
+              <span className="text-body text-[var(--abu-text-tertiary)]">{t.schedule.status}</span>
               <span className="flex items-center gap-1.5">
                 <span
                   className={cn(
@@ -138,7 +138,7 @@ export default function ScheduleTaskDetail() {
                   )}
                 />
                 <span className={cn(
-                  'text-[13px] font-medium',
+                  'text-body font-medium',
                   isPaused ? 'text-[var(--abu-text-tertiary)]' : 'text-green-600'
                 )}>
                   {isPaused ? t.schedule.statusPaused : t.schedule.statusActive}
@@ -148,8 +148,8 @@ export default function ScheduleTaskDetail() {
 
             {/* Schedule */}
             <div className="flex items-center justify-between">
-              <span className="text-[13px] text-[var(--abu-text-tertiary)]">{t.schedule.schedule}</span>
-              <span className="flex items-center gap-1.5 text-[13px] text-[var(--abu-text-primary)]">
+              <span className="text-body text-[var(--abu-text-tertiary)]">{t.schedule.schedule}</span>
+              <span className="flex items-center gap-1.5 text-body text-[var(--abu-text-primary)]">
                 <Clock className="h-3.5 w-3.5 text-[var(--abu-text-tertiary)]" />
                 {scheduleDesc}
               </span>
@@ -157,8 +157,8 @@ export default function ScheduleTaskDetail() {
 
             {/* Total runs */}
             <div className="flex items-center justify-between">
-              <span className="text-[13px] text-[var(--abu-text-tertiary)]">{t.schedule.runHistory}</span>
-              <span className="text-[13px] text-[var(--abu-text-primary)]">
+              <span className="text-body text-[var(--abu-text-tertiary)]">{t.schedule.runHistory}</span>
+              <span className="text-body text-[var(--abu-text-primary)]">
                 {format(t.schedule.totalRuns, { count: task.totalRuns })}
               </span>
             </div>
@@ -167,8 +167,8 @@ export default function ScheduleTaskDetail() {
           {/* Description */}
           {task.description && (
             <div className="bg-[var(--abu-bg-muted)] rounded-xl border border-[var(--abu-border)] p-4">
-              <div className="text-[13px] text-[var(--abu-text-tertiary)] mb-1.5">{t.schedule.description}</div>
-              <p className="text-[14px] text-[var(--abu-text-primary)] leading-relaxed whitespace-pre-wrap">
+              <div className="text-body text-[var(--abu-text-tertiary)] mb-1.5">{t.schedule.description}</div>
+              <p className="text-body text-[var(--abu-text-primary)] leading-relaxed whitespace-pre-wrap">
                 {task.description}
               </p>
             </div>
@@ -176,8 +176,8 @@ export default function ScheduleTaskDetail() {
 
           {/* Prompt */}
           <div className="bg-[var(--abu-bg-muted)] rounded-xl border border-[var(--abu-border)] p-4">
-            <div className="text-[13px] text-[var(--abu-text-tertiary)] mb-1.5">{t.schedule.prompt}</div>
-            <p className="text-[14px] text-[var(--abu-text-primary)] leading-relaxed whitespace-pre-wrap font-mono bg-[var(--abu-bg-base)] rounded-lg p-3 text-[13px]">
+            <div className="text-body text-[var(--abu-text-tertiary)] mb-1.5">{t.schedule.prompt}</div>
+            <p className="text-[var(--abu-text-primary)] leading-relaxed whitespace-pre-wrap font-mono bg-[var(--abu-bg-base)] rounded-lg p-3 text-body">
               {task.prompt}
             </p>
           </div>
@@ -188,7 +188,7 @@ export default function ScheduleTaskDetail() {
               onClick={handleRunNow}
               disabled={isRunning}
               className={cn(
-                'flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium transition-colors',
+                'flex items-center gap-1.5 px-4 py-2 rounded-lg text-body font-medium transition-colors',
                 isRunning
                   ? 'bg-amber-50 text-amber-600 cursor-not-allowed'
                   : 'bg-[var(--abu-clay)] text-white hover:bg-[var(--abu-clay-hover)]'
@@ -204,7 +204,7 @@ export default function ScheduleTaskDetail() {
 
             <button
               onClick={() => isPaused ? resumeTask(task.id) : pauseTask(task.id)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium bg-[var(--abu-bg-muted)] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)] transition-colors"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-body font-medium bg-[var(--abu-bg-muted)] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)] transition-colors"
             >
               {isPaused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
               {isPaused ? t.schedule.resume : t.schedule.pause}
@@ -214,7 +214,7 @@ export default function ScheduleTaskDetail() {
 
             <button
               onClick={handleDelete}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-medium text-red-500 hover:bg-red-50 transition-colors"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-body font-medium text-red-500 hover:bg-red-50 transition-colors"
             >
               <Trash2 className="h-3.5 w-3.5" />
               {t.schedule.delete}
@@ -224,7 +224,7 @@ export default function ScheduleTaskDetail() {
           {/* Run history */}
           <div className="bg-[var(--abu-bg-muted)] rounded-xl border border-[var(--abu-border)] overflow-hidden">
             <div className="px-4 py-3 border-b border-[var(--abu-border)]">
-              <h3 className="text-[14px] font-medium text-[var(--abu-text-primary)]">
+              <h3 className="text-h-sm font-medium text-[var(--abu-text-primary)]">
                 {t.schedule.runHistory}
               </h3>
             </div>

@@ -142,14 +142,14 @@ export default function ConversationSearchModal({ open, onClose }: { open: boole
               else if (e.key === 'Enter' && firstId) pick(firstId);
             }}
             placeholder={t.sidebar.searchPlaceholder}
-            className="flex-1 bg-transparent text-sm text-[var(--abu-text-primary)] placeholder:text-[var(--abu-text-muted)] focus:outline-none"
+            className="flex-1 bg-transparent text-body text-[var(--abu-text-primary)] placeholder:text-[var(--abu-text-muted)] focus:outline-none"
           />
         </div>
 
         {/* Results */}
         <div className="flex-1 min-h-0 overflow-y-auto overlay-scroll py-1">
           {isEmpty ? (
-            <div className="px-4 py-8 text-center text-sm text-[var(--abu-text-muted)]">
+            <div className="px-4 py-8 text-center text-body text-[var(--abu-text-muted)]">
               {t.sidebar.noSearchResults}
             </div>
           ) : isSearching ? (
@@ -162,7 +162,7 @@ export default function ConversationSearchModal({ open, onClose }: { open: boole
                   className="flex items-center gap-2.5 w-full px-4 py-2 text-left hover:bg-[var(--abu-bg-hover)]"
                 >
                   <MessageSquare className="h-4 w-4 shrink-0 text-[var(--abu-text-tertiary)]" strokeWidth={1.5} />
-                  <span className="flex-1 min-w-0 truncate text-sm text-[var(--abu-text-primary)]">
+                  <span className="flex-1 min-w-0 truncate text-body text-[var(--abu-text-primary)]">
                     {highlightQuery(cleanTitle(c.title), trimmed, HL)}
                   </span>
                 </button>
@@ -176,12 +176,12 @@ export default function ConversationSearchModal({ open, onClose }: { open: boole
                 >
                   <div className="flex items-center gap-2.5 w-full min-w-0">
                     <MessageSquare className="h-4 w-4 shrink-0 text-[var(--abu-text-tertiary)]" strokeWidth={1.5} />
-                    <span className="flex-1 min-w-0 truncate text-sm text-[var(--abu-text-primary)]">
+                    <span className="flex-1 min-w-0 truncate text-body text-[var(--abu-text-primary)]">
                       {highlightQuery(cleanTitle(h.title), trimmed, HL)}
                     </span>
                   </div>
                   {h.snippet && (
-                    <span className="w-full pl-[26px] truncate text-xs text-[var(--abu-text-muted)]">
+                    <span className="w-full pl-[26px] truncate text-minor text-[var(--abu-text-muted)]">
                       {renderMarkedText(h.snippet, HL)}
                     </span>
                   )}
@@ -196,7 +196,7 @@ export default function ConversationSearchModal({ open, onClose }: { open: boole
                 className="flex items-center gap-2.5 w-full px-4 py-2 text-left hover:bg-[var(--abu-bg-hover)]"
               >
                 <MessageSquare className="h-4 w-4 shrink-0 text-[var(--abu-text-tertiary)]" strokeWidth={1.5} />
-                <span className="flex-1 min-w-0 truncate text-sm text-[var(--abu-text-primary)]">{cleanTitle(c.title)}</span>
+                <span className="flex-1 min-w-0 truncate text-body text-[var(--abu-text-primary)]">{cleanTitle(c.title)}</span>
               </button>
             ))
           )}

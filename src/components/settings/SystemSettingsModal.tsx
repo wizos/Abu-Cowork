@@ -129,7 +129,7 @@ export default function SystemSettingsView() {
                       key={item.id}
                       onClick={() => setActiveSystemTab(item.id)}
                       className={cn(
-                        'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left',
+                        'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-body font-medium transition-colors text-left',
                         isActive
                           ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]'
                           : 'text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]'

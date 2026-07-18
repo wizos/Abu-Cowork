@@ -377,7 +377,7 @@ export default function RenderableCodeBlock({
     <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white to-transparent flex items-end justify-center pb-2">
       <button
         onClick={() => setExpanded(true)}
-        className="flex items-center gap-1 px-3 py-1 rounded-full bg-black/5 hover:bg-black/10 text-xs text-[var(--abu-text-muted)] transition-colors"
+        className="flex items-center gap-1 px-3 py-1 rounded-full bg-black/5 hover:bg-black/10 text-minor text-[var(--abu-text-muted)] transition-colors"
       >
         <ChevronDown className="h-3.5 w-3.5" />
         {config.i18n.expand}
@@ -388,7 +388,7 @@ export default function RenderableCodeBlock({
   const collapseButton = overflows && expanded && (
     <button
       onClick={() => setExpanded(false)}
-      className="flex items-center gap-0.5 text-xs text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] transition-colors"
+      className="flex items-center gap-0.5 text-minor text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] transition-colors"
     >
       <ChevronUp className="h-3.5 w-3.5" />
       {config.i18n.collapse}
@@ -408,7 +408,7 @@ export default function RenderableCodeBlock({
       </div>
     </div>
   ) : (
-    <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-[var(--abu-bg-muted)] text-sm text-[var(--abu-text-muted)]">
+    <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-[var(--abu-bg-muted)] text-body text-[var(--abu-text-muted)]">
       {config.i18n.loading}
     </div>
   ));
@@ -421,7 +421,7 @@ export default function RenderableCodeBlock({
         <button onClick={handleZoomOut} disabled={scale <= ZOOM_MIN} className={cn(btnClass, 'disabled:opacity-40 disabled:cursor-not-allowed')} title="Zoom out">
           <ZoomOut className="h-3.5 w-3.5" />
         </button>
-        <button onClick={handleZoomReset} className={cn(btnClass, 'text-[11px] tabular-nums w-10')} title="Reset zoom">
+        <button onClick={handleZoomReset} className={cn(btnClass, 'text-caption tabular-nums w-10')} title="Reset zoom">
           {formatZoomPercent(scale)}
         </button>
         <button onClick={handleZoomIn} disabled={scale >= ZOOM_MAX} className={cn(btnClass, 'disabled:opacity-40 disabled:cursor-not-allowed')} title="Zoom in">
@@ -452,7 +452,7 @@ export default function RenderableCodeBlock({
       <button
         onClick={() => setShowSource(false)}
         className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/90 shadow-sm border border-[var(--abu-bg-pressed)]
-          text-xs text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)] transition-colors"
+          text-minor text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)] transition-colors"
       >
         <Eye className="h-3 w-3" />
         {config.i18n.viewPreview ?? t.chat.htmlWidgetViewPreview}
@@ -493,7 +493,7 @@ export default function RenderableCodeBlock({
     // Error-only fallback for seamless mode
     const seamlessErrorFallback = isError && !showSource && (
       <div>
-        <div className="rounded-t-lg bg-red-50 border border-red-200 border-b-0 px-3 py-2 text-xs text-red-600">
+        <div className="rounded-t-lg bg-red-50 border border-red-200 border-b-0 px-3 py-2 text-minor text-red-600">
           {config.i18n.renderError}
         </div>
         <CollapsibleCodeBlock codeString={code} language={config.fallbackLanguage} />
@@ -537,7 +537,7 @@ export default function RenderableCodeBlock({
   // Error-only fallback (showSource is handled inside the bordered container)
   const errorFallback = isError && !showSource && (
     <div>
-      <div className="rounded-t-lg bg-red-50 border border-red-200 border-b-0 px-3 py-2 text-xs text-red-600">
+      <div className="rounded-t-lg bg-red-50 border border-red-200 border-b-0 px-3 py-2 text-minor text-red-600">
         {config.i18n.renderError}
       </div>
       <CollapsibleCodeBlock codeString={code} language={config.fallbackLanguage} />

@@ -27,7 +27,7 @@ export default function SourcesSection({ results, highlightedIndex }: SourcesSec
       {/* Collapsible header — like Claude's "Searched the web" */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1.5 px-1 py-1 text-[12px] text-[var(--abu-text-muted)] hover:text-[var(--abu-text-tertiary)] transition-colors"
+        className="flex items-center gap-1.5 px-1 py-1 text-minor text-[var(--abu-text-muted)] hover:text-[var(--abu-text-tertiary)] transition-colors"
       >
         <Globe className="h-3 w-3" />
         <span>{t.chat.sources}</span>

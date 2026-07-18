@@ -64,21 +64,21 @@ export function SelectionToolbar({ rect, editing, onEditingChange, onAdd, onComm
           <button
             type="button"
             onClick={() => onEditingChange(true)}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]"
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]"
           >
             <MessageSquarePlus className="h-3.5 w-3.5" />
             {t.reference.commentToChat}
-            <span className="text-[11px] text-[var(--abu-text-tertiary)]">{mod} J</span>
+            <span className="text-caption text-[var(--abu-text-tertiary)]">{mod} J</span>
           </button>
           <div className="h-4 w-px bg-[var(--abu-border-subtle)]" />
           <button
             type="button"
             onClick={onAdd}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]"
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-body text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]"
           >
             <MessageSquare className="h-3.5 w-3.5" />
             {t.reference.addToChat}
-            <span className="text-[11px] text-[var(--abu-text-tertiary)]">↵</span>
+            <span className="text-caption text-[var(--abu-text-tertiary)]">↵</span>
           </button>
         </div>
       )}

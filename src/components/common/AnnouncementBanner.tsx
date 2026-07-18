@@ -55,7 +55,7 @@ export default function AnnouncementBanner({
     >
       <div className="p-4 space-y-2">
         <div className="flex items-start justify-between gap-2">
-          <span className={cn('text-xs font-semibold', style.accent)}>
+          <span className={cn('text-minor font-semibold', style.accent)}>
             {style.label(t)}
           </span>
           <Button
@@ -68,12 +68,12 @@ export default function AnnouncementBanner({
           </Button>
         </div>
 
-        <p className="text-sm font-medium text-[var(--abu-text-primary)] leading-snug">
+        <p className="text-body font-medium text-[var(--abu-text-primary)] leading-snug">
           {item.title}
         </p>
 
         {item.body && (
-          <div className="text-xs text-[var(--abu-text-secondary)] leading-relaxed line-clamp-4
+          <div className="text-minor text-[var(--abu-text-secondary)] leading-relaxed line-clamp-4
             [&_ul]:list-disc [&_ul]:pl-4 [&_ul]:space-y-0.5
             [&_ol]:list-decimal [&_ol]:pl-4
             [&_strong]:font-semibold [&_strong]:text-[var(--abu-text-primary)]

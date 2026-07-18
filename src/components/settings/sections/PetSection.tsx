@@ -21,8 +21,8 @@ export default function PetSection() {
     <div className="space-y-8">
       <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--abu-border)] bg-[var(--abu-bg-muted)]">
         <div className="flex-1 mr-4">
-          <p className="text-sm text-[var(--abu-text-primary)]">{t.settings.petEnable}</p>
-          <p className="text-xs text-[var(--abu-text-muted)] mt-0.5">{t.settings.petEnableDesc}</p>
+          <p className="text-body text-[var(--abu-text-primary)]">{t.settings.petEnable}</p>
+          <p className="text-minor text-[var(--abu-text-muted)] mt-0.5">{t.settings.petEnableDesc}</p>
         </div>
         <Toggle checked={petOpen} onChange={handleTogglePet} size="lg" />
       </div>

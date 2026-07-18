@@ -49,7 +49,7 @@ export default function StatusBar() {
   const tokenDisplay = currentUsage ? formatTokenUsage(currentUsage) : null;
 
   return (
-    <div className="flex items-center justify-between px-4 py-1.5 border-t border-zinc-800 bg-zinc-900/50 text-xs text-zinc-500">
+    <div className="flex items-center justify-between px-4 py-1.5 border-t border-zinc-800 bg-zinc-900/50 text-minor text-zinc-500">
       {/* Left: Agent status */}
       <div className="flex items-center gap-2">
         {agentStatus === 'idle' ? (

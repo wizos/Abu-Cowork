@@ -293,16 +293,16 @@ export default function UserQuestionDock({ conversationId, messageId, toolCallId
         {!confirmMode && <MessageSquare className="h-3.5 w-3.5 text-[var(--abu-clay)] shrink-0 mt-0.5" />}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="inline-block px-1.5 py-0.5 rounded bg-[var(--abu-bg-base)] border border-[var(--abu-border-subtle)] text-[11px] text-[var(--abu-text-tertiary)] font-medium">
+            <span className="inline-block px-1.5 py-0.5 rounded bg-[var(--abu-bg-base)] border border-[var(--abu-border-subtle)] text-caption text-[var(--abu-text-tertiary)] font-medium">
               {q.header}
             </span>
-            <span className="text-[11px] text-[var(--abu-text-muted)]">{hint}</span>
+            <span className="text-caption text-[var(--abu-text-muted)]">{hint}</span>
           </div>
-          <p className="mt-1 text-[13px] text-[var(--abu-text-primary)] leading-snug">{q.question}</p>
+          <p className="mt-1 text-body text-[var(--abu-text-primary)] leading-snug">{q.question}</p>
         </div>
         {/* Pager controls */}
         <div className="flex items-center gap-1 shrink-0">
-          <span className="text-[11px] text-[var(--abu-text-tertiary)] tabular-nums mr-0.5">
+          <span className="text-caption text-[var(--abu-text-tertiary)] tabular-nums mr-0.5">
             {format(t.userQuestion.pager, { current: page + 1, total })}
           </span>
           <button
@@ -350,7 +350,7 @@ export default function UserQuestionDock({ conversationId, messageId, toolCallId
               }}
               onMouseEnter={() => setHighlight(oIdx)}
               className={cn(
-                'w-full text-left px-2 py-1.5 rounded-lg text-[13px] transition-colors flex items-start gap-2',
+                'w-full text-left px-2 py-1.5 rounded-lg text-body transition-colors flex items-start gap-2',
                 isChecked
                   ? 'bg-[var(--abu-clay-bg)] border border-[var(--abu-clay-ring)] text-[var(--abu-text-primary)]'
                   : cn(
@@ -361,7 +361,7 @@ export default function UserQuestionDock({ conversationId, messageId, toolCallId
                     ),
               )}
             >
-              <span className="mt-0.5 w-3.5 text-[11px] text-[var(--abu-text-muted)] tabular-nums shrink-0 text-center">
+              <span className="mt-0.5 w-3.5 text-caption text-[var(--abu-text-muted)] tabular-nums shrink-0 text-center">
                 {oIdx + 1}
               </span>
               <span
@@ -376,7 +376,7 @@ export default function UserQuestionDock({ conversationId, messageId, toolCallId
               <span className="flex-1 min-w-0">
                 <span className="font-medium">{opt.label}</span>
                 {opt.description && (
-                  <span className="block text-[11px] text-[var(--abu-text-muted)] mt-0.5">
+                  <span className="block text-caption text-[var(--abu-text-muted)] mt-0.5">
                     {opt.description}
                   </span>
                 )}
@@ -392,7 +392,7 @@ export default function UserQuestionDock({ conversationId, messageId, toolCallId
             onClick={() => toggleOther(q.multiSelect)}
             onMouseEnter={() => setHighlight(optionCount)}
             className={cn(
-              'w-full text-left px-2 py-1.5 rounded-lg text-[13px] transition-colors flex items-center gap-2',
+              'w-full text-left px-2 py-1.5 rounded-lg text-body transition-colors flex items-center gap-2',
               state.otherChecked
                 ? 'bg-[var(--abu-clay-bg)] border border-[var(--abu-clay-ring)] text-[var(--abu-text-primary)]'
                 : cn(
@@ -425,7 +425,7 @@ export default function UserQuestionDock({ conversationId, messageId, toolCallId
                 value={state.otherText}
                 onChange={(e) => setOtherText(e.target.value)}
                 placeholder={t.userQuestion.otherInputPlaceholder}
-                className="h-8 text-[13px]"
+                className="h-8 text-body"
                 autoFocus
               />
             </div>
@@ -438,7 +438,7 @@ export default function UserQuestionDock({ conversationId, messageId, toolCallId
           onClick={skipAndAdvance}
           onMouseEnter={() => setHighlight(optionCount + 1)}
           className={cn(
-            'w-full text-left px-2 py-1 rounded-lg text-[12px] transition-colors flex items-center gap-2',
+            'w-full text-left px-2 py-1 rounded-lg text-minor transition-colors flex items-center gap-2',
             state.skipped
               ? 'text-[var(--abu-text-secondary)] bg-[var(--abu-bg-muted)] border border-[var(--abu-border)]'
               : cn(
@@ -457,14 +457,14 @@ export default function UserQuestionDock({ conversationId, messageId, toolCallId
 
       {/* Footer: hint + next/submit */}
       <div className="px-3 py-1.5 border-t border-[var(--abu-border-subtle)] bg-[var(--abu-bg-base)] flex items-center justify-between gap-2">
-        <p className="text-[11px] text-[var(--abu-text-muted)] truncate">{t.userQuestion.navHint}</p>
+        <p className="text-caption text-[var(--abu-text-muted)] truncate">{t.userQuestion.navHint}</p>
         {isLast ? (
           <Button
             size="sm"
             onClick={handleSubmit}
             disabled={!canSubmit}
             title={!canSubmit ? t.userQuestion.submitDisabledHint : undefined}
-            className="text-xs shrink-0"
+            className="text-minor shrink-0"
           >
             {confirmMode ? t.userQuestion.confirmButton : t.userQuestion.submitButton}
           </Button>
@@ -474,7 +474,7 @@ export default function UserQuestionDock({ conversationId, messageId, toolCallId
             variant="secondary"
             onClick={goNext}
             disabled={!currentAnswered}
-            className="text-xs shrink-0"
+            className="text-minor shrink-0"
           >
             {t.userQuestion.nextQuestion}
           </Button>

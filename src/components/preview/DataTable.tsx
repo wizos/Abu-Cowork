@@ -22,7 +22,7 @@ export default function DataTable({ headers, rows, totalRows }: {
 
   if (headers.length === 0 && rows.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-[13px] text-[var(--abu-text-tertiary)]">
+      <div className="flex items-center justify-center h-full text-body text-[var(--abu-text-tertiary)]">
         {t.panel.csvNoData}
       </div>
     );
@@ -33,13 +33,13 @@ export default function DataTable({ headers, rows, totalRows }: {
   return (
     <div className="flex flex-col h-full">
       {showingIndicator && (
-        <div className="shrink-0 px-3 py-1.5 text-[11px] text-[var(--abu-text-tertiary)] bg-[var(--abu-bg-muted)] border-b border-[var(--abu-bg-pressed)]">
+        <div className="shrink-0 px-3 py-1.5 text-caption text-[var(--abu-text-tertiary)] bg-[var(--abu-bg-muted)] border-b border-[var(--abu-bg-pressed)]">
           {format(t.panel.xlsxRowsShowing, { shown: String(rows.length), total: String(totalRows) })}
         </div>
       )}
       <ScrollArea className="flex-1 min-h-0">
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-[12px]">
+          <table className="w-full border-collapse text-minor">
             <thead>
               <tr className="sticky top-0 z-10 bg-[var(--abu-bg-muted)]">
                 {headers.map((h, i) => (

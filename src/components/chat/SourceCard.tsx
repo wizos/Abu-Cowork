@@ -27,23 +27,23 @@ export default function SourceCard({ result, index, isHighlighted }: SourceCardP
       )}
     >
       {/* Index number */}
-      <span className="shrink-0 text-[11px] text-[var(--abu-text-muted)] w-4 text-right tabular-nums">
+      <span className="shrink-0 text-caption text-[var(--abu-text-muted)] w-4 text-right tabular-nums">
         {index}
       </span>
 
       {/* Favicon placeholder — small colored dot derived from domain */}
-      <span className="shrink-0 w-4 h-4 rounded-sm bg-[var(--abu-border)] flex items-center justify-center text-[9px] font-medium text-[var(--abu-text-tertiary)] uppercase">
+      <span className="shrink-0 w-4 h-4 rounded-sm bg-[var(--abu-border)] flex items-center justify-center text-caption font-medium text-[var(--abu-text-tertiary)] uppercase">
         {(result.source || result.title)?.[0] || '?'}
       </span>
 
       {/* Title + domain */}
-      <span className="flex-1 min-w-0 truncate text-[13px] text-[var(--abu-text-primary)] group-hover:text-[var(--abu-clay)] transition-colors">
+      <span className="flex-1 min-w-0 truncate text-body text-[var(--abu-text-primary)] group-hover:text-[var(--abu-clay)] transition-colors">
         {result.title}
       </span>
 
       {/* Domain */}
       {result.source && (
-        <span className="shrink-0 text-[11px] text-[var(--abu-text-muted)] hidden sm:inline">
+        <span className="shrink-0 text-caption text-[var(--abu-text-muted)] hidden sm:inline">
           {result.source}
         </span>
       )}

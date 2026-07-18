@@ -93,7 +93,7 @@ export default function GeneralSection() {
 
       {/* Appearance */}
       <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--abu-border)] bg-[var(--abu-bg-muted)]">
-        <p className="text-sm text-[var(--abu-text-primary)]">{t.settings.appearance}</p>
+        <p className="text-body text-[var(--abu-text-primary)]">{t.settings.appearance}</p>
         <div className="flex gap-1">
           {([
             { value: 'light', icon: Sun, label: t.settings.appearanceLight },
@@ -105,7 +105,7 @@ export default function GeneralSection() {
               onClick={() => setTheme(value)}
               title={label}
               className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors',
+                'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-minor transition-colors',
                 theme === value
                   ? 'bg-[var(--abu-clay)] text-white'
                   : 'text-[var(--abu-text-tertiary)] hover:bg-[var(--abu-bg-hover)] hover:text-[var(--abu-text-primary)]'
@@ -120,7 +120,7 @@ export default function GeneralSection() {
 
       {/* Language */}
       <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--abu-border)] bg-[var(--abu-bg-muted)]">
-        <p className="text-sm text-[var(--abu-text-primary)]">{t.settings.language}</p>
+        <p className="text-body text-[var(--abu-text-primary)]">{t.settings.language}</p>
         <Select
           variant="inline"
           value={language}
@@ -131,7 +131,7 @@ export default function GeneralSection() {
 
       {/* Close window behavior */}
       <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--abu-border)] bg-[var(--abu-bg-muted)]">
-        <p className="text-sm text-[var(--abu-text-primary)]">{t.settings.closeWindowBehavior}</p>
+        <p className="text-body text-[var(--abu-text-primary)]">{t.settings.closeWindowBehavior}</p>
         <Select
           variant="inline"
           value={closeAction}
@@ -144,8 +144,8 @@ export default function GeneralSection() {
       <div className="space-y-3">
         <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--abu-border)] bg-[var(--abu-bg-muted)]">
           <div className="flex-1 mr-4">
-            <p className="text-sm text-[var(--abu-text-primary)]">{t.settings.behaviorSensor}</p>
-            <p className="text-xs text-[var(--abu-text-muted)] mt-0.5">{t.settings.behaviorSensorDesc}</p>
+            <p className="text-body text-[var(--abu-text-primary)]">{t.settings.behaviorSensor}</p>
+            <p className="text-minor text-[var(--abu-text-muted)] mt-0.5">{t.settings.behaviorSensorDesc}</p>
           </div>
           <Toggle
             checked={behaviorSensorEnabled}
@@ -163,7 +163,7 @@ export default function GeneralSection() {
                 title: t.settings.behaviorSensorCleared,
               });
             }}
-            className="flex items-center gap-2 px-3 py-2 text-xs text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-minor text-red-600 hover:bg-red-50 rounded-lg transition-colors"
           >
             <Trash2 className="h-3.5 w-3.5" />
             {t.settings.behaviorSensorClearData}
@@ -175,8 +175,8 @@ export default function GeneralSection() {
       <div className="space-y-3">
         <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--abu-border)] bg-[var(--abu-bg-muted)]">
           <div className="flex-1 mr-4">
-            <p className="text-sm text-[var(--abu-text-primary)]">{t.settings.computerUse}</p>
-            <p className="text-xs text-[var(--abu-text-muted)] mt-0.5">{t.settings.computerUseDesc}</p>
+            <p className="text-body text-[var(--abu-text-primary)]">{t.settings.computerUse}</p>
+            <p className="text-minor text-[var(--abu-text-muted)] mt-0.5">{t.settings.computerUseDesc}</p>
           </div>
           <Toggle
             checked={computerUseEnabled}
@@ -190,8 +190,8 @@ export default function GeneralSection() {
       {/* Prevent sleep */}
       <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--abu-border)] bg-[var(--abu-bg-muted)]">
         <div className="flex-1 mr-4">
-          <p className="text-sm text-[var(--abu-text-primary)]">{t.settings.preventSleep}</p>
-          <p className="text-xs text-[var(--abu-text-muted)] mt-0.5">{t.settings.preventSleepDesc}</p>
+          <p className="text-body text-[var(--abu-text-primary)]">{t.settings.preventSleep}</p>
+          <p className="text-minor text-[var(--abu-text-muted)] mt-0.5">{t.settings.preventSleepDesc}</p>
         </div>
         <Toggle
           checked={preventSleep}

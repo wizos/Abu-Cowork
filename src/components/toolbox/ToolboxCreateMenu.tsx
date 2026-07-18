@@ -50,7 +50,7 @@ export default function ToolboxCreateMenu({
       <button
         data-testid={triggerTestId}
         onClick={handleTriggerClick}
-        className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-[13px] font-medium bg-[var(--abu-clay)] text-white hover:bg-[var(--abu-clay-hover)] transition-colors shrink-0"
+        className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-body font-medium bg-[var(--abu-clay)] text-white hover:bg-[var(--abu-clay-hover)] transition-colors shrink-0"
       >
         <Plus className="h-3.5 w-3.5" />
         <span>{t.settings.add}</span>
@@ -63,7 +63,7 @@ export default function ToolboxCreateMenu({
           {onAICreate && (
             <button
               onClick={() => { setOpen(false); onAICreate(); }}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-active)] transition-colors"
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-minor text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-active)] transition-colors"
             >
               <Wand2 className="h-3.5 w-3.5 text-[var(--abu-clay)]" />
               <span>{t.toolbox.createWithAbu}</span>
@@ -72,7 +72,7 @@ export default function ToolboxCreateMenu({
           {onManualCreate && (
             <button
               onClick={() => { setOpen(false); onManualCreate(); }}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-active)] transition-colors"
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-minor text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-active)] transition-colors"
             >
               <PenLine className="h-3.5 w-3.5 text-[var(--abu-text-muted)]" />
               <span>{t.toolbox.createManually}</span>
@@ -81,7 +81,7 @@ export default function ToolboxCreateMenu({
           {onUploadFile && (
             <button
               onClick={() => { setOpen(false); onUploadFile(); }}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-active)] transition-colors"
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-minor text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-active)] transition-colors"
             >
               <Upload className="h-3.5 w-3.5 text-[var(--abu-text-muted)]" />
               <span>{uploadLabel}</span>

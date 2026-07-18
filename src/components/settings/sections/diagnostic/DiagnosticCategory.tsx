@@ -66,9 +66,9 @@ export default function DiagnosticCategory({ category, label, icon: Icon, result
             <ChevronDown className="h-3.5 w-3.5 text-[var(--abu-text-muted)] shrink-0" />
           )}
           <Icon className="h-4 w-4 text-[var(--abu-text-tertiary)] shrink-0" />
-          <h3 className="text-[13px] font-medium text-[var(--abu-text-primary)]">{label}</h3>
+          <h3 className="text-body font-medium text-[var(--abu-text-primary)]">{label}</h3>
           <span className={cn(
-            'text-[11px] tabular-nums',
+            'text-caption tabular-nums',
             summary.fail > 0 ? 'text-red-600' :
             summary.warn > 0 ? 'text-amber-600' :
             'text-[var(--abu-text-muted)]'
@@ -80,7 +80,7 @@ export default function DiagnosticCategory({ category, label, icon: Icon, result
           type="button"
           onClick={() => runCategory(category)}
           disabled={isChecking}
-          className="text-[11px] text-[var(--abu-text-muted)] hover:text-[var(--abu-clay)] transition-colors flex items-center gap-1 px-2 py-1 rounded-md hover:bg-[var(--abu-bg-hover)] disabled:opacity-50"
+          className="text-caption text-[var(--abu-text-muted)] hover:text-[var(--abu-clay)] transition-colors flex items-center gap-1 px-2 py-1 rounded-md hover:bg-[var(--abu-bg-hover)] disabled:opacity-50"
           title={t.diagnostic.categoryRecheck}
         >
           <RefreshCw className="h-3 w-3" />
@@ -89,7 +89,7 @@ export default function DiagnosticCategory({ category, label, icon: Icon, result
       {!collapsed && (
         <ul className="divide-y divide-[var(--abu-border-subtle)]">
           {results.length === 0 ? (
-            <li className="px-4 py-3 text-[12px] text-[var(--abu-text-muted)]">—</li>
+            <li className="px-4 py-3 text-minor text-[var(--abu-text-muted)]">—</li>
           ) : (
             results.map((r) => <DiagnosticItem key={r.id} result={r} />)
           )}

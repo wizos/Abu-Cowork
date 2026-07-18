@@ -80,7 +80,7 @@ export default function TriggerView() {
           shared content-area header. Inset with px-8 + max-w-5xl so it lines
           up with the list below (and with the header's tabs/actions above). */}
       <div className="px-8 pt-4 pb-2">
-        <div className="max-w-5xl mx-auto flex items-center gap-1.5 text-[12px] text-[var(--abu-text-tertiary)] min-w-0">
+        <div className="max-w-5xl mx-auto flex items-center gap-1.5 text-minor text-[var(--abu-text-tertiary)] min-w-0">
           <Info className="h-3.5 w-3.5 shrink-0" />
           <span className="truncate">{t.trigger.infoBanner}</span>
         </div>
@@ -93,16 +93,16 @@ export default function TriggerView() {
             <div className="w-16 h-16 rounded-full bg-[var(--abu-bg-active)] flex items-center justify-center mb-4">
               <Zap className="h-7 w-7 text-[var(--abu-text-muted)]" />
             </div>
-            <p className="text-[15px] text-[var(--abu-text-primary)] font-medium mb-1.5">
+            <p className="text-h-sm text-[var(--abu-text-primary)] font-medium mb-1.5">
               {t.trigger.noTriggers}
             </p>
-            <p className="text-[13px] text-[var(--abu-text-tertiary)] mb-8">
+            <p className="text-body text-[var(--abu-text-tertiary)] mb-8">
               {t.trigger.noTriggersHint}
             </p>
 
             {/* Template cards */}
             <div className="w-full max-w-md space-y-2">
-              <p className="text-[12px] font-medium text-[var(--abu-text-tertiary)] text-left">{t.trigger.useTemplate}</p>
+              <p className="text-minor font-medium text-[var(--abu-text-tertiary)] text-left">{t.trigger.useTemplate}</p>
               {TEMPLATES.map((tpl) => (
                 <button
                   key={tpl.nameKey}
@@ -113,8 +113,8 @@ export default function TriggerView() {
                     {tpl.icon}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium text-[var(--abu-text-primary)]">{t.trigger[tpl.nameKey]}</p>
-                    <p className="text-[11px] text-[var(--abu-text-tertiary)] truncate">{t.trigger[tpl.descKey]}</p>
+                    <p className="text-body font-medium text-[var(--abu-text-primary)]">{t.trigger[tpl.nameKey]}</p>
+                    <p className="text-caption text-[var(--abu-text-tertiary)] truncate">{t.trigger[tpl.descKey]}</p>
                   </div>
                 </button>
               ))}

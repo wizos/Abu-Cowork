@@ -142,10 +142,10 @@ export default function WeChatQRPanel({ onBound, compact = false }: WeChatQRPane
   if (phase.id === 'idle') {
     return (
       <div className={`${wrapCls} flex flex-col items-center gap-3 text-center`}>
-        <p className="text-[13px] text-[var(--abu-text-tertiary)]">{t.imChannel.wechatBindHint}</p>
+        <p className="text-body text-[var(--abu-text-tertiary)]">{t.imChannel.wechatBindHint}</p>
         <button
           onClick={fetchQR}
-          className="px-4 py-2 text-sm font-medium text-white bg-[var(--abu-clay)] hover:bg-[var(--abu-clay-hover)] rounded-lg transition-colors"
+          className="px-4 py-2 text-body font-medium text-white bg-[var(--abu-clay)] hover:bg-[var(--abu-clay-hover)] rounded-lg transition-colors"
         >
           {t.imChannel.wechatScanQR}
         </button>
@@ -157,7 +157,7 @@ export default function WeChatQRPanel({ onBound, compact = false }: WeChatQRPane
     return (
       <div className={`${wrapCls} flex flex-col items-center gap-3`}>
         <Loader2 className="h-8 w-8 text-[var(--abu-clay)] animate-spin" />
-        <p className="text-[13px] text-[var(--abu-text-muted)]">{t.imChannel.wechatScanQR}…</p>
+        <p className="text-body text-[var(--abu-text-muted)]">{t.imChannel.wechatScanQR}…</p>
       </div>
     );
   }
@@ -181,11 +181,11 @@ export default function WeChatQRPanel({ onBound, compact = false }: WeChatQRPane
 
         {/* Status text */}
         <div className="text-center space-y-1">
-          <p className="text-[13px] font-medium text-[var(--abu-text-primary)]">
+          <p className="text-body font-medium text-[var(--abu-text-primary)]">
             {isScanned ? t.imChannel.wechatScanned : t.imChannel.wechatWaiting}
           </p>
           {secsLeft !== undefined && (
-            <p className="text-[11px] text-[var(--abu-text-muted)]">
+            <p className="text-caption text-[var(--abu-text-muted)]">
               {format(t.imChannel.wechatExpireIn, { secs: String(secsLeft) })}
             </p>
           )}
@@ -198,7 +198,7 @@ export default function WeChatQRPanel({ onBound, compact = false }: WeChatQRPane
     return (
       <div className={`${wrapCls} flex flex-col items-center gap-2`}>
         <CheckCircle className="h-8 w-8 text-green-500" />
-        <p className="text-[13px] font-medium text-green-600">{t.imChannel.wechatSuccess}</p>
+        <p className="text-body font-medium text-green-600">{t.imChannel.wechatSuccess}</p>
       </div>
     );
   }
@@ -206,10 +206,10 @@ export default function WeChatQRPanel({ onBound, compact = false }: WeChatQRPane
   if (phase.id === 'expired') {
     return (
       <div className={`${wrapCls} flex flex-col items-center gap-3 text-center`}>
-        <p className="text-[13px] text-[var(--abu-text-muted)]">{t.imChannel.wechatExpired}</p>
+        <p className="text-body text-[var(--abu-text-muted)]">{t.imChannel.wechatExpired}</p>
         <button
           onClick={fetchQR}
-          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm text-[var(--abu-clay)] border border-[var(--abu-clay-40)] rounded-lg hover:bg-[var(--abu-clay-5)] transition-colors"
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-body text-[var(--abu-clay)] border border-[var(--abu-clay-40)] rounded-lg hover:bg-[var(--abu-clay-5)] transition-colors"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           {t.imChannel.wechatRetry}
@@ -223,10 +223,10 @@ export default function WeChatQRPanel({ onBound, compact = false }: WeChatQRPane
     return (
       <div className={`${wrapCls} flex flex-col items-center gap-3 text-center`}>
         <AlertCircle className="h-7 w-7 text-red-400" />
-        <p className="text-[12px] text-red-500 max-w-[280px]">{phase.message}</p>
+        <p className="text-minor text-red-500 max-w-[280px]">{phase.message}</p>
         <button
           onClick={fetchQR}
-          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm text-[var(--abu-clay)] border border-[var(--abu-clay-40)] rounded-lg hover:bg-[var(--abu-clay-5)] transition-colors"
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-body text-[var(--abu-clay)] border border-[var(--abu-clay-40)] rounded-lg hover:bg-[var(--abu-clay-5)] transition-colors"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           {t.imChannel.wechatRetry}

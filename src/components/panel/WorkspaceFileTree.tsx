@@ -107,7 +107,7 @@ function InlineNameInput({
       }}
       onClick={(e) => e.stopPropagation()}
       placeholder={placeholder}
-      className="flex-1 min-w-0 text-[12px] bg-transparent border-b border-[var(--abu-clay)] outline-none text-[var(--abu-text-primary)]"
+      className="flex-1 min-w-0 text-minor bg-transparent border-b border-[var(--abu-clay)] outline-none text-[var(--abu-text-primary)]"
     />
   );
 }
@@ -202,7 +202,7 @@ function TreeRow({
             onCancel={onRenameCancel}
           />
         ) : (
-          <span className="text-[12px] truncate flex-1 text-[var(--abu-text-primary)]">{entry.name}</span>
+          <span className="text-minor truncate flex-1 text-[var(--abu-text-primary)]">{entry.name}</span>
         )}
       </div>
 
@@ -229,7 +229,7 @@ function TreeRow({
           {isLoadingChildren && !children && (
             <div
               style={{ paddingLeft: childIndent }}
-              className="text-[11px] text-[var(--abu-text-muted)] py-0.5"
+              className="text-caption text-[var(--abu-text-muted)] py-0.5"
             >
               {t.panel.fileTree.loading}
             </div>
@@ -237,7 +237,7 @@ function TreeRow({
           {childError && (
             <div
               style={{ paddingLeft: childIndent }}
-              className="text-[11px] text-[var(--abu-text-muted)] py-0.5"
+              className="text-caption text-[var(--abu-text-muted)] py-0.5"
             >
               {t.panel.fileTree.loadError}
             </div>
@@ -245,7 +245,7 @@ function TreeRow({
           {children && children.length === 0 && (
             <div
               style={{ paddingLeft: childIndent }}
-              className="text-[11px] text-[var(--abu-text-muted)] py-0.5"
+              className="text-caption text-[var(--abu-text-muted)] py-0.5"
             >
               {t.panel.fileTree.empty}
             </div>
@@ -566,7 +566,7 @@ export default function WorkspaceFileTree() {
   return (
     <div className="flex flex-col h-full min-h-0 gap-2 mt-3">
       <div className="flex items-center justify-between shrink-0">
-        <h4 className="text-[11px] font-medium text-[var(--abu-text-muted)] uppercase tracking-wider">
+        <h4 className="text-caption font-medium text-[var(--abu-text-muted)] uppercase tracking-wider">
           {t.panel.fileTree.title}
         </h4>
         {rootPath && (
@@ -580,10 +580,10 @@ export default function WorkspaceFileTree() {
             </button>
             {menuOpen && (
               <div className="absolute top-full right-0 mt-1 z-50 w-36 bg-[var(--abu-bg-base)] border border-[var(--abu-border)] rounded-lg shadow-lg py-1">
-                <button onClick={handleNewFolder} className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]">
+                <button onClick={handleNewFolder} className="w-full flex items-center gap-2 px-3 py-1.5 text-minor text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]">
                   <FolderPlus className="h-3.5 w-3.5 shrink-0" /> {t.panel.fileTree.newFolder}
                 </button>
-                <button onClick={handleAddFile} className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]">
+                <button onClick={handleAddFile} className="w-full flex items-center gap-2 px-3 py-1.5 text-minor text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]">
                   <FilePlus className="h-3.5 w-3.5 shrink-0" /> {t.panel.fileTree.addFile}
                 </button>
               </div>
@@ -604,15 +604,15 @@ export default function WorkspaceFileTree() {
       )}
 
       {!rootPath ? (
-        <p className="text-[12px] text-[var(--abu-text-muted)] py-1">{t.panel.fileTree.noWorkspace}</p>
+        <p className="text-minor text-[var(--abu-text-muted)] py-1">{t.panel.fileTree.noWorkspace}</p>
       ) : rootMissing ? (
-        <p className="text-[12px] text-[var(--abu-text-muted)] py-1">{t.panel.fileTree.folderDeleted}</p>
+        <p className="text-minor text-[var(--abu-text-muted)] py-1">{t.panel.fileTree.folderDeleted}</p>
       ) : rootError ? (
-        <p className="text-[12px] text-[var(--abu-text-muted)] py-1">{t.panel.fileTree.loadError}</p>
+        <p className="text-minor text-[var(--abu-text-muted)] py-1">{t.panel.fileTree.loadError}</p>
       ) : isRootLoading && rootEntries.length === 0 ? (
-        <p className="text-[12px] text-[var(--abu-text-muted)] py-1">{t.panel.fileTree.loading}</p>
+        <p className="text-minor text-[var(--abu-text-muted)] py-1">{t.panel.fileTree.loading}</p>
       ) : rootEntries.length === 0 ? (
-        <p className="text-[12px] text-[var(--abu-text-muted)] py-1">{t.panel.fileTree.empty}</p>
+        <p className="text-minor text-[var(--abu-text-muted)] py-1">{t.panel.fileTree.empty}</p>
       ) : (
         <ScrollArea className="flex-1 min-h-0">
           <div className="space-y-0.5 pr-2 pb-2">
@@ -649,17 +649,17 @@ export default function WorkspaceFileTree() {
         >
           {confirmingDelete ? (
             <div className="px-3 py-2">
-              <p className="text-[12px] text-[var(--abu-text-secondary)] mb-2">{t.panel.fileTree.confirmDelete}</p>
+              <p className="text-minor text-[var(--abu-text-secondary)] mb-2">{t.panel.fileTree.confirmDelete}</p>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleDeleteConfirmed(contextMenu.entry)}
-                  className="px-2.5 py-1 rounded text-[12px] font-medium bg-red-500/10 text-red-500 hover:bg-red-500/20"
+                  className="px-2.5 py-1 rounded text-minor font-medium bg-red-500/10 text-red-500 hover:bg-red-500/20"
                 >
                   {t.panel.fileTree.moveToTrash}
                 </button>
                 <button
                   onClick={() => setContextMenu(null)}
-                  className="px-2.5 py-1 rounded text-[12px] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]"
+                  className="px-2.5 py-1 rounded text-minor text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]"
                 >
                   {t.common.cancel}
                 </button>
@@ -669,27 +669,27 @@ export default function WorkspaceFileTree() {
             <>
               <button
                 onClick={() => handleRevealInFinder(contextMenu.entry)}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]"
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-minor text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]"
               >
                 <ExternalLink className="h-3.5 w-3.5 shrink-0" /> {t.panel.fileTree.revealInFinder}
               </button>
               {!contextMenu.entry.isDirectory && (
                 <button
                   onClick={() => handleAddToChat(contextMenu.entry)}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]"
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-minor text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]"
                 >
                   <Paperclip className="h-3.5 w-3.5 shrink-0" /> {t.panel.fileTree.addToChat}
                 </button>
               )}
               <button
                 onClick={() => handleCopyPath(contextMenu.entry)}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]"
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-minor text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]"
               >
                 <Copy className="h-3.5 w-3.5 shrink-0" /> {t.panel.fileTree.copyPath}
               </button>
               <button
                 onClick={() => handleStartRename(contextMenu.entry)}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]"
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-minor text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]"
               >
                 <Pencil className="h-3.5 w-3.5 shrink-0" /> {t.panel.fileTree.rename}
               </button>
@@ -697,13 +697,13 @@ export default function WorkspaceFileTree() {
                 <>
                   <button
                     onClick={() => handleStartCreateInFolder(contextMenu.entry, 'file')}
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]"
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-minor text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]"
                   >
                     <FilePlus className="h-3.5 w-3.5 shrink-0" /> {t.panel.fileTree.newFile}
                   </button>
                   <button
                     onClick={() => handleStartCreateInFolder(contextMenu.entry, 'folder')}
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]"
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-minor text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]"
                   >
                     <FolderPlus className="h-3.5 w-3.5 shrink-0" /> {t.panel.fileTree.newFolder}
                   </button>
@@ -712,7 +712,7 @@ export default function WorkspaceFileTree() {
               <div className="my-1 border-t border-[var(--abu-border)]" />
               <button
                 onClick={(e) => { e.stopPropagation(); setConfirmingDelete(true); }}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-red-500 hover:bg-[var(--abu-bg-hover)]"
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-minor text-red-500 hover:bg-[var(--abu-bg-hover)]"
               >
                 <Trash2 className="h-3.5 w-3.5 shrink-0" /> {t.panel.fileTree.delete}
               </button>

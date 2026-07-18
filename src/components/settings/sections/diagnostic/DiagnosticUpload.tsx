@@ -137,14 +137,14 @@ export default function DiagnosticUpload({ onExportSuccess, description, onDescr
     <section className="space-y-4">
       {/* Field 1 — problem description (the primary input). */}
       <div>
-        <div className="mb-1.5 text-[13px] font-medium text-[var(--abu-text-secondary)]">
+        <div className="mb-1.5 text-body font-medium text-[var(--abu-text-secondary)]">
           {t.diagnostic.descriptionLabel}
         </div>
         <Textarea
           value={description}
           onChange={(e) => onDescriptionChange(e.target.value)}
           placeholder={t.diagnostic.uploadDescriptionPlaceholder}
-          className="min-h-[104px] text-[13px] resize-none"
+          className="min-h-[104px] text-body resize-none"
           disabled={busy}
         />
       </div>
@@ -152,10 +152,10 @@ export default function DiagnosticUpload({ onExportSuccess, description, onDescr
       {/* Field 2 — screenshots (label + right-aligned counter). */}
       <div>
         <div className="mb-1.5 flex items-center justify-between">
-          <span className="text-[13px] font-medium text-[var(--abu-text-secondary)]">
+          <span className="text-body font-medium text-[var(--abu-text-secondary)]">
             {t.diagnostic.screenshotTitle}
           </span>
-          <span className="text-[11px] text-[var(--abu-text-muted)]">
+          <span className="text-caption text-[var(--abu-text-muted)]">
             {format(t.diagnostic.screenshotCount, { n: screenshots.length })}
           </span>
         </div>
@@ -166,7 +166,7 @@ export default function DiagnosticUpload({ onExportSuccess, description, onDescr
           limits copy so no toggles/extra lines are needed. */}
       <div>
         <div className="mb-1.5 flex items-center gap-1.5">
-          <span className="text-[13px] font-medium text-[var(--abu-text-secondary)]">
+          <span className="text-body font-medium text-[var(--abu-text-secondary)]">
             {t.diagnostic.conversationPickerTitle}
           </span>
           <div ref={infoRef} className="relative flex items-center">
@@ -182,7 +182,7 @@ export default function DiagnosticUpload({ onExportSuccess, description, onDescr
               <Info className="h-3.5 w-3.5" />
             </button>
             {infoOpen && (
-              <div className="absolute z-50 left-0 top-full mt-1.5 w-[260px] p-2.5 rounded-lg bg-[var(--abu-bg-muted)] border border-[var(--abu-border)] shadow-md text-[11px] text-[var(--abu-text-secondary)] leading-relaxed">
+              <div className="absolute z-50 left-0 top-full mt-1.5 w-[260px] p-2.5 rounded-lg bg-[var(--abu-bg-muted)] border border-[var(--abu-border)] shadow-md text-caption text-[var(--abu-text-secondary)] leading-relaxed">
                 {t.diagnostic.conversationPickerInfoTooltip}
               </div>
             )}
@@ -197,12 +197,12 @@ export default function DiagnosticUpload({ onExportSuccess, description, onDescr
         {/* Raw-text toggle — ON by default (message text is included, secrets
             still scrubbed). Off strips text down to a size placeholder. */}
         <div className="mt-2 flex items-center justify-between py-1.5">
-          <label htmlFor="diag-include-raw" className="text-[12px] text-[var(--abu-text-secondary)] flex-1">
+          <label htmlFor="diag-include-raw" className="text-minor text-[var(--abu-text-secondary)] flex-1">
             {t.diagnostic.exportIncludeRaw}
           </label>
           <Toggle checked={includeRawText} onChange={() => setIncludeRawText(!includeRawText)} size="md" />
         </div>
-        <div className="-mt-0.5 text-[11px] text-[var(--abu-text-muted)] leading-relaxed">
+        <div className="-mt-0.5 text-caption text-[var(--abu-text-muted)] leading-relaxed">
           {t.diagnostic.exportIncludeRawHint}
         </div>
       </div>
@@ -210,7 +210,7 @@ export default function DiagnosticUpload({ onExportSuccess, description, onDescr
       {/* ── Submit ────────────────────────────────────────────── */}
       <div className="border-t border-[var(--abu-border)] pt-3 space-y-2">
         {/* Auto-included-content hint */}
-        <div className="text-[11px] text-[var(--abu-text-muted)]">{t.diagnostic.uploadAutoIncludedHint}</div>
+        <div className="text-caption text-[var(--abu-text-muted)]">{t.diagnostic.uploadAutoIncludedHint}</div>
 
         {/* Primary: upload to console */}
         <button
@@ -218,7 +218,7 @@ export default function DiagnosticUpload({ onExportSuccess, description, onDescr
           onClick={onUpload}
           disabled={uploadInProgress || exportInProgress}
           className={cn(
-            'mt-1 w-full py-2.5 rounded-lg text-[14px] font-medium transition-colors flex items-center justify-center gap-2',
+            'mt-1 w-full py-2.5 rounded-lg text-body font-medium transition-colors flex items-center justify-center gap-2',
             uploadDone
               ? 'bg-green-600/15 text-green-500 cursor-default'
               : 'bg-[var(--abu-clay)] text-white hover:bg-[var(--abu-clay-hover)] disabled:opacity-50 disabled:cursor-not-allowed'
@@ -247,7 +247,7 @@ export default function DiagnosticUpload({ onExportSuccess, description, onDescr
           type="button"
           onClick={onExport}
           disabled={exportInProgress || uploadInProgress}
-          className="w-full py-2 flex items-center justify-center gap-1.5 text-[12px] text-[var(--abu-text-muted)] hover:text-[var(--abu-text-secondary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full py-2 flex items-center justify-center gap-1.5 text-minor text-[var(--abu-text-muted)] hover:text-[var(--abu-text-secondary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {exportInProgress ? (
             <>

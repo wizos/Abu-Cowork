@@ -228,7 +228,7 @@ export default function BrowserTab({ tabId, url }: { tabId: string; url: string 
           onKeyDown={(e) => {
             if (e.key === 'Enter') commit(addressInput);
           }}
-          className="flex-1 h-7 text-[12px]"
+          className="flex-1 h-7 text-minor"
         />
 
         <Tooltip>
@@ -247,7 +247,7 @@ export default function BrowserTab({ tabId, url }: { tabId: string; url: string 
         {!committedUrl && (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-center p-4">
             <AppWindow className="w-6 h-6 text-[var(--abu-text-tertiary)]" strokeWidth={1.5} />
-            <p className="text-[13px] font-medium text-[var(--abu-text-secondary)]">{t.workspace.browser.startPrompt}</p>
+            <p className="text-body font-medium text-[var(--abu-text-secondary)]">{t.workspace.browser.startPrompt}</p>
           </div>
         )}
       </div>

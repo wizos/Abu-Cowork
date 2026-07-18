@@ -58,19 +58,19 @@ export default function InboxItemRow({
     )}>
       <div className="flex items-center gap-2 mb-2">
         {iconFor(item.type)}
-        <span className="text-[12px] font-medium text-[var(--abu-text-secondary)]">
+        <span className="text-minor font-medium text-[var(--abu-text-secondary)]">
           {labelFor(item.type, t)}
         </span>
         {item.unread && !processed && (
           <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
         )}
         {statusBadge && (
-          <span className={cn('ml-auto text-[11px] px-1.5 py-0.5 rounded', statusBadge.cls)}>
+          <span className={cn('ml-auto text-caption px-1.5 py-0.5 rounded', statusBadge.cls)}>
             {statusBadge.label}
           </span>
         )}
       </div>
-      <p className="text-[14px] text-[var(--abu-text-primary)] mb-3 whitespace-pre-wrap">
+      <p className="text-body text-[var(--abu-text-primary)] mb-3 whitespace-pre-wrap">
         {item.summary}
       </p>
       {!processed && (

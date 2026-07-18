@@ -22,7 +22,7 @@ export default function AgentStatusStrip({ conversationId }: { conversationId: s
     : t.chat.compressingContext;
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 text-[12px] text-[var(--abu-text-tertiary)]">
+    <div className="flex items-center gap-2 px-3 py-1.5 text-minor text-[var(--abu-text-tertiary)]">
       <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
       <span className="truncate">{text}</span>
     </div>

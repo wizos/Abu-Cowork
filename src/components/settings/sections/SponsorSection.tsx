@@ -11,8 +11,8 @@ export default function SponsorSection() {
         <Heart className="h-6 w-6 text-[var(--abu-clay)]" />
       </div>
       <div className="space-y-2">
-        <h3 className="text-lg font-semibold text-[var(--abu-text-primary)]">{t.about.sponsor}</h3>
-        <p className="text-sm text-[var(--abu-text-tertiary)]">{t.about.sponsorDesc}</p>
+        <h3 className="text-h-md font-semibold text-[var(--abu-text-primary)]">{t.about.sponsor}</h3>
+        <p className="text-body text-[var(--abu-text-tertiary)]">{t.about.sponsorDesc}</p>
       </div>
       <img src={sponsorQr} alt="Sponsor QR" className="w-52 h-52 rounded-xl shadow-sm" />
     </div>

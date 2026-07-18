@@ -117,13 +117,13 @@ export function PetNotificationBubble({
               // The 需要授权 hint is the whole point — pin it (flex-shrink-0)
               // and let the (contextual) title truncate to make room, so a
               // long title never squeezes the hint into "需要…".
-              <span className="flex-1 min-w-0 flex items-baseline gap-1.5 text-[11px] text-[var(--abu-text-primary)]">
+              <span className="flex-1 min-w-0 flex items-baseline gap-1.5 text-caption text-[var(--abu-text-primary)]">
                 {title && <b className="font-semibold truncate min-w-0">{title}</b>}
                 <span className="flex-shrink-0 font-medium" style={{ color: STATUS_COLOR.waiting }}>{t.pet.needAuth}</span>
               </span>
             ) : (
               <span
-                className={`flex-1 min-w-0 text-[11px] text-[var(--abu-text-primary)] ${expanded ? 'block whitespace-normal break-words leading-relaxed max-h-[300px] overflow-y-auto pr-1' : 'truncate'}`}
+                className={`flex-1 min-w-0 text-caption text-[var(--abu-text-primary)] ${expanded ? 'block whitespace-normal break-words leading-relaxed max-h-[300px] overflow-y-auto pr-1' : 'truncate'}`}
               >
                 {title && <b className="font-semibold">{title}</b>}
                 {title && summary ? '　' : ''}
@@ -151,7 +151,7 @@ export function PetNotificationBubble({
           <div className="mt-2">
             <Input
               ref={inputRef}
-              className="h-7 text-[11px] px-2"
+              className="h-7 text-caption px-2"
               placeholder={t.pet.replyPlaceholder}
               onKeyDown={handleReplyKey}
             />
@@ -163,7 +163,7 @@ export function PetNotificationBubble({
           canReply && (
             <div className="mt-1.5 flex opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto">
               <button
-                className="text-[11px] leading-none px-2 py-1 rounded-md text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)] hover:text-[var(--abu-text-primary)]"
+                className="text-caption leading-none px-2 py-1 rounded-md text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)] hover:text-[var(--abu-text-primary)]"
                 onClick={onStartReply}
                 aria-label={t.pet.reply}
               >

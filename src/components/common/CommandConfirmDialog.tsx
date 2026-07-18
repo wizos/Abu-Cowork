@@ -90,10 +90,10 @@ export default function CommandConfirmDialog({
               <Icon className={`h-6 w-6 ${config.iconColor}`} />
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-semibold text-[var(--abu-text-primary)]">
+              <h2 className="text-h-md font-semibold text-[var(--abu-text-primary)]">
                 {t.commandConfirm[config.titleKey]}
               </h2>
-              <p className="text-[14px] text-[var(--abu-text-tertiary)] mt-0.5">
+              <p className="text-body text-[var(--abu-text-tertiary)] mt-0.5">
                 {t.commandConfirm[config.descKey]}
               </p>
             </div>
@@ -104,7 +104,7 @@ export default function CommandConfirmDialog({
         <div className="flex-1 overflow-y-auto min-h-0 px-6 pb-4">
           {/* Command display */}
           <div className="px-4 py-3 bg-[#1a1a1a] rounded-lg border border-[#333]">
-            <code className="text-[13px] text-[#e0e0e0] font-mono break-all whitespace-pre-wrap">
+            <code className="text-body text-[#e0e0e0] font-mono break-all whitespace-pre-wrap">
               {request.command}
             </code>
           </div>
@@ -114,7 +114,7 @@ export default function CommandConfirmDialog({
             <div className={`mt-4 p-3 ${config.bgColor} border ${config.borderColor} rounded-lg`}>
               <div className="flex gap-2">
                 <Icon className={`h-4 w-4 ${config.iconColor} shrink-0 mt-0.5`} />
-                <p className={`text-[12px] ${config.iconColor.replace('text-', 'text-').replace('-500', '-700').replace('-600', '-800')} leading-relaxed`}>
+                <p className={`text-minor ${config.iconColor.replace('text-', 'text-').replace('-500', '-700').replace('-600', '-800')} leading-relaxed`}>
                   {request.reason}
                 </p>
               </div>
@@ -127,14 +127,14 @@ export default function CommandConfirmDialog({
           <Button
             variant="outline"
             onClick={onCancel}
-            className="flex-1 h-10 text-[14px] border-[var(--abu-border-hover)] hover:bg-[var(--abu-bg-muted)]"
+            className="flex-1 h-10 text-body border-[var(--abu-border-hover)] hover:bg-[var(--abu-bg-muted)]"
           >
             {t.commandConfirm.cancel}
           </Button>
           {!isBlocked && (
             <Button
               onClick={onConfirm}
-              className={`flex-1 h-10 text-[14px] ${
+              className={`flex-1 h-10 text-body ${
                 request.level === 'danger'
                   ? 'bg-red-600 hover:bg-red-700'
                   : 'bg-[var(--abu-text-primary)] hover:bg-[var(--abu-text-secondary)]'

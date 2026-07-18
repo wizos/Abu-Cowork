@@ -121,7 +121,7 @@ const VirtuosoTypingFooter: NonNullable<Components<Message[], MessageListContext
         <span className="typing-dot w-1.5 h-1.5 rounded-full bg-[var(--abu-clay-60)]" />
         <span className="typing-dot w-1.5 h-1.5 rounded-full bg-[var(--abu-clay-60)]" />
       </div>
-      <span className="text-[13px] text-[var(--abu-text-tertiary)]">
+      <span className="text-body text-[var(--abu-text-tertiary)]">
         {context.retryingLabel ?? context.thinkingLabel}
       </span>
     </div>
@@ -495,14 +495,14 @@ export default function ChatView() {
                     {pendingAgentDisplay.avatar}
                   </div>
 
-                  <h1 className="text-[28px] font-semibold text-[var(--abu-text-primary)] leading-tight mb-2">
+                  <h1 className="text-h-xl font-semibold text-[var(--abu-text-primary)] leading-tight mb-2">
                     {pendingAgentDisplay.name}
                   </h1>
-                  <p className="text-[15px] text-[var(--abu-text-tertiary)] mb-3">
+                  <p className="text-body text-[var(--abu-text-tertiary)] mb-3">
                     {pendingAgentDisplay.description}
                   </p>
                   {pendingAgentDisplay.intro && (
-                    <p className="text-[14px] text-[var(--abu-text-secondary)] leading-relaxed max-w-lg mx-auto">
+                    <p className="text-body text-[var(--abu-text-secondary)] leading-relaxed max-w-lg mx-auto">
                       {pendingAgentDisplay.intro}
                     </p>
                   )}
@@ -515,10 +515,10 @@ export default function ChatView() {
                   </div>
 
                   {/* Slogan */}
-                  <h1 className="text-[28px] font-semibold text-[var(--abu-text-primary)] leading-tight mb-2">
+                  <h1 className="text-h-xl font-semibold text-[var(--abu-text-primary)] leading-tight mb-2">
                     {t.chat.welcomeTitle}
                   </h1>
-                  <p className="text-[15px] text-[var(--abu-text-tertiary)]">
+                  <p className="text-body text-[var(--abu-text-tertiary)]">
                     {t.chat.welcomeSubtitle}
                   </p>
                 </>
@@ -529,15 +529,15 @@ export default function ChatView() {
             {needsSetup && (
               <div className="mb-6 mx-auto max-w-md">
                 <div className="rounded-xl border border-[var(--abu-border)] bg-[var(--abu-bg-base)]/80 px-5 py-4 text-center">
-                  <p className="text-[15px] font-medium text-[var(--abu-text-primary)] mb-1">
+                  <p className="text-h-sm font-medium text-[var(--abu-text-primary)] mb-1">
                     {t.chat.setupRequired}
                   </p>
-                  <p className="text-[13px] text-[var(--abu-text-tertiary)] mb-3">
+                  <p className="text-body text-[var(--abu-text-tertiary)] mb-3">
                     {t.chat.setupRequiredDesc}
                   </p>
                   <button
                     onClick={() => useSettingsStore.getState().openSystemSettings('ai-services')}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#D97706] text-white text-[13px] font-medium hover:bg-[#B45309] transition-colors"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#D97706] text-white text-body font-medium hover:bg-[#B45309] transition-colors"
                   >
                     <Settings className="h-3.5 w-3.5" />
                     {t.chat.setupButton}
@@ -598,11 +598,11 @@ export default function ChatView() {
               if (e.key === 'Enter') e.currentTarget.blur();
               else if (e.key === 'Escape') { setTitleDraft(activeConv.title); setIsRenamingTitle(false); }
             }}
-            className="h-7 max-w-md text-[13px] font-medium"
+            className="h-7 max-w-md text-body font-medium"
           />
         ) : (
           <span
-            className="text-[13px] font-medium text-[var(--abu-text-primary)] truncate cursor-default"
+            className="text-body font-medium text-[var(--abu-text-primary)] truncate cursor-default"
             onDoubleClick={() => { setTitleDraft(activeConv.title); setIsRenamingTitle(true); }}
             title={activeConv.title}
           >
@@ -726,7 +726,7 @@ export default function ChatView() {
         {!isAtBottom && !pinned && (
           <button
             onClick={() => scrollToLatest('smooth')}
-            className="sticky bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--abu-bg-base)]/90 border border-[var(--abu-border)] text-[13px] text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-base)] transition-all backdrop-blur-sm"
+            className="sticky bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--abu-bg-base)]/90 border border-[var(--abu-border)] text-body text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-base)] transition-all backdrop-blur-sm"
           >
             <ChevronDown className="h-3.5 w-3.5" />
             <span>{t.chat.scrollToBottom}</span>
@@ -763,7 +763,7 @@ export default function ChatView() {
           {/* Optimistic "resuming" flash — only in the gap before the loop sets
               a real status, so it never stacks with AgentStatusStrip. */}
           {resuming && agentStatus === 'idle' && (
-            <div className="flex items-center gap-2 px-3 py-1.5 text-[12px] text-[var(--abu-text-tertiary)]">
+            <div className="flex items-center gap-2 px-3 py-1.5 text-minor text-[var(--abu-text-tertiary)]">
               <Check className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
               <span className="truncate">{t.chat.resuming}</span>
             </div>
@@ -777,7 +777,7 @@ export default function ChatView() {
           <ChatInput variant="chat" onSend={handleSend} />
           <div className="flex items-center justify-center gap-3 mt-1.5 whitespace-nowrap overflow-hidden">
             <UsageChip conversationId={activeConv.id} />
-            <p className="text-[11px] text-[var(--abu-text-muted)] truncate">
+            <p className="text-caption text-[var(--abu-text-muted)] truncate">
               {t.chat.disclaimer}
             </p>
             <span className="text-[var(--abu-text-muted)] opacity-50">·</span>

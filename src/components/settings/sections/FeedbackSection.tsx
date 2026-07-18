@@ -37,9 +37,9 @@ export default function FeedbackSection() {
 
       {/* WeChat QR */}
       <div className="pt-2 border-t border-[var(--abu-border)] flex flex-col items-center text-center gap-2">
-        <p className="text-[12px] font-medium text-[var(--abu-text-secondary)]">{t.about.wechatSectionTitle}</p>
+        <p className="text-minor font-medium text-[var(--abu-text-secondary)]">{t.about.wechatSectionTitle}</p>
         <img src={wechatQr} alt="WeChat QR" className="w-36 h-36 rounded-xl shadow-sm" />
-        <p className="text-[11px] text-[var(--abu-text-tertiary)]">{t.about.feedbackDesc}</p>
+        <p className="text-caption text-[var(--abu-text-tertiary)]">{t.about.feedbackDesc}</p>
       </div>
     </div>
   );

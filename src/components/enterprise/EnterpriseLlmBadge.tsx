@@ -10,12 +10,12 @@ export default function EnterpriseLlmBadge() {
   if (!b) return null
 
   return (
-    <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/30 text-sm space-y-2">
+    <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/30 text-body space-y-2">
       <div className="font-medium text-orange-400">{t.enterprise.usingGateway}</div>
-      <p className="text-xs text-neutral-300">
+      <p className="text-minor text-neutral-300">
         {t.enterprise.gatewayDesc}
       </p>
-      <dl className="text-xs text-neutral-400 space-y-1">
+      <dl className="text-minor text-neutral-400 space-y-1">
         <div className="flex justify-between">
           <dt>{t.enterprise.organization}</dt>
           <dd>{b.orgName}</dd>

@@ -120,7 +120,7 @@ export default function ContextIndicator({ conversationId }: { conversationId: s
         </TooltipTrigger>
         <TooltipContent side="top" className="flex flex-col items-start gap-0.5">
           {!isCompressing && (
-            <span className="text-[10px] opacity-60 leading-tight">
+            <span className="text-caption opacity-60 leading-tight">
               {t.chat.contextTooltipSubtitle}
             </span>
           )}

@@ -169,7 +169,7 @@ export default function TabStrip() {
   }, [newTabMenuPos, contextMenu]);
 
   const menuItemCls =
-    'flex items-center gap-2 w-full text-left px-3 py-1.5 text-[12px] text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]';
+    'flex items-center gap-2 w-full text-left px-3 py-1.5 text-minor text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]';
 
   return (
     <div className="relative shrink-0 flex items-center border-b border-[var(--abu-bg-pressed)] bg-[var(--abu-bg-subtle)] pr-1 overflow-x-auto">
@@ -198,7 +198,7 @@ export default function TabStrip() {
             }}
             className={cn(
               'group flex items-center gap-1.5 h-8 px-2.5 max-w-[160px] shrink-0 select-none',
-              'border-r border-[var(--abu-bg-pressed)] text-[12px] transition-shadow',
+              'border-r border-[var(--abu-bg-pressed)] text-minor transition-shadow',
               draggingId === tab.id ? 'cursor-grabbing' : 'cursor-grab',
               active
                 ? 'bg-[var(--abu-bg-base)] text-[var(--abu-text-primary)]'
@@ -298,14 +298,14 @@ export default function TabStrip() {
               >
                 <button
                   type="button"
-                  className="w-full text-left px-3 py-1.5 text-[12px] text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]"
+                  className="w-full text-left px-3 py-1.5 text-minor text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]"
                   onClick={() => { closeOtherTabs(contextMenu.tabId); closeMenus(); }}
                 >
                   {t.workspace.closeOtherTabs}
                 </button>
                 <button
                   type="button"
-                  className="w-full text-left px-3 py-1.5 text-[12px] text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]"
+                  className="w-full text-left px-3 py-1.5 text-minor text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]"
                   onClick={() => { closeAllTabs(); closeMenus(); }}
                 >
                   {t.workspace.closeAllTabs}

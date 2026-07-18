@@ -41,8 +41,8 @@ export default function LabsSection() {
     return (
       <div className="flex flex-col items-center justify-center gap-2 py-20 text-center">
         <FlaskConical className="h-8 w-8 text-[var(--abu-text-muted)] opacity-50" strokeWidth={1.5} />
-        <p className="text-sm text-[var(--abu-text-tertiary)]">{t.settings.labsEmpty}</p>
-        <p className="text-xs text-[var(--abu-text-muted)]">{t.settings.labsEmptyHint}</p>
+        <p className="text-body text-[var(--abu-text-tertiary)]">{t.settings.labsEmpty}</p>
+        <p className="text-minor text-[var(--abu-text-muted)]">{t.settings.labsEmptyHint}</p>
       </div>
     );
   }
@@ -60,13 +60,13 @@ export default function LabsSection() {
                 className="flex items-center justify-between gap-4 p-4 rounded-xl border border-[var(--abu-border)] bg-[var(--abu-bg-muted)]"
               >
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-[var(--abu-text-primary)]">
+                  <p className="text-body font-medium text-[var(--abu-text-primary)]">
                     {exp.title()}
                   </p>
-                  <p className="text-xs text-[var(--abu-text-muted)] mt-0.5">
+                  <p className="text-minor text-[var(--abu-text-muted)] mt-0.5">
                     {exp.description()}
                   </p>
-                  <p className="text-[11px] text-[var(--abu-clay)] mt-1.5">
+                  <p className="text-caption text-[var(--abu-clay)] mt-1.5">
                     {exp.locationHint()}
                   </p>
                 </div>

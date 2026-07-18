@@ -26,7 +26,7 @@ export default function UserQuestionCard({ toolCall }: Props) {
   // ── Cancelled / drained (no answers) ───────────────────────────────────
   if (!toolCall.userQuestionAnswers) {
     return (
-      <div className="my-2 px-3 py-2 rounded-lg border border-[var(--abu-border-subtle)] bg-[var(--abu-bg-muted)] text-xs text-[var(--abu-text-tertiary)]">
+      <div className="my-2 px-3 py-2 rounded-lg border border-[var(--abu-border-subtle)] bg-[var(--abu-bg-muted)] text-minor text-[var(--abu-text-tertiary)]">
         <MessageSquare className="inline h-3.5 w-3.5 mr-1.5" />
         {t.userQuestion.cardTitle} — {t.userQuestion.cancelledLabel}
       </div>
@@ -39,15 +39,15 @@ export default function UserQuestionCard({ toolCall }: Props) {
   return (
     <div className="my-2 flex justify-start w-full">
       <div className="w-full max-w-[460px] rounded-xl border border-[var(--abu-border)] bg-[var(--abu-bg-base)] px-3.5 py-3">
-        <div className="flex items-center gap-1.5 mb-2 text-[11px] font-semibold text-[var(--abu-text-tertiary)]">
+        <div className="flex items-center gap-1.5 mb-2 text-caption font-semibold text-[var(--abu-text-tertiary)]">
           <MessageSquare className="h-3.5 w-3.5 text-[var(--abu-clay)]" />
           {t.userQuestion.yourChoiceLabel}
         </div>
         <div className="divide-y divide-[var(--abu-border-subtle)]">
           {answers.map((ans, i) => (
             <div key={i} className="py-1.5 first:pt-0 last:pb-0">
-              <p className="text-[12px] text-[var(--abu-text-tertiary)] mb-0.5 break-words">{ans.question}</p>
-              <p className="text-[13.5px] font-semibold text-[var(--abu-text-primary)] break-words">
+              <p className="text-minor text-[var(--abu-text-tertiary)] mb-0.5 break-words">{ans.question}</p>
+              <p className="text-h-xs text-[var(--abu-text-primary)] break-words">
                 {ans.selected.join('、')}
               </p>
             </div>

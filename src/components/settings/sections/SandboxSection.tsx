@@ -85,7 +85,7 @@ export default function SandboxSection() {
               <Shield className={cn('h-5 w-5', sandboxEnabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-[var(--abu-text-muted)]')} />
               <div>
                 <div className="flex items-center gap-1.5">
-                  <p className={cn('text-sm font-medium', sandboxEnabled ? 'text-emerald-700 dark:text-emerald-300' : 'text-[var(--abu-text-tertiary)]')}>
+                  <p className={cn('text-body font-medium', sandboxEnabled ? 'text-emerald-700 dark:text-emerald-300' : 'text-[var(--abu-text-tertiary)]')}>
                     {t.settings.sandboxProtection}
                   </p>
                   <div
@@ -96,18 +96,18 @@ export default function SandboxSection() {
                     <Info className={cn('h-3.5 w-3.5 cursor-help', sandboxEnabled ? 'text-emerald-400' : 'text-[var(--abu-text-placeholder)]')} />
                     {showDetails && (
                       <div className="absolute left-1/2 -translate-x-1/2 top-6 z-50 w-72 p-3 rounded-lg border border-[var(--abu-border)] bg-[var(--abu-bg-muted)] shadow-lg text-left pointer-events-none">
-                        <p className="text-[11px] text-[var(--abu-text-tertiary)] leading-relaxed">
+                        <p className="text-caption text-[var(--abu-text-tertiary)] leading-relaxed">
                           {t.settings.sandboxProtectedPaths}
                         </p>
                         <div className="border-t border-[var(--abu-border)] my-1.5" />
-                        <p className="text-[11px] text-[var(--abu-text-muted)] leading-relaxed">
+                        <p className="text-caption text-[var(--abu-text-muted)] leading-relaxed">
                           {t.settings.sandboxWritablePaths}
                         </p>
                       </div>
                     )}
                   </div>
                 </div>
-                <p className="text-xs text-[var(--abu-text-muted)] mt-0.5">
+                <p className="text-minor text-[var(--abu-text-muted)] mt-0.5">
                   {t.settings.sandboxProtectionDescription}
                 </p>
               </div>
@@ -134,10 +134,10 @@ export default function SandboxSection() {
                 <div className="flex items-center gap-3">
                   <Globe className={cn('h-5 w-5', networkIsolationEnabled ? 'text-blue-600' : 'text-[var(--abu-text-muted)]')} />
                   <div>
-                    <p className={cn('text-sm font-medium', networkIsolationEnabled ? 'text-blue-700' : 'text-[var(--abu-text-tertiary)]')}>
+                    <p className={cn('text-body font-medium', networkIsolationEnabled ? 'text-blue-700' : 'text-[var(--abu-text-tertiary)]')}>
                       {t.settings.networkIsolation}
                     </p>
-                    <p className="text-xs text-[var(--abu-text-muted)] mt-0.5">
+                    <p className="text-minor text-[var(--abu-text-muted)] mt-0.5">
                       {t.settings.networkIsolationDescription}
                     </p>
                   </div>
@@ -154,7 +154,7 @@ export default function SandboxSection() {
                 <div className="space-y-3 p-4 rounded-xl border border-[var(--abu-border)] bg-[var(--abu-bg-muted)]">
                   {/* Private networks toggle */}
                   <label className="flex items-center justify-between cursor-pointer">
-                    <span className="text-xs text-[var(--abu-text-tertiary)]">
+                    <span className="text-minor text-[var(--abu-text-tertiary)]">
                       {t.settings.allowPrivateNetworks}
                     </span>
                     <Toggle
@@ -168,12 +168,12 @@ export default function SandboxSection() {
 
                   {/* Whitelist entries */}
                   <div>
-                    <p className="text-xs text-[var(--abu-text-tertiary)] mb-2">{t.settings.networkWhitelist}</p>
+                    <p className="text-minor text-[var(--abu-text-tertiary)] mb-2">{t.settings.networkWhitelist}</p>
 
                     {/* Default entries (read-only) */}
                     <div className="space-y-1 mb-2">
-                      <p className="text-[10px] text-[var(--abu-text-muted)] uppercase tracking-wider">{t.settings.networkPreset}</p>
-                      <p className="text-xs text-[var(--abu-text-muted)] leading-relaxed">
+                      <p className="text-caption text-[var(--abu-text-muted)] uppercase tracking-wider">{t.settings.networkPreset}</p>
+                      <p className="text-minor text-[var(--abu-text-muted)] leading-relaxed">
                         npm · PyPI · GitHub · GitLab · Anthropic · OpenAI · DeepSeek
                       </p>
                     </div>
@@ -181,10 +181,10 @@ export default function SandboxSection() {
                     {/* User entries */}
                     {networkWhitelist.length > 0 && (
                       <div className="space-y-1 mb-2">
-                        <p className="text-[10px] text-[var(--abu-text-tertiary)] uppercase tracking-wider">{t.settings.networkCustom}</p>
+                        <p className="text-caption text-[var(--abu-text-tertiary)] uppercase tracking-wider">{t.settings.networkCustom}</p>
                         {networkWhitelist.map(domain => (
                           <div key={domain} className="flex items-center justify-between py-1 px-2 rounded bg-[var(--abu-bg-muted)] group">
-                            <span className="text-xs text-[var(--abu-text-primary)] font-mono">{domain}</span>
+                            <span className="text-minor text-[var(--abu-text-primary)] font-mono">{domain}</span>
                             <button
                               onClick={() => handleRemoveDomain(domain)}
                               className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-red-100"
@@ -204,12 +204,12 @@ export default function SandboxSection() {
                         onChange={e => setNewDomain(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleAddDomain()}
                         placeholder="*.company.com / 10.0.0.0/8"
-                        className="flex-1 text-xs px-3 py-1.5 rounded-lg border border-[var(--abu-border)] bg-[var(--abu-bg-base)] text-[var(--abu-text-primary)] placeholder:text-[var(--abu-text-placeholder)] focus:outline-none focus:border-blue-400"
+                        className="flex-1 text-minor px-3 py-1.5 rounded-lg border border-[var(--abu-border)] bg-[var(--abu-bg-base)] text-[var(--abu-text-primary)] placeholder:text-[var(--abu-text-placeholder)] focus:outline-none focus:border-blue-400"
                       />
                       <button
                         onClick={handleAddDomain}
                         disabled={!newDomain.trim()}
-                        className="px-2 py-1.5 rounded-lg bg-blue-500 text-white text-xs hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        className="px-2 py-1.5 rounded-lg bg-blue-500 text-white text-minor hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                       >
                         <Plus className="h-3.5 w-3.5" />
                       </button>
@@ -239,14 +239,14 @@ export default function SandboxSection() {
         <div className="space-y-3">
           <div className="flex items-center gap-3 p-4 rounded-xl border border-amber-500/50 dark:border-amber-600/40 bg-amber-50 dark:bg-amber-900/20">
             <ShieldAlert className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
-            <p className="text-sm text-amber-700 dark:text-amber-300 font-medium">
+            <p className="text-body text-amber-700 dark:text-amber-300 font-medium">
               {t.settings.sandboxMacOSOnly}
             </p>
           </div>
           <div className="p-4 rounded-xl border border-emerald-500/30 dark:border-emerald-600/30 bg-emerald-50 dark:bg-emerald-900/20">
             <div className="flex items-center gap-2 mb-2">
               <Shield className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <p className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">
+              <p className="text-minor text-emerald-700 dark:text-emerald-300 font-medium">
                 {t.settings.sandboxAppLayerProtection}
               </p>
             </div>
@@ -255,10 +255,10 @@ export default function SandboxSection() {
       )}
       {/* Permission Mode */}
       <div className="mt-6 pt-6 border-t border-[var(--abu-border)]">
-        <h4 className="text-sm font-medium text-[var(--abu-text-primary)] mb-1">
+        <h4 className="text-body font-medium text-[var(--abu-text-primary)] mb-1">
           {t.settings.permissionMode}
         </h4>
-        <p className="text-xs text-[var(--abu-text-tertiary)] mb-3">
+        <p className="text-minor text-[var(--abu-text-tertiary)] mb-3">
           {t.settings.permissionModeDesc}
         </p>
         <PermissionModeSelector />
@@ -275,7 +275,7 @@ export default function SandboxSection() {
       {/* Authorized Writable Paths */}
       {sandboxEnabled && (
         <div className="mt-6 pt-6 border-t border-[var(--abu-border)]">
-          <h4 className="text-sm font-medium text-[var(--abu-text-primary)] mb-1">
+          <h4 className="text-body font-medium text-[var(--abu-text-primary)] mb-1">
             {t.sandbox.authorizedPaths}
           </h4>
           <AuthorizedPathsList />
@@ -310,10 +310,10 @@ function ContentGuardToggle() {
         <div className="flex items-center gap-3">
           <ShieldCheck className={cn('h-5 w-5', enabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400')} />
           <div>
-            <p className={cn('text-sm font-medium', enabled ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300')}>
+            <p className={cn('text-body font-medium', enabled ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300')}>
               {t.settings.contentGuardTitle}
             </p>
-            <p className="text-xs text-[var(--abu-text-muted)] mt-0.5">
+            <p className="text-minor text-[var(--abu-text-muted)] mt-0.5">
               {t.settings.contentGuardDesc}
             </p>
           </div>
@@ -360,7 +360,7 @@ function AuthorizedPathsList() {
 
   if (paths.length === 0) {
     return (
-      <p className="text-xs text-[var(--abu-text-tertiary)] mt-1">
+      <p className="text-minor text-[var(--abu-text-tertiary)] mt-1">
         {t.sandbox.authorizedPathsEmpty}
       </p>
     );
@@ -374,7 +374,7 @@ function AuthorizedPathsList() {
           className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--abu-border)] bg-[var(--abu-bg-secondary)]"
         >
           <FolderOpen className="h-3.5 w-3.5 text-[var(--abu-text-muted)] shrink-0" />
-          <span className="flex-1 text-xs text-[var(--abu-text-secondary)] truncate" title={path}>
+          <span className="flex-1 text-minor text-[var(--abu-text-secondary)] truncate" title={path}>
             {path}
           </span>
           <button
@@ -419,12 +419,12 @@ function PermissionModeSelector() {
         >
           <Icon className={cn('h-5 w-5', permissionMode === value ? color : 'text-[var(--abu-text-muted)]')} />
           <span className={cn(
-            'text-xs font-medium',
+            'text-minor font-medium',
             permissionMode === value ? 'text-[var(--abu-text-primary)]' : 'text-[var(--abu-text-secondary)]',
           )}>
             {labels[value].name}
           </span>
-          <span className="text-[10px] text-[var(--abu-text-tertiary)] leading-tight">
+          <span className="text-caption text-[var(--abu-text-tertiary)] leading-tight">
             {labels[value].desc}
           </span>
         </button>

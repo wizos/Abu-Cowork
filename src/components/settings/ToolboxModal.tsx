@@ -175,7 +175,7 @@ export default function ToolboxView() {
           placeholder={t.toolbox.searchPlaceholder}
           value={toolboxSearchQuery}
           onChange={(e) => setToolboxSearchQuery(e.target.value)}
-          className="h-8 pl-8 pr-3 text-[13px]"
+          className="h-8 pl-8 pr-3 text-body"
         />
       </div>
     );

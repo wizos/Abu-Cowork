@@ -64,7 +64,7 @@ export default function ScenarioGuide({ onSelectPrompt, onScenarioChange, visibl
               key={cat.id}
               onClick={() => handleScenarioClick(cat.id)}
               className={cn(
-                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-medium transition-all',
+                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-body font-medium transition-all',
                 'border cursor-pointer select-none',
                 isActive
                   ? 'bg-[var(--abu-text-primary)] text-[var(--abu-bg-base)] border-[var(--abu-text-primary)]'
@@ -81,7 +81,7 @@ export default function ScenarioGuide({ onSelectPrompt, onScenarioChange, visibl
       {/* Divider */}
       <div className="flex items-center gap-3 mb-3 px-1">
         <div className="flex-1 h-px bg-[var(--abu-border-subtle)]" />
-        <span className="text-[12px] text-[var(--abu-text-muted)] shrink-0">{t.chat.trySaying}</span>
+        <span className="text-minor text-[var(--abu-text-muted)] shrink-0">{t.chat.trySaying}</span>
         <div className="flex-1 h-px bg-[var(--abu-border-subtle)]" />
       </div>
 
@@ -95,7 +95,7 @@ export default function ScenarioGuide({ onSelectPrompt, onScenarioChange, visibl
               key={key}
               onClick={() => handlePromptClick(key)}
               className={cn(
-                'text-left px-3.5 py-2.5 rounded-xl text-[13px] leading-relaxed transition-all cursor-pointer',
+                'text-left px-3.5 py-2.5 rounded-xl text-body leading-relaxed transition-all cursor-pointer',
                 'border border-[var(--abu-border-subtle)] bg-[var(--abu-bg-muted)] text-[var(--abu-text-secondary)]',
                 'hover:bg-[var(--abu-bg-hover)] hover:border-[var(--abu-border-hover)]',
                 'active:scale-[0.98]',

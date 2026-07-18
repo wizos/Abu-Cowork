@@ -31,7 +31,7 @@ export default function QueuedMessagesStrip({ conversationId }: { conversationId
           title={t.queueStrip.queuedHint}
         >
           <CornerDownRight className="h-3 w-3 text-[var(--abu-text-muted)] shrink-0" />
-          <span className="text-[12px] text-[var(--abu-text-muted)] truncate">{qi.text}</span>
+          <span className="text-minor text-[var(--abu-text-muted)] truncate">{qi.text}</span>
           <button
             aria-label={t.queueStrip.cancel}
             title={t.queueStrip.cancel}

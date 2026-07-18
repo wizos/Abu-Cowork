@@ -28,7 +28,7 @@ export default function BundleManifestModal({ open, fileList, onClose }: Props) 
     >
       <div className="bg-[var(--abu-bg-base)] rounded-2xl shadow-xl w-[480px] flex flex-col p-6 animate-in zoom-in-95 duration-150">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-[16px] font-semibold text-[var(--abu-text-primary)]">
+          <h3 className="text-h-sm font-semibold text-[var(--abu-text-primary)]">
             {t.diagnostic.manifestTitle}
           </h3>
           <button
@@ -42,7 +42,7 @@ export default function BundleManifestModal({ open, fileList, onClose }: Props) 
 
         <ul className="max-h-[60vh] overflow-y-auto rounded-lg border border-[var(--abu-border)] bg-[var(--abu-bg-base)] divide-y divide-[var(--abu-border-subtle)]">
           {fileList.map((f) => (
-            <li key={f} className="px-3 py-2 flex items-center gap-2 text-[12px] font-mono text-[var(--abu-text-primary)]">
+            <li key={f} className="px-3 py-2 flex items-center gap-2 text-minor font-mono text-[var(--abu-text-primary)]">
               <FileText className="h-3.5 w-3.5 text-[var(--abu-text-tertiary)] shrink-0" />
               <span className="truncate">{f}</span>
             </li>
@@ -51,7 +51,7 @@ export default function BundleManifestModal({ open, fileList, onClose }: Props) 
 
         <button
           onClick={onClose}
-          className="mt-4 py-2.5 rounded-lg text-[13px] font-medium bg-[var(--abu-bg-muted)] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)] transition-colors"
+          className="mt-4 py-2.5 rounded-lg text-body font-medium bg-[var(--abu-bg-muted)] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)] transition-colors"
         >
           {t.diagnostic.manifestClose}
         </button>

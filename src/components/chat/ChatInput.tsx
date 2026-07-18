@@ -738,22 +738,22 @@ export default function ChatInput({ variant, onSend, disabled, scenarioPlacehold
                 key={item.name}
                 onClick={() => applySuggestion(item)}
                 className={cn(
-                  'btn-ghost w-full flex flex-col gap-0.5 px-4 py-2.5 text-sm text-left',
+                  'btn-ghost w-full flex flex-col gap-0.5 px-4 py-2.5 text-body text-left',
                   idx === selectedIndex ? 'bg-[var(--abu-bg-hover)]' : 'hover:bg-[var(--abu-bg-muted)]'
                 )}
               >
                 <div className="flex items-center gap-3">
                   <span className={cn(
-                    'w-5 text-center font-mono text-[12px] shrink-0',
+                    'w-5 text-center font-mono text-minor shrink-0',
                     suggestionType === 'agent' ? 'text-blue-500' : 'text-[var(--abu-text-tertiary)]'
                   )}>
                     {suggestionType === 'agent' ? '@' : '/'}
                   </span>
-                  <span className="font-medium text-[var(--abu-text-primary)] text-[13px]">{item.name}</span>
-                  <span className="text-[12px] text-[var(--abu-text-tertiary)] truncate">{item.description}</span>
+                  <span className="font-medium text-[var(--abu-text-primary)] text-body">{item.name}</span>
+                  <span className="text-minor text-[var(--abu-text-tertiary)] truncate">{item.description}</span>
                 </div>
                 {item.trigger && (
-                  <div className="pl-8 text-[11px] text-[var(--abu-text-muted)] truncate">
+                  <div className="pl-8 text-caption text-[var(--abu-text-muted)] truncate">
                     TRIGGER: {item.trigger}
                   </div>
                 )}
@@ -774,7 +774,7 @@ export default function ChatInput({ variant, onSend, disabled, scenarioPlacehold
           {/* Chat-only: Drag overlay */}
           {!isWelcome && isDragging && (
             <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-orange-50/90 z-10">
-              <span className="text-sm text-[var(--abu-clay)] font-medium">{t.chat.dropFilesHere}</span>
+              <span className="text-body text-[var(--abu-clay)] font-medium">{t.chat.dropFilesHere}</span>
             </div>
           )}
 
@@ -803,7 +803,7 @@ export default function ChatInput({ variant, onSend, disabled, scenarioPlacehold
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--abu-bg-muted)] border border-[var(--abu-border-subtle)] shrink-0 group/file"
                 >
                   <FileText className="h-3.5 w-3.5 text-[var(--abu-text-tertiary)] shrink-0" />
-                  <span className="text-[12px] text-[var(--abu-text-primary)] max-w-[160px] truncate">{f.name}</span>
+                  <span className="text-minor text-[var(--abu-text-primary)] max-w-[160px] truncate">{f.name}</span>
                   <button
                     onClick={() => removeFile(f.id)}
                     className="p-0.5 rounded hover:bg-[var(--abu-bg-hover)] text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] transition-colors"
@@ -819,7 +819,7 @@ export default function ChatInput({ variant, onSend, disabled, scenarioPlacehold
                   title={`${r.source.name}\n${r.selection.text}${r.comment ? `\n${r.comment}` : ''}`}
                 >
                   <FileText className="h-3.5 w-3.5 text-[var(--abu-text-tertiary)] shrink-0" />
-                  <span className="text-[12px] text-[var(--abu-text-primary)] max-w-[200px] truncate">
+                  <span className="text-minor text-[var(--abu-text-primary)] max-w-[200px] truncate">
                     {r.selection.text}
                     {r.comment && <span className="text-[var(--abu-text-tertiary)]"> · {r.comment}</span>}
                   </span>
@@ -845,7 +845,7 @@ export default function ChatInput({ variant, onSend, disabled, scenarioPlacehold
             {selectedAgent && (
               <button
                 onClick={removeAgent}
-                className="shrink-0 mt-[3px] mr-1.5 text-[14px] font-medium text-blue-600 hover:text-blue-800 hover:line-through transition-colors cursor-pointer"
+                className="shrink-0 mt-[3px] mr-1.5 text-body font-medium text-blue-600 hover:text-blue-800 hover:line-through transition-colors cursor-pointer"
                 title={t.common.close}
               >
                 @{selectedAgent.name}
@@ -854,7 +854,7 @@ export default function ChatInput({ variant, onSend, disabled, scenarioPlacehold
             {selectedSkill && (
               <button
                 onClick={removeSkill}
-                className="shrink-0 mt-[3px] mr-1.5 text-[14px] font-medium text-purple-600 hover:text-purple-800 hover:line-through transition-colors cursor-pointer"
+                className="shrink-0 mt-[3px] mr-1.5 text-body font-medium text-purple-600 hover:text-purple-800 hover:line-through transition-colors cursor-pointer"
                 title={t.common.close}
               >
                 /{selectedSkill.name}
@@ -881,8 +881,8 @@ export default function ChatInput({ variant, onSend, disabled, scenarioPlacehold
               className={cn(
                 'flex-1 bg-transparent resize-none outline-none text-[var(--abu-text-primary)] leading-relaxed',
                 isWelcome
-                  ? 'min-h-[52px] max-h-[180px] text-[15px]'
-                  : 'min-h-[24px] max-h-[160px] py-0.5 text-[14.5px] disabled:opacity-40'
+                  ? 'min-h-[52px] max-h-[180px] text-body'
+                  : 'min-h-[24px] max-h-[160px] py-0.5 text-body disabled:opacity-40'
               )}
             />
           </div>
@@ -922,7 +922,7 @@ export default function ChatInput({ variant, onSend, disabled, scenarioPlacehold
                   onClick={() => setShowModelPicker(!showModelPicker)}
                   title={modelDisplay}
                   className={cn(
-                    'btn-ghost flex items-center gap-1 px-2 py-1 text-[12px] font-normal rounded-md transition-colors max-w-[180px]',
+                    'btn-ghost flex items-center gap-1 px-2 py-1 text-minor font-normal rounded-md transition-colors max-w-[180px]',
                     hasActiveProvider
                       ? 'text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]'
                       : 'text-[var(--abu-clay)] hover:text-[var(--abu-clay-hover)] hover:bg-[var(--abu-clay-bg)]'
@@ -985,7 +985,7 @@ export default function ChatInput({ variant, onSend, disabled, scenarioPlacehold
                     onClick={() => setShowModelPicker(!showModelPicker)}
                     title={modelDisplay}
                     className={cn(
-                      'btn-ghost flex items-center gap-1 px-2 py-1 text-[12px] font-normal rounded-md transition-colors max-w-[180px]',
+                      'btn-ghost flex items-center gap-1 px-2 py-1 text-minor font-normal rounded-md transition-colors max-w-[180px]',
                       hasActiveProvider
                         ? 'text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]'
                         : 'text-[var(--abu-clay)] hover:text-[var(--abu-clay-hover)] hover:bg-[var(--abu-clay-bg)]'

@@ -45,9 +45,9 @@ function ToolDetailsList({ tools }: { tools: { name: string; description?: strin
         <div key={tool.name} className="flex items-start gap-2 py-1.5 px-2 rounded bg-[var(--abu-bg-muted)]">
           <Wrench className="h-3 w-3 text-[var(--abu-text-muted)] mt-0.5 shrink-0" />
           <div className="min-w-0">
-            <span className="text-xs font-medium text-[var(--abu-text-primary)]">{tool.name}</span>
+            <span className="text-minor font-medium text-[var(--abu-text-primary)]">{tool.name}</span>
             {tool.description && (
-              <p className="text-[11px] text-[var(--abu-text-muted)] truncate">{tool.description}</p>
+              <p className="text-caption text-[var(--abu-text-muted)] truncate">{tool.description}</p>
             )}
           </div>
         </div>
@@ -477,20 +477,20 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
           TopTabNav), with a centered max-width so cards don't stretch edge-to-edge. */}
       <div className="flex-1 overflow-y-scroll overlay-scroll px-8 pb-6">
         {customServers.length === 0 && exampleItems.length === 0 ? (
-          <div className="text-sm text-[var(--abu-text-muted)] py-16 text-center">{t.toolbox.noServersConnected}</div>
+          <div className="text-body text-[var(--abu-text-muted)] py-16 text-center">{t.toolbox.noServersConnected}</div>
         ) : (
           <div className="max-w-5xl mx-auto space-y-6">
             {/* "我的" — user-added custom servers */}
             {customServers.length > 0 && (
               <div>
-                <div className="mb-3 text-[13px] font-medium text-[var(--abu-text-muted)]">{t.toolbox.myServers}</div>
+                <div className="mb-3 text-body font-medium text-[var(--abu-text-muted)]">{t.toolbox.myServers}</div>
                 <ToolGrid>{customServers.map((entry) => renderServerCard(entry))}</ToolGrid>
               </div>
             )}
             {/* "示例" — template-based (installed + uninstalled together) */}
             {exampleItems.length > 0 && (
               <div>
-                <div className="mb-3 text-[13px] font-medium text-[var(--abu-text-muted)]">{t.toolbox.exampleServers}</div>
+                <div className="mb-3 text-body font-medium text-[var(--abu-text-muted)]">{t.toolbox.exampleServers}</div>
                 <ToolGrid>
                   {exampleItems.map((item) => item.kind === 'installed' ? renderServerCard(item.entry) : renderTemplateCard(item.template))}
                 </ToolGrid>
@@ -512,7 +512,7 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
               <span className="inline-flex items-center gap-2">
                 {pickLocale(locale, selectedTemplate.name, selectedTemplate.nameEn)}
                 {selectedTemplate.transport === 'http' && (
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">HTTP</span>
+                  <span className="px-1.5 py-0.5 rounded text-caption font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">HTTP</span>
                 )}
               </span>
             )
@@ -537,7 +537,7 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
             />
           ) : selectedTemplate ? (
             <button onClick={() => handleInstallTemplate(selectedTemplate)} disabled={installingTemplate === selectedTemplate.id}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium bg-[var(--abu-clay)] text-white hover:bg-[var(--abu-clay-hover)] disabled:opacity-50 transition-colors">
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-body font-medium bg-[var(--abu-clay)] text-white hover:bg-[var(--abu-clay-hover)] disabled:opacity-50 transition-colors">
               {installingTemplate === selectedTemplate.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
               {t.toolbox.install}
             </button>
@@ -569,7 +569,7 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--abu-border)]">
               <div className="flex items-center gap-2">
                 <Server className="h-5 w-5 text-[var(--abu-clay)]" />
-                <h2 className="text-base font-semibold text-[var(--abu-text-primary)]">
+                <h2 className="text-h-sm font-semibold text-[var(--abu-text-primary)]">
                   {editingServerName ? t.toolbox.skillEdit : t.toolbox.addCustomServer}
                 </h2>
               </div>
@@ -581,11 +581,11 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
             <div className="px-5 pt-3 pb-0">
               <div className="flex gap-1 p-0.5 bg-[var(--abu-bg-muted)] rounded-md">
                 <button onClick={() => setAddMode('form')}
-                  className={cn('flex-1 py-1.5 text-xs font-medium rounded transition-colors', addMode === 'form' ? 'bg-[var(--abu-bg-base)] text-[var(--abu-text-primary)] shadow-sm ring-1 ring-[var(--abu-border)]' : 'text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)]')}>
+                  className={cn('flex-1 py-1.5 text-minor font-medium rounded transition-colors', addMode === 'form' ? 'bg-[var(--abu-bg-base)] text-[var(--abu-text-primary)] shadow-sm ring-1 ring-[var(--abu-border)]' : 'text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)]')}>
                   {t.toolbox.formMode}
                 </button>
                 <button onClick={() => setAddMode('json')}
-                  className={cn('flex-1 py-1.5 text-xs font-medium rounded transition-colors', addMode === 'json' ? 'bg-[var(--abu-bg-base)] text-[var(--abu-text-primary)] shadow-sm ring-1 ring-[var(--abu-border)]' : 'text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)]')}>
+                  className={cn('flex-1 py-1.5 text-minor font-medium rounded transition-colors', addMode === 'json' ? 'bg-[var(--abu-bg-base)] text-[var(--abu-text-primary)] shadow-sm ring-1 ring-[var(--abu-border)]' : 'text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)]')}>
                   {t.toolbox.jsonMode}
                 </button>
               </div>
@@ -594,37 +594,37 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
             {addMode === 'json' ? (
               <div className="px-5 py-4 space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.jsonConfigLabel}</label>
+                  <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.jsonConfigLabel}</label>
                   <textarea
                     value={jsonInput}
                     onChange={(e) => { setJsonInput(e.target.value); setJsonError(''); }}
                     placeholder={t.toolbox.jsonConfigPlaceholder}
                     rows={10}
-                    className="w-full px-3 py-2 rounded-lg border border-[var(--abu-border)] text-xs text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all font-mono resize-none"
+                    className="w-full px-3 py-2 rounded-lg border border-[var(--abu-border)] text-minor text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all font-mono resize-none"
                   />
-                  <p className="text-[11px] text-[var(--abu-text-muted)] mt-1.5">{t.toolbox.jsonConfigHint}</p>
-                  {jsonError && <p className="text-xs text-red-500 mt-1">{jsonError}</p>}
+                  <p className="text-caption text-[var(--abu-text-muted)] mt-1.5">{t.toolbox.jsonConfigHint}</p>
+                  {jsonError && <p className="text-minor text-red-500 mt-1">{jsonError}</p>}
                 </div>
               </div>
             ) : (
               <div className="px-5 py-4 space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.serverName}</label>
+                  <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.serverName}</label>
                   <input type="text" placeholder={t.toolbox.serverName} value={newServerName}
                     onChange={(e) => setNewServerName(e.target.value)}
                     disabled={!!editingServerName}
-                    className={cn('w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all',
+                    className={cn('w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all',
                       editingServerName && 'opacity-60 cursor-not-allowed')} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.transportType}</label>
+                  <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.transportType}</label>
                   <div className="flex gap-1 p-0.5 bg-[var(--abu-bg-muted)] rounded-md">
                     <button onClick={() => setNewTransportType('stdio')}
-                      className={cn('flex-1 py-1.5 text-xs font-medium rounded transition-colors', newTransportType === 'stdio' ? 'bg-[var(--abu-bg-base)] text-[var(--abu-text-primary)] shadow-sm ring-1 ring-[var(--abu-border)]' : 'text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)]')}>
+                      className={cn('flex-1 py-1.5 text-minor font-medium rounded transition-colors', newTransportType === 'stdio' ? 'bg-[var(--abu-bg-base)] text-[var(--abu-text-primary)] shadow-sm ring-1 ring-[var(--abu-border)]' : 'text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)]')}>
                       {t.toolbox.transportStdio}
                     </button>
                     <button onClick={() => setNewTransportType('http')}
-                      className={cn('flex-1 py-1.5 text-xs font-medium rounded transition-colors', newTransportType === 'http' ? 'bg-[var(--abu-bg-base)] text-[var(--abu-text-primary)] shadow-sm ring-1 ring-[var(--abu-border)]' : 'text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)]')}>
+                      className={cn('flex-1 py-1.5 text-minor font-medium rounded transition-colors', newTransportType === 'http' ? 'bg-[var(--abu-bg-base)] text-[var(--abu-text-primary)] shadow-sm ring-1 ring-[var(--abu-border)]' : 'text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)]')}>
                       {t.toolbox.transportHttp}
                     </button>
                   </div>
@@ -632,44 +632,44 @@ export default function MCPSection({ showAddForm: externalShowAddForm, onAddForm
                 {newTransportType === 'stdio' ? (
                   <>
                     <div>
-                      <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.serverCommand}</label>
+                      <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.serverCommand}</label>
                       <input type="text" placeholder={t.toolbox.serverCommand} value={newServerCommand} onChange={(e) => setNewServerCommand(e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all" />
+                        className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all" />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.serverArgs}</label>
+                      <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.serverArgs}</label>
                       <input type="text" placeholder={t.toolbox.serverArgs} value={newServerArgs} onChange={(e) => setNewServerArgs(e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all" />
+                        className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all" />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">Env (JSON)</label>
+                      <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">Env (JSON)</label>
                       <input type="text" placeholder='{"API_KEY": "..."}' value={newServerEnv} onChange={(e) => setNewServerEnv(e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all font-mono" />
+                        className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all font-mono" />
                     </div>
                   </>
                 ) : (
                   <>
                     <div>
-                      <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">URL</label>
+                      <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">URL</label>
                       <input type="text" placeholder={t.toolbox.serverUrlPlaceholder} value={newServerUrl} onChange={(e) => setNewServerUrl(e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all" />
+                        className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all" />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">Headers (JSON)</label>
+                      <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">Headers (JSON)</label>
                       <input type="text" placeholder={t.toolbox.serverHeadersPlaceholder} value={newServerHeaders} onChange={(e) => setNewServerHeaders(e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all font-mono" />
+                        className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all font-mono" />
                     </div>
                   </>
                 )}
               </div>
             )}
             <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-[var(--abu-border)]">
-              <button onClick={handleCloseAddForm} className="px-4 py-1.5 rounded-lg text-sm font-medium text-[var(--abu-text-tertiary)] hover:bg-[var(--abu-bg-muted)] transition-colors">
+              <button onClick={handleCloseAddForm} className="px-4 py-1.5 rounded-lg text-body font-medium text-[var(--abu-text-tertiary)] hover:bg-[var(--abu-bg-muted)] transition-colors">
                 {t.common.cancel}
               </button>
               <button onClick={addMode === 'json' ? handleAddFromJSON : handleAddServer}
                 disabled={addMode === 'json' ? !jsonInput.trim() : (!newServerName.trim() || (newTransportType === 'stdio' && !newServerCommand.trim()) || (newTransportType === 'http' && !newServerUrl.trim()))}
-                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium bg-[var(--abu-clay)] text-white hover:bg-[var(--abu-clay-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-body font-medium bg-[var(--abu-clay)] text-white hover:bg-[var(--abu-clay-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                 <Check className="h-3.5 w-3.5" />
                 {editingServerName ? t.common.save : t.toolbox.add}
               </button>
@@ -776,13 +776,13 @@ function ServerDetail({
       {error && (
         <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 flex items-start gap-2">
           <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-          <p className="text-xs text-red-600 break-words">{error}</p>
+          <p className="text-minor text-red-600 break-words">{error}</p>
         </div>
       )}
 
       {/* Test result */}
       {testResult && (
-        <div className={cn('mb-4 px-3 py-2 text-xs rounded-lg flex items-center gap-1.5',
+        <div className={cn('mb-4 px-3 py-2 text-minor rounded-lg flex items-center gap-1.5',
           testResult.success ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'
         )}>
           {testResult.success ? <Check className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
@@ -792,20 +792,20 @@ function ServerDetail({
 
       {/* Connection info */}
       <div className="mb-5">
-        <span className="text-xs text-[var(--abu-text-muted)]">{isHttp ? 'URL' : 'Command'}</span>
-        <p className="text-sm text-[var(--abu-text-primary)] mt-1 font-mono break-all">
+        <span className="text-minor text-[var(--abu-text-muted)]">{isHttp ? 'URL' : 'Command'}</span>
+        <p className="text-body text-[var(--abu-text-primary)] mt-1 font-mono break-all">
           {config.url ? config.url : `${config.command} ${config.args?.join(' ') ?? ''}`}
         </p>
         {isHttp && config.headers && Object.keys(config.headers).length > 0 && (
           <div className="mt-2">
-            <span className="text-xs text-[var(--abu-text-muted)]">Headers</span>
-            <p className="text-xs text-[var(--abu-text-primary)] mt-0.5 font-mono break-all">{JSON.stringify(config.headers)}</p>
+            <span className="text-minor text-[var(--abu-text-muted)]">Headers</span>
+            <p className="text-minor text-[var(--abu-text-primary)] mt-0.5 font-mono break-all">{JSON.stringify(config.headers)}</p>
           </div>
         )}
         {!isHttp && config.env && Object.keys(config.env).length > 0 && (
           <div className="mt-2">
-            <span className="text-xs text-[var(--abu-text-muted)]">Env</span>
-            <p className="text-xs text-[var(--abu-text-primary)] mt-0.5 font-mono break-all">{JSON.stringify(config.env)}</p>
+            <span className="text-minor text-[var(--abu-text-muted)]">Env</span>
+            <p className="text-minor text-[var(--abu-text-primary)] mt-0.5 font-mono break-all">{JSON.stringify(config.env)}</p>
           </div>
         )}
       </div>
@@ -813,7 +813,7 @@ function ServerDetail({
       {/* Tools */}
       {isConnected && toolDetails.length > 0 && (
         <div className="mb-5">
-          <button onClick={onToggleTools} className="flex items-center gap-2 text-xs text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] transition-colors mb-2">
+          <button onClick={onToggleTools} className="flex items-center gap-2 text-minor text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] transition-colors mb-2">
             {expandedTools ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
             <Wrench className="h-3 w-3" />
             <span>{t.toolbox.agentTools} ({toolDetails.length})</span>
@@ -846,14 +846,14 @@ function TemplateDetail({
     <>
       {/* Description */}
       <div className="mb-5">
-        <span className="text-xs text-[var(--abu-text-muted)]">Description</span>
-        <p className="text-sm text-[var(--abu-text-primary)] mt-1">{pickLocale(locale, template.description, template.descriptionEn)}</p>
+        <span className="text-minor text-[var(--abu-text-muted)]">Description</span>
+        <p className="text-body text-[var(--abu-text-primary)] mt-1">{pickLocale(locale, template.description, template.descriptionEn)}</p>
       </div>
 
       {/* Setup hint */}
       {hasSetupHint && (
         <div className="mb-5 p-3 rounded-lg bg-amber-50 border border-amber-200/60">
-          <p className="text-xs text-amber-700 leading-relaxed whitespace-pre-wrap break-words">
+          <p className="text-minor text-amber-700 leading-relaxed whitespace-pre-wrap break-words">
             {renderSetupHint(pickLocale(locale, template.setupHint!, template.setupHintEn))}
           </p>
         </div>
@@ -862,21 +862,21 @@ function TemplateDetail({
       {/* Configuration inputs */}
       {(hasConfigurableArgs || hasEnvVars) && (
         <div className="space-y-3">
-          <span className="text-xs text-[var(--abu-text-muted)]">{t.toolbox.serverArgs}</span>
+          <span className="text-minor text-[var(--abu-text-muted)]">{t.toolbox.serverArgs}</span>
           {template.configurableArgs?.map((arg) => (
             <input key={arg.index} type="text" placeholder={pickLocale(locale, arg.placeholder, arg.placeholderEn)}
               value={templateArgs[`${template.id}-${arg.index}`] || ''}
               onChange={(e) => setTemplateArgs((prev) => ({ ...prev, [`${template.id}-${arg.index}`]: e.target.value }))}
-              className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all" />
+              className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all" />
           ))}
           {template.requiredEnvVars?.map((envVar) => (
             <div key={envVar.name}>
-              <label className="block text-xs text-[var(--abu-text-tertiary)] mb-1">{pickLocale(locale, envVar.label, envVar.labelEn)}</label>
+              <label className="block text-minor text-[var(--abu-text-tertiary)] mb-1">{pickLocale(locale, envVar.label, envVar.labelEn)}</label>
               <input type="password" placeholder={pickLocale(locale, envVar.placeholder, envVar.placeholderEn)}
                 value={templateArgs[`${template.id}-env-${envVar.name}`] || ''}
                 onChange={(e) => setTemplateArgs((prev) => ({ ...prev, [`${template.id}-env-${envVar.name}`]: e.target.value }))}
-                className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all font-mono" />
-              {envVar.description && <p className="text-[11px] text-[var(--abu-text-muted)] mt-0.5">{pickLocale(locale, envVar.description, envVar.descriptionEn)}</p>}
+                className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all font-mono" />
+              {envVar.description && <p className="text-caption text-[var(--abu-text-muted)] mt-0.5">{pickLocale(locale, envVar.description, envVar.descriptionEn)}</p>}
             </div>
           ))}
         </div>
@@ -900,7 +900,7 @@ function ServerLogsPanel({ serverName }: { serverName: string }) {
 
   if (logs.length === 0) {
     return (
-      <div className="px-3 py-2 text-[11px] text-[var(--abu-text-muted)] bg-[var(--abu-bg-base)] rounded-lg border border-[var(--abu-border)]">
+      <div className="px-3 py-2 text-caption text-[var(--abu-text-muted)] bg-[var(--abu-bg-base)] rounded-lg border border-[var(--abu-border)]">
         {t.toolbox.noLogs}
       </div>
     );
@@ -909,7 +909,7 @@ function ServerLogsPanel({ serverName }: { serverName: string }) {
   return (
     <div className="max-h-[200px] overflow-y-auto rounded-lg border border-[var(--abu-border)] bg-neutral-900 p-2">
       {logs.map((log, i) => (
-        <div key={i} className="flex gap-2 text-[11px] font-mono leading-4">
+        <div key={i} className="flex gap-2 text-caption font-mono leading-4">
           <span className="text-[var(--abu-text-tertiary)] shrink-0">
             {new Date(log.timestamp).toLocaleTimeString()}
           </span>

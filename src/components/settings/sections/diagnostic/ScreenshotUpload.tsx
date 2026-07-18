@@ -193,7 +193,7 @@ export default function ScreenshotUpload({ screenshots, onChange, disabled }: Pr
           )}
         </div>
 
-        <div className="mt-1.5 text-[10px] text-[var(--abu-text-muted)]">{t.diagnostic.screenshotAddHint}</div>
+        <div className="mt-1.5 text-caption text-[var(--abu-text-muted)]">{t.diagnostic.screenshotAddHint}</div>
       </div>
     </section>
   );

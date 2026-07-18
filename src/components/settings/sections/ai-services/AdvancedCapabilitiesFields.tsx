@@ -25,7 +25,7 @@ export default function AdvancedCapabilitiesFields({
   const isAnthropic = apiFormat === 'anthropic';
   return (
     <div className="space-y-2">
-      <div className="text-xs font-medium text-[var(--abu-text-primary)]">
+      <div className="text-minor font-medium text-[var(--abu-text-primary)]">
         {t.settings.advancedConfig}
       </div>
       <div className="space-y-2">
@@ -34,31 +34,31 @@ export default function AdvancedCapabilitiesFields({
             onClick={() => setDeclared(d => ({ ...d, supportsTools: !d.supportsTools }))}>
             <Checkbox checked={!!declared.supportsTools}
               onChange={() => setDeclared(d => ({ ...d, supportsTools: !d.supportsTools }))} />
-            <span className="text-sm text-[var(--abu-text-primary)]">{t.settings.capTools}</span>
+            <span className="text-body text-[var(--abu-text-primary)]">{t.settings.capTools}</span>
           </div>
           <div className="flex items-center gap-2 cursor-pointer select-none"
             onClick={() => setDeclared(d => ({ ...d, supportsImages: !d.supportsImages }))}>
             <Checkbox checked={!!declared.supportsImages}
               onChange={() => setDeclared(d => ({ ...d, supportsImages: !d.supportsImages }))} />
-            <span className="text-sm text-[var(--abu-text-primary)]">{t.settings.capImages}</span>
+            <span className="text-body text-[var(--abu-text-primary)]">{t.settings.capImages}</span>
           </div>
           <div className="flex items-center gap-2 cursor-pointer select-none"
             onClick={() => setDeclared(d => ({ ...d, supportsReasoning: !d.supportsReasoning }))}>
             <Checkbox checked={!!declared.supportsReasoning}
               onChange={() => setDeclared(d => ({ ...d, supportsReasoning: !d.supportsReasoning }))} />
-            <span className="text-sm text-[var(--abu-text-primary)]">{t.settings.capReasoning}</span>
+            <span className="text-body text-[var(--abu-text-primary)]">{t.settings.capReasoning}</span>
           </div>
         </div>
         {!isAnthropic && declared.supportsReasoning && (
           <div className="pl-3 space-y-2 border-l border-black/10">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-[var(--abu-text-secondary)]">{t.settings.capEffort}</span>
+              <span className="text-body text-[var(--abu-text-secondary)]">{t.settings.capEffort}</span>
               {(['low', 'medium', 'high'] as const).map(e => (
                 <div key={e} className="flex items-center gap-1 cursor-pointer select-none"
                   onClick={() => setDeclared(d => ({ ...d, supportedEfforts: toggleEffort(d.supportedEfforts, e) }))}>
                   <Checkbox checked={!!declared.supportedEfforts?.includes(e)}
                     onChange={() => setDeclared(d => ({ ...d, supportedEfforts: toggleEffort(d.supportedEfforts, e) }))} />
-                  <span className="text-xs text-[var(--abu-text-secondary)]">
+                  <span className="text-minor text-[var(--abu-text-secondary)]">
                     {{ low: t.settings.effortLow, medium: t.settings.effortMedium, high: t.settings.effortHigh }[e]}
                   </span>
                 </div>
@@ -68,7 +68,7 @@ export default function AdvancedCapabilitiesFields({
         )}
         <div className="grid grid-cols-2 gap-2 mt-3">
           <div className="space-y-1">
-            <div className="text-sm text-[var(--abu-text-primary)]">{t.settings.capMaxInput}</div>
+            <div className="text-body text-[var(--abu-text-primary)]">{t.settings.capMaxInput}</div>
             <Input
               type="text"
               inputMode="numeric"
@@ -85,7 +85,7 @@ export default function AdvancedCapabilitiesFields({
             </div>
           </div>
           <div className="space-y-1">
-            <div className="text-sm text-[var(--abu-text-primary)]">{t.settings.capMaxOutput}</div>
+            <div className="text-body text-[var(--abu-text-primary)]">{t.settings.capMaxOutput}</div>
             <Input
               type="text"
               inputMode="numeric"

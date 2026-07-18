@@ -76,7 +76,7 @@ export function Select({ value, onChange, options, placeholder, variant = 'defau
         setOpen(false);
       }}
       className={cn(
-        'w-full px-3 py-2 text-sm text-left transition-colors',
+        'w-full px-3 py-2 text-body text-left transition-colors',
         'hover:bg-[var(--abu-bg-muted)]',
         opt.value === value
           ? 'text-[var(--abu-clay)] bg-[var(--abu-clay-bg)]'
@@ -103,9 +103,9 @@ export function Select({ value, onChange, options, placeholder, variant = 'defau
         type="button"
         onClick={() => setOpen(!open)}
         className={cn(
-          'flex items-center text-sm text-left transition-all',
+          'flex items-center text-body text-left transition-all',
           isGhost
-            ? 'gap-1 text-[13px] focus:outline-none'
+            ? 'gap-1 text-body focus:outline-none'
             : cn(
                 'gap-2 rounded-lg border border-[var(--abu-border)]',
                 'focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)]',
@@ -142,7 +142,7 @@ export function Select({ value, onChange, options, placeholder, variant = 'defau
             options.map((group, gi) => (
               <div key={group.label}>
                 {gi > 0 && <div className="my-1 border-t border-[var(--abu-border)]" />}
-                <div className="px-3 py-1.5 text-xs font-medium text-[var(--abu-text-muted)] select-none">
+                <div className="px-3 py-1.5 text-minor font-medium text-[var(--abu-text-muted)] select-none">
                   {group.label}
                 </div>
                 {group.options.map(renderOption)}

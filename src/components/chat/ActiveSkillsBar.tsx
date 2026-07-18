@@ -24,11 +24,11 @@ export default function ActiveSkillsBar() {
 
   return (
     <div className="flex items-center gap-2 flex-wrap mb-1.5">
-      <span className="text-[11px] text-[var(--abu-text-tertiary)] font-medium">{t.toolbox.activeSkills}</span>
+      <span className="text-caption text-[var(--abu-text-tertiary)] font-medium">{t.toolbox.activeSkills}</span>
       {activeSkills.map((name) => (
         <span
           key={name}
-          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-[11px] font-medium"
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-caption font-medium"
         >
           <Wand2 className="h-3 w-3" />
           {name}

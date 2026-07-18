@@ -45,7 +45,7 @@ export default function PromoteToProjectHint({ workspacePath }: PromoteToProject
 
   return (
     <>
-      <div className="mt-2 mx-1 flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--abu-clay-ring)] bg-[var(--abu-clay-bg)] text-[12px]">
+      <div className="mt-2 mx-1 flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--abu-clay-ring)] bg-[var(--abu-clay-bg)] text-minor">
         <Lightbulb className="h-3.5 w-3.5 shrink-0 text-[var(--abu-clay)]" />
         <span className="flex-1 truncate text-[var(--abu-text-secondary)]">
           {format(t.project.hintPromote, { name: folderName })}

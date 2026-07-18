@@ -25,7 +25,7 @@ function WorkspaceEmptyState() {
 
   return (
     <div className="flex-1 min-h-0 flex flex-col justify-center px-5">
-      <p className="text-[12px] text-[var(--abu-text-tertiary)] mb-2 px-2">{t.workspace.startHere}</p>
+      <p className="text-minor text-[var(--abu-text-tertiary)] mb-2 px-2">{t.workspace.startHere}</p>
       {rows.map(({ key, Icon, label, desc, onClick }) => (
         <button
           key={key}
@@ -34,8 +34,8 @@ function WorkspaceEmptyState() {
           className="flex items-center gap-3 px-2 py-2.5 rounded-md hover:bg-[var(--abu-bg-hover)] text-left"
         >
           <Icon className="w-4 h-4 text-[var(--abu-text-secondary)] shrink-0" strokeWidth={1.5} />
-          <span className="text-[13px] text-[var(--abu-text-primary)] shrink-0">{label}</span>
-          <span className="text-[12px] text-[var(--abu-text-tertiary)] truncate">{desc}</span>
+          <span className="text-body text-[var(--abu-text-primary)] shrink-0">{label}</span>
+          <span className="text-minor text-[var(--abu-text-tertiary)] truncate">{desc}</span>
         </button>
       ))}
     </div>

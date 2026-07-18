@@ -114,9 +114,9 @@ function heatLevel(tokens: number, maxTokens: number): number {
 function KpiCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-xl border border-[var(--abu-border)] bg-[var(--abu-bg-card)] px-4 py-3 flex flex-col gap-1">
-      <span className="text-[11px] text-[var(--abu-text-tertiary)] leading-none">{label}</span>
-      <span className="text-xl font-semibold text-[var(--abu-text-primary)] tabular-nums leading-tight">{value}</span>
-      <span className="text-[10px] text-[var(--abu-text-muted)] leading-none min-h-[12px]">{sub ?? ' '}</span>
+      <span className="text-caption text-[var(--abu-text-tertiary)] leading-none">{label}</span>
+      <span className="text-h-md font-semibold text-[var(--abu-text-primary)] tabular-nums leading-tight">{value}</span>
+      <span className="text-caption text-[var(--abu-text-muted)] leading-none min-h-[12px]">{sub ?? ' '}</span>
     </div>
   );
 }
@@ -125,11 +125,11 @@ function BarRow({ label, tokens, maxTokens }: { label: string; tokens: number; m
   const pct = maxTokens > 0 ? Math.max(2, Math.round((tokens / maxTokens) * 100)) : 0;
   return (
     <div className="flex items-center gap-2 min-w-0">
-      <span className="w-28 shrink-0 text-[12px] text-[var(--abu-text-secondary)] truncate" title={label}>{label}</span>
+      <span className="w-28 shrink-0 text-minor text-[var(--abu-text-secondary)] truncate" title={label}>{label}</span>
       <div className="flex-1 h-1.5 rounded-full bg-[var(--abu-border)] overflow-hidden">
         <div className="h-full rounded-full bg-[var(--abu-clay-60)] transition-all duration-300" style={{ width: `${pct}%` }} />
       </div>
-      <span className="w-10 text-right shrink-0 text-[11px] text-[var(--abu-text-tertiary)] tabular-nums">{formatTokens(tokens)}</span>
+      <span className="w-10 text-right shrink-0 text-caption text-[var(--abu-text-tertiary)] tabular-nums">{formatTokens(tokens)}</span>
     </div>
   );
 }
@@ -138,7 +138,7 @@ function FloatingTooltip({ hover }: { hover: { text: string; top: number; left: 
   if (!hover) return null;
   return (
     <div
-      className="absolute z-50 px-2 py-1 text-[11px] bg-[#1f1d18] text-white rounded-md shadow-lg pointer-events-none whitespace-nowrap -translate-x-1/2 -translate-y-full"
+      className="absolute z-50 px-2 py-1 text-caption bg-[#1f1d18] text-white rounded-md shadow-lg pointer-events-none whitespace-nowrap -translate-x-1/2 -translate-y-full"
       style={{ top: hover.top, left: hover.left }}
     >
       {hover.text}
@@ -185,15 +185,15 @@ function UsageHeatmap({ dateTokenMap }: { dateTokenMap: Map<string, number> }) {
     <div ref={containerRef} className="space-y-2 relative">
       <FloatingTooltip hover={hover} />
       <div className="flex items-center justify-between">
-        <h3 className="text-[11px] font-medium text-[var(--abu-text-tertiary)] uppercase tracking-wider">
+        <h3 className="text-caption font-medium text-[var(--abu-text-tertiary)] uppercase tracking-wider">
           {t.usage.heatmapTitle}
         </h3>
         <div className="flex items-center gap-1">
-          <span className="text-[9px] text-[var(--abu-text-muted)]">{t.usage.heatmapLegendLess}</span>
+          <span className="text-caption text-[var(--abu-text-muted)]">{t.usage.heatmapLegendLess}</span>
           {HEAT_COLORS.map((cls, i) => (
             <div key={i} className={`h-2.5 w-2.5 rounded-[2px] ${cls}`} />
           ))}
-          <span className="text-[9px] text-[var(--abu-text-muted)]">{t.usage.heatmapLegendMore}</span>
+          <span className="text-caption text-[var(--abu-text-muted)]">{t.usage.heatmapLegendMore}</span>
         </div>
       </div>
       <div className="flex gap-1 overflow-x-auto overlay-scroll">
@@ -202,7 +202,7 @@ function UsageHeatmap({ dateTokenMap }: { dateTokenMap: Map<string, number> }) {
           {weekdays.map((wd, i) => (
             <span
               key={wd}
-              className="flex items-center text-[9px] text-[var(--abu-text-muted)]"
+              className="flex items-center text-caption text-[var(--abu-text-muted)]"
               style={{ height: `${CELL}px`, width: '12px', opacity: i % 2 === 0 ? 1 : 0 }}
             >{wd}</span>
           ))}
@@ -272,7 +272,7 @@ function UsageDailyBar({ dateTokenMap }: { dateTokenMap: Map<string, number> }) 
   return (
     <div ref={containerRef} className="space-y-1.5 relative">
       <FloatingTooltip hover={hover} />
-      <h3 className="text-[11px] font-medium text-[var(--abu-text-tertiary)] uppercase tracking-wider">
+      <h3 className="text-caption font-medium text-[var(--abu-text-tertiary)] uppercase tracking-wider">
         {t.usage.dailyTitle}
       </h3>
       <div className="flex items-end gap-[3px] h-24">
@@ -304,7 +304,7 @@ function UsageDailyBar({ dateTokenMap }: { dateTokenMap: Map<string, number> }) 
           );
         })}
       </div>
-      <div className="flex justify-between text-[9px] text-[var(--abu-text-muted)]">
+      <div className="flex justify-between text-caption text-[var(--abu-text-muted)]">
         <span>{days[0].date.slice(5).replace('-', '/')}</span>
         <span>{days[29].date.slice(5).replace('-', '/')}</span>
       </div>
@@ -348,7 +348,7 @@ export default function UsageSection() {
           <button
             key={id}
             onClick={() => setPeriod(id)}
-            className={`px-3 py-1 rounded-md text-[12px] font-medium transition-colors focus:outline-none focus-visible:outline-none focus-visible:ring-0 ${
+            className={`px-3 py-1 rounded-md text-minor font-medium transition-colors focus:outline-none focus-visible:outline-none focus-visible:ring-0 ${
               period === id
                 ? 'bg-[var(--abu-clay-bg)] text-[var(--abu-clay)] border border-[var(--abu-clay-20)]'
                 : 'text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]'
@@ -384,16 +384,16 @@ export default function UsageSection() {
       {/* Row 4 — By Model + By Skill (period-filtered) */}
       <div className="grid grid-cols-2 gap-6">
         <div className="space-y-2">
-          <h3 className="text-[11px] font-medium text-[var(--abu-text-tertiary)] uppercase tracking-wider">{t.usage.byModel}</h3>
+          <h3 className="text-caption font-medium text-[var(--abu-text-tertiary)] uppercase tracking-wider">{t.usage.byModel}</h3>
           {data.byModel.length === 0
-            ? <p className="text-[12px] text-[var(--abu-text-muted)] py-1">—</p>
+            ? <p className="text-minor text-[var(--abu-text-muted)] py-1">—</p>
             : <div className="space-y-2">{data.byModel.slice(0, 10).map(item => <BarRow key={item.model} label={item.model} tokens={item.tokens} maxTokens={maxModelTokens} />)}</div>
           }
         </div>
         <div className="space-y-2">
-          <h3 className="text-[11px] font-medium text-[var(--abu-text-tertiary)] uppercase tracking-wider">{t.usage.bySkill}</h3>
+          <h3 className="text-caption font-medium text-[var(--abu-text-tertiary)] uppercase tracking-wider">{t.usage.bySkill}</h3>
           {data.bySkill.length === 0
-            ? <p className="text-[12px] text-[var(--abu-text-muted)] py-1">—</p>
+            ? <p className="text-minor text-[var(--abu-text-muted)] py-1">—</p>
             : <div className="space-y-2">{data.bySkill.slice(0, 10).map(item => <BarRow key={item.skill} label={item.skill} tokens={item.tokens} maxTokens={maxSkillTokens} />)}</div>
           }
         </div>

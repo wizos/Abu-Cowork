@@ -191,10 +191,10 @@ export default function FileAttachment({ filePath }: FileAttachmentProps) {
           <FileX className="w-5 h-5 text-[var(--abu-text-muted)]" />
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-[13.5px] font-medium text-[var(--abu-text-muted)] truncate line-through">
+          <span className="text-body font-medium text-[var(--abu-text-muted)] truncate line-through">
             {resolved.basename}
           </span>
-          <span className="text-[11px] text-[var(--abu-text-muted)]">
+          <span className="text-caption text-[var(--abu-text-muted)]">
             {t.chat.fileMissing}
           </span>
         </div>
@@ -214,10 +214,10 @@ export default function FileAttachment({ filePath }: FileAttachmentProps) {
           <FileWarning className="w-5 h-5 text-amber-500/80" />
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-[13.5px] font-medium text-[var(--abu-text-primary)] truncate">
+          <span className="text-body font-medium text-[var(--abu-text-primary)] truncate">
             {resolved.entry.basename}
           </span>
-          <span className="text-[11px] text-[var(--abu-text-muted)]">
+          <span className="text-caption text-[var(--abu-text-muted)]">
             {reasonLabel}
           </span>
         </div>
@@ -248,7 +248,7 @@ export default function FileAttachment({ filePath }: FileAttachmentProps) {
         />
         <div className="px-2.5 py-1.5 flex items-center gap-2">
           <FileImage className="w-3.5 h-3.5 text-[var(--abu-text-muted)] shrink-0" />
-          <span className="text-[12px] text-[var(--abu-text-primary)] truncate">{fileName}</span>
+          <span className="text-minor text-[var(--abu-text-primary)] truncate">{fileName}</span>
         </div>
       </div>
     );
@@ -279,10 +279,10 @@ export default function FileAttachment({ filePath }: FileAttachmentProps) {
 
         {/* File Info */}
         <div className="flex flex-col min-w-0">
-          <span className="text-[13.5px] font-medium text-[var(--abu-text-primary)] truncate">
+          <span className="text-body font-medium text-[var(--abu-text-primary)] truncate">
             {fileName.replace(/\.[^/.]+$/, '') || fileName}
           </span>
-          <span className="text-[11px] text-[var(--abu-text-muted)]">
+          <span className="text-caption text-[var(--abu-text-muted)]">
             {category} · {label}
           </span>
         </div>
@@ -298,7 +298,7 @@ export default function FileAttachment({ filePath }: FileAttachmentProps) {
         title={openWithLabel ? format(t.chat.openWith, { label: openWithLabel }) : t.chat.openWithDefaultApp}
       >
         <OpenWithIcon className="w-4 h-4 text-[var(--abu-text-muted)]" />
-        <span className="text-[12.5px] text-[var(--abu-text-tertiary)]">
+        <span className="text-minor text-[var(--abu-text-tertiary)]">
           {openWithLabel ? format(t.chat.openWith, { label: openWithLabel }) : t.chat.openWithDefaultApp}
         </span>
       </button>
@@ -417,10 +417,10 @@ export function ImagePreviewCard({ filePath }: { filePath: string }) {
       {imgUrl && (
         <div className="absolute inset-x-0 bottom-0 flex items-center gap-1 px-2 py-1.5 bg-gradient-to-t from-black/60 via-black/25 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity">
           <div className="min-w-0 flex-1">
-            <div className="text-[11px] font-medium text-white/95 truncate">{fileName}</div>
+            <div className="text-caption font-medium text-white/95 truncate">{fileName}</div>
           </div>
           {dimensions && (
-            <span className="text-[10px] text-white/70 shrink-0">{dimensions.w}×{dimensions.h}</span>
+            <span className="text-caption text-white/70 shrink-0">{dimensions.w}×{dimensions.h}</span>
           )}
           <button
             onClick={handleReveal}

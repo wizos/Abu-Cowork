@@ -20,9 +20,9 @@ export default function SettingsSectionHeader({
   return (
     <div className={cn('flex items-start justify-between gap-3', action && 'pr-8')}>
       <div className="min-w-0">
-        <h3 className="text-base font-semibold text-[var(--abu-text-primary)]">{title}</h3>
+        <h3 className="text-h-sm font-semibold text-[var(--abu-text-primary)]">{title}</h3>
         {description && (
-          <p className="text-xs text-[var(--abu-text-muted)] mt-1">{description}</p>
+          <p className="text-minor text-[var(--abu-text-muted)] mt-1">{description}</p>
         )}
       </div>
       {action && <div className="shrink-0">{action}</div>}

@@ -31,14 +31,14 @@ export default function PlanStepsCard({ toolCall }: { toolCall: ToolCall }) {
           <ChevronRight className="h-3.5 w-3.5 text-[var(--abu-text-tertiary)] shrink-0" />
         )}
         <ListChecks className="h-3.5 w-3.5 text-[var(--abu-clay)] shrink-0" />
-        <span className="text-[12px] font-medium text-[var(--abu-text-primary)]">
+        <span className="text-minor font-medium text-[var(--abu-text-primary)]">
           {t.planCard.title}
         </span>
-        <span className="text-[11px] text-[var(--abu-text-muted)]">
+        <span className="text-caption text-[var(--abu-text-muted)]">
           · {steps.length} {t.planCard.stepsUnit}
         </span>
         {awaiting && (
-          <span className="ml-auto flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-[var(--abu-clay-bg)] text-[var(--abu-clay)] font-medium shrink-0">
+          <span className="ml-auto flex items-center gap-1 text-caption px-1.5 py-0.5 rounded bg-[var(--abu-clay-bg)] text-[var(--abu-clay)] font-medium shrink-0">
             <MessageSquare className="h-3 w-3" />
             {t.planCard.awaiting}
           </span>
@@ -47,7 +47,7 @@ export default function PlanStepsCard({ toolCall }: { toolCall: ToolCall }) {
       {expanded && (
         <ol className={cn('space-y-1 px-3 pb-2.5', !awaiting && 'pt-0.5')}>
           {steps.map((step, i) => (
-            <li key={i} className="flex gap-2 text-[12px] leading-relaxed text-[var(--abu-text-secondary)]">
+            <li key={i} className="flex gap-2 text-minor leading-relaxed text-[var(--abu-text-secondary)]">
               <span className="shrink-0 text-[var(--abu-text-muted)]">{i + 1}.</span>
               <span className="min-w-0 break-words">{step}</span>
             </li>

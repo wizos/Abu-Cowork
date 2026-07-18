@@ -366,7 +366,7 @@ export default function PersonalMemorySection() {
       <div className="space-y-4">
         <div>
           <div className="flex items-center gap-1.5 relative" ref={tipRef}>
-            <h3 className="text-[15px] font-semibold text-[var(--abu-text-primary)]">
+            <h3 className="text-h-sm font-semibold text-[var(--abu-text-primary)]">
               {t.sidebar.personalMemoryTitle}
             </h3>
             <button
@@ -378,19 +378,19 @@ export default function PersonalMemorySection() {
 
             {showTip && (
               <div className="absolute top-full left-0 mt-2 w-[340px] p-4 bg-[var(--abu-bg-base)] rounded-xl shadow-lg border border-[var(--abu-border)] z-50 animate-in fade-in slide-in-from-top-1 duration-150">
-                <div className="space-y-2.5 text-[12px] text-[var(--abu-text-tertiary)] leading-relaxed">
-                  <p className="text-[13px] text-[var(--abu-text-secondary)] font-medium">{t.sidebar.memoryGuideTitle}</p>
+                <div className="space-y-2.5 text-minor text-[var(--abu-text-tertiary)] leading-relaxed">
+                  <p className="text-body text-[var(--abu-text-secondary)] font-medium">{t.sidebar.memoryGuideTitle}</p>
                   <div className="space-y-1.5">
                     <p><span className="font-medium text-[var(--abu-clay)]">{t.sidebar.memoryGuidePersonalName}</span> — {t.sidebar.memoryGuidePersonalDesc}</p>
                     <p><span className="font-medium text-[#8b7ec8]">{t.sidebar.memoryGuideProjectMemoryName}</span> — {t.sidebar.memoryGuideProjectMemoryDesc}</p>
                     <p><span className="font-medium text-[var(--abu-text-secondary)]">{t.sidebar.memoryGuideProjectRulesName}</span> — {t.sidebar.memoryGuideProjectRulesDesc}</p>
                   </div>
-                  <p className="text-[11px] text-[var(--abu-text-muted)] border-t border-[var(--abu-bg-active)] pt-2">{t.sidebar.memoryGuideTip}</p>
+                  <p className="text-caption text-[var(--abu-text-muted)] border-t border-[var(--abu-bg-active)] pt-2">{t.sidebar.memoryGuideTip}</p>
                 </div>
               </div>
             )}
           </div>
-          <p className="text-[13px] text-[var(--abu-text-muted)] mt-1">
+          <p className="text-body text-[var(--abu-text-muted)] mt-1">
             {t.sidebar.personalMemoryDesc}
           </p>
         </div>
@@ -403,7 +403,7 @@ export default function PersonalMemorySection() {
           <div className="space-y-4">
             {/* Top toolbar: count + bulk toggle / bulk actions */}
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="text-[12px] text-[var(--abu-text-placeholder)]">
+              <div className="text-minor text-[var(--abu-text-placeholder)]">
                 {bulkMode
                   ? format(t.memory.bulkSelected, { count: String(selectedKeys.size) })
                   : format(t.memory.entryCount, { count: String(totalCount) })}
@@ -454,7 +454,7 @@ export default function PersonalMemorySection() {
                 <button
                   type="button"
                   onClick={() => toggleGroup(groupKey)}
-                  className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--abu-text-muted)] uppercase tracking-wider hover:text-[var(--abu-text-primary)] transition-colors w-full"
+                  className="flex items-center gap-1.5 text-caption font-medium text-[var(--abu-text-muted)] uppercase tracking-wider hover:text-[var(--abu-text-primary)] transition-colors w-full"
                 >
                   {isCollapsed ? (
                     <ChevronRight className="h-3 w-3" />
@@ -498,10 +498,10 @@ export default function PersonalMemorySection() {
                             {isSelected && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
                           </span>
                         )}
-                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${TYPE_COLORS[header.type]}`}>
+                        <span className={`text-caption font-medium px-1.5 py-0.5 rounded ${TYPE_COLORS[header.type]}`}>
                           {getTypeLabel(header.type, t)}
                         </span>
-                        <span className="text-[13px] text-[var(--abu-text-primary)] flex-1 truncate flex items-center gap-1.5">
+                        <span className="text-body text-[var(--abu-text-primary)] flex-1 truncate flex items-center gap-1.5">
                           {header.name}
                           {header.private && (
                             <span title={t.memory.privateTooltip} className="shrink-0">
@@ -509,12 +509,12 @@ export default function PersonalMemorySection() {
                             </span>
                           )}
                         </span>
-                        <span className="text-[11px] text-[var(--abu-text-placeholder)] whitespace-nowrap">
+                        <span className="text-caption text-[var(--abu-text-placeholder)] whitespace-nowrap">
                           {format(t.memory.updatedAt, { age: memoryAge(header.updated) })}
                         </span>
                         {isStale(header.updated) && (
                           <span
-                            className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded whitespace-nowrap"
+                            className="text-caption text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded whitespace-nowrap"
                             title={t.memory.staleTooltip}
                           >
                             {t.memory.staleBadge}
@@ -531,7 +531,7 @@ export default function PersonalMemorySection() {
 
                       {!bulkMode && expandedId === header.filename && (
                         <div className="px-3 pb-3 border-t border-[var(--abu-bg-active)]">
-                          <p className="text-[12px] text-[var(--abu-text-tertiary)] leading-relaxed mt-2 whitespace-pre-wrap">
+                          <p className="text-minor text-[var(--abu-text-tertiary)] leading-relaxed mt-2 whitespace-pre-wrap">
                             {expandedContent[header.filename] ?? header.description}
                           </p>
                           <div
@@ -539,12 +539,12 @@ export default function PersonalMemorySection() {
                             onClick={(e) => e.stopPropagation()}
                           >
                             <div className="flex-1 min-w-0">
-                              <div className="text-[10px] text-[var(--abu-text-placeholder)]">
+                              <div className="text-caption text-[var(--abu-text-placeholder)]">
                                 {header.source === 'auto_flush' ? t.memory.sourceAutoFlush : header.source === 'agent_explicit' ? t.memory.sourceAgentExplicit : t.memory.sourceUserManual}
                               </div>
                               <div className="flex items-center gap-2 mt-1.5">
                                 <Lock className="h-3 w-3 text-amber-600 shrink-0" />
-                                <span className="text-[11px] text-[var(--abu-text-secondary)]">
+                                <span className="text-caption text-[var(--abu-text-secondary)]">
                                   {t.memory.privateLabel}
                                 </span>
                                 <Toggle
@@ -553,7 +553,7 @@ export default function PersonalMemorySection() {
                                   onChange={() => handleTogglePrivate(header, group.workspacePath, !header.private)}
                                 />
                               </div>
-                              <p className="text-[10.5px] text-[var(--abu-text-placeholder)] mt-1 leading-snug">
+                              <p className="text-caption text-[var(--abu-text-placeholder)] mt-1 leading-snug">
                                 {t.memory.privateDesc}
                               </p>
 
@@ -567,22 +567,22 @@ export default function PersonalMemorySection() {
                                   <div className="flex items-start gap-1.5">
                                     <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
                                     <div className="flex-1 min-w-0">
-                                      <div className="text-[11px] font-medium text-amber-900">
+                                      <div className="text-caption font-medium text-amber-900">
                                         {t.memory.privateDescHintTitle}
                                       </div>
-                                      <p className="text-[10.5px] text-amber-800 leading-snug mt-0.5">
+                                      <p className="text-caption text-amber-800 leading-snug mt-0.5">
                                         {t.memory.privateDescHintBody}
                                       </p>
                                       <div className="mt-2">
-                                        <div className="text-[10px] text-[var(--abu-text-placeholder)] mb-0.5">
+                                        <div className="text-caption text-[var(--abu-text-placeholder)] mb-0.5">
                                           {t.memory.privateDescCurrent}：
                                         </div>
-                                        <div className="text-[11px] text-[var(--abu-text-tertiary)] line-through truncate">
+                                        <div className="text-caption text-[var(--abu-text-tertiary)] line-through truncate">
                                           {descHint.pristineDescription}
                                         </div>
                                       </div>
                                       <div className="mt-1.5">
-                                        <label className="text-[10px] text-[var(--abu-text-placeholder)] block mb-0.5">
+                                        <label className="text-caption text-[var(--abu-text-placeholder)] block mb-0.5">
                                           {t.memory.privateDescNewLabel}
                                         </label>
                                         <Input
@@ -594,7 +594,7 @@ export default function PersonalMemorySection() {
                                               prev ? { ...prev, draft: e.target.value } : prev,
                                             )
                                           }
-                                          className="text-[11px]"
+                                          className="text-caption"
                                         />
                                       </div>
                                       <div className="flex items-center gap-1.5 mt-2">
@@ -637,10 +637,10 @@ export default function PersonalMemorySection() {
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <p className="text-[13px] text-[var(--abu-text-placeholder)]">
+            <p className="text-body text-[var(--abu-text-placeholder)]">
               {t.panel.memoryEmpty}
             </p>
-            <p className="text-[12px] text-[var(--abu-text-placeholder)] mt-1">
+            <p className="text-minor text-[var(--abu-text-placeholder)] mt-1">
               {t.memory.emptyHint}
             </p>
           </div>

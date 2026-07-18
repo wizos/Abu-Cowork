@@ -161,14 +161,14 @@ export function VersionHistoryMenu({ filePath, open, onClose, anchorRef, onRever
         'flex flex-col overflow-hidden'
       )}
     >
-      <div className="px-3 py-2 border-b border-[var(--abu-bg-pressed)] text-[12px] font-medium text-[var(--abu-text-primary)] shrink-0">
+      <div className="px-3 py-2 border-b border-[var(--abu-bg-pressed)] text-minor font-medium text-[var(--abu-text-primary)] shrink-0">
         {t.panel.versionHistory}
       </div>
       <div className="overflow-y-auto flex-1 p-1">
         {loading ? (
-          <div className="px-3 py-4 text-center text-xs text-[var(--abu-text-muted)]">…</div>
+          <div className="px-3 py-4 text-center text-minor text-[var(--abu-text-muted)]">…</div>
         ) : versions.length === 0 ? (
-          <div className="px-3 py-4 text-center text-xs text-[var(--abu-text-muted)]">
+          <div className="px-3 py-4 text-center text-minor text-[var(--abu-text-muted)]">
             {t.panel.versionHistoryEmpty}
           </div>
         ) : (
@@ -181,7 +181,7 @@ export function VersionHistoryMenu({ filePath, open, onClose, anchorRef, onRever
               title={t.panel.versionHistoryRevert}
               className={cn(
                 'w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-left',
-                'text-xs transition-colors',
+                'text-minor transition-colors',
                 'text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]',
                 'disabled:opacity-60 disabled:cursor-not-allowed',
                 revertingId === v.id && 'opacity-60'

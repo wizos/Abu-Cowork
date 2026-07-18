@@ -140,7 +140,7 @@ export default function AccountMenu({ onEditProfile }: { onEditProfile: () => vo
             onClick: handleDownload,
             accent: true,
             trailing: (
-              <span className="text-[11px] font-semibold text-[var(--abu-clay)]">v{updateInfo.version}</span>
+              <span className="text-caption font-semibold text-[var(--abu-clay)]">v{updateInfo.version}</span>
             ),
           }
         : updateChecking
@@ -151,7 +151,7 @@ export default function AccountMenu({ onEditProfile }: { onEditProfile: () => vo
                 icon: RefreshCw,
                 label: t.updates.update,
                 onClick: handleCheck,
-                trailing: <span className="text-[12px] text-[var(--abu-text-muted)]">v{APP_VERSION}</span>,
+                trailing: <span className="text-minor text-[var(--abu-text-muted)]">v{APP_VERSION}</span>,
               };
   const UpdateIcon = updateRow.icon;
 
@@ -178,7 +178,7 @@ export default function AccountMenu({ onEditProfile }: { onEditProfile: () => vo
         </span>
         <span
           className={cn(
-            'flex-1 min-w-0 text-[13px] font-semibold truncate',
+            'flex-1 min-w-0 text-h-xs font-semibold truncate',
             userNickname ? 'text-[var(--abu-text-primary)]' : 'text-[var(--abu-text-tertiary)]'
           )}
         >
@@ -204,10 +204,10 @@ export default function AccountMenu({ onEditProfile }: { onEditProfile: () => vo
               )}
             </span>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold truncate text-[var(--abu-text-primary)]">
+              <div className="text-body font-semibold truncate text-[var(--abu-text-primary)]">
                 {userNickname || t.sidebar.defaultNickname}
               </div>
-              <div className="text-[11px] text-[var(--abu-text-muted)] truncate">{t.sidebar.localMode}</div>
+              <div className="text-caption text-[var(--abu-text-muted)] truncate">{t.sidebar.localMode}</div>
             </div>
             <button
               onClick={() => run(onEditProfile)}
@@ -226,7 +226,7 @@ export default function AccountMenu({ onEditProfile }: { onEditProfile: () => vo
           {/* Language — borderless ghost select (value + small chevron, iOS-style) */}
           <div className="flex items-center gap-3 px-2.5 py-1.5 rounded-xl">
             <Globe className="h-[17px] w-[17px] shrink-0 text-[var(--abu-text-tertiary)]" strokeWidth={1.6} />
-            <span className="flex-1 text-[13px] text-[var(--abu-text-secondary)]">{t.settings.language}</span>
+            <span className="flex-1 text-body text-[var(--abu-text-secondary)]">{t.settings.language}</span>
             <Select
               variant="ghost"
               value={language}
@@ -238,7 +238,7 @@ export default function AccountMenu({ onEditProfile }: { onEditProfile: () => vo
           {/* Appearance — borderless ghost select (matches the Language row) */}
           <div className="flex items-center gap-3 px-2.5 py-1.5 rounded-xl">
             <Palette className="h-[17px] w-[17px] shrink-0 text-[var(--abu-text-tertiary)]" strokeWidth={1.6} />
-            <span className="flex-1 text-[13px] text-[var(--abu-text-secondary)]">{t.settings.appearance}</span>
+            <span className="flex-1 text-body text-[var(--abu-text-secondary)]">{t.settings.appearance}</span>
             <Select
               variant="ghost"
               value={theme}
@@ -279,7 +279,7 @@ export default function AccountMenu({ onEditProfile }: { onEditProfile: () => vo
             />
             <span
               className={cn(
-                'flex-1 text-[13px]',
+                'flex-1 text-body',
                 updateRow.accent ? 'text-[var(--abu-clay)] font-medium' : 'text-[var(--abu-text-secondary)]'
               )}
             >
@@ -311,7 +311,7 @@ function MenuRow({
       className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-left transition-colors hover:bg-[var(--abu-bg-hover)]"
     >
       <Icon className="h-[17px] w-[17px] shrink-0 text-[var(--abu-text-tertiary)]" strokeWidth={1.6} />
-      <span className="flex-1 text-[13px] text-[var(--abu-text-secondary)]">{label}</span>
+      <span className="flex-1 text-body text-[var(--abu-text-secondary)]">{label}</span>
       {trailing}
     </button>
   );

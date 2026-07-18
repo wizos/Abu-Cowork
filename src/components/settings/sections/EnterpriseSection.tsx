@@ -23,14 +23,14 @@ export default function EnterpriseSection() {
     return (
       <div className="space-y-4">
         <div>
-          <h2 className="text-base font-semibold text-[var(--abu-text-primary)] mb-1">{t.enterprise.title}</h2>
-          <p className="text-sm text-[var(--abu-text-tertiary)]">
+          <h2 className="text-h-sm font-semibold text-[var(--abu-text-primary)] mb-1">{t.enterprise.title}</h2>
+          <p className="text-body text-[var(--abu-text-tertiary)]">
             {t.enterprise.description}
           </p>
         </div>
         <section className="space-y-3 rounded-xl border border-[var(--abu-border)] p-4">
-          <h3 className="text-sm font-medium text-[var(--abu-text-primary)]">{t.enterprise.bindSectionTitle}</h3>
-          <p className="text-xs text-[var(--abu-text-tertiary)]">
+          <h3 className="text-body font-medium text-[var(--abu-text-primary)]">{t.enterprise.bindSectionTitle}</h3>
+          <p className="text-minor text-[var(--abu-text-tertiary)]">
             {t.enterprise.bindSectionDesc}
           </p>
           <Button size="sm" onClick={() => setShowBind(true)}>{t.enterprise.bindButton}</Button>
@@ -54,21 +54,21 @@ export default function EnterpriseSection() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-base font-semibold text-[var(--abu-text-primary)] mb-1">
+        <h2 className="text-h-sm font-semibold text-[var(--abu-text-primary)] mb-1">
           {t.enterprise.title}
           {mode.kind === 'offline' && (
-            <span className="ml-2 text-xs text-amber-400 font-normal">{t.enterprise.offlineBadge}</span>
+            <span className="ml-2 text-minor text-amber-400 font-normal">{t.enterprise.offlineBadge}</span>
           )}
         </h2>
-        <p className="text-sm text-[var(--abu-text-tertiary)]">{t.enterprise.boundStatus}</p>
+        <p className="text-body text-[var(--abu-text-tertiary)]">{t.enterprise.boundStatus}</p>
       </div>
 
       <section className="space-y-3 rounded-xl border border-[var(--abu-border)] p-4">
         <MountPoint slot="brandSlot" binding={binding} config={config} size="md" />
-        <dl className="mt-3 space-y-2 text-sm">
+        <dl className="mt-3 space-y-2 text-body">
           <div className="flex justify-between">
             <dt className="text-[var(--abu-text-tertiary)]">{t.enterprise.instanceLabel}</dt>
-            <dd className="text-[var(--abu-text-primary)] font-mono text-xs">{binding?.serverUrl}</dd>
+            <dd className="text-[var(--abu-text-primary)] font-mono text-minor">{binding?.serverUrl}</dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-[var(--abu-text-tertiary)]">{t.enterprise.loginIdentityLabel}</dt>
@@ -92,7 +92,7 @@ export default function EnterpriseSection() {
       {/* /me transparency panel */}
       <section className="space-y-2">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-[var(--abu-text-primary)]">{t.enterprise.myDataTitle}</h3>
+          <h3 className="text-body font-medium text-[var(--abu-text-primary)]">{t.enterprise.myDataTitle}</h3>
           <Button variant="ghost" size="sm" onClick={() => setShowMe(v => !v)}>
             {showMe ? t.enterprise.collapseData : t.enterprise.viewMyData}
           </Button>
@@ -105,12 +105,12 @@ export default function EnterpriseSection() {
       {/* Personal-to-enterprise migration */}
       <section className="space-y-2">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-[var(--abu-text-primary)]">{t.enterprise.migrationTitle}</h3>
+          <h3 className="text-body font-medium text-[var(--abu-text-primary)]">{t.enterprise.migrationTitle}</h3>
           <Button variant="ghost" size="sm" onClick={() => setShowMigration(true)}>
             {t.enterprise.migrateButton}
           </Button>
         </div>
-        <p className="text-xs text-[var(--abu-text-tertiary)]">
+        <p className="text-minor text-[var(--abu-text-tertiary)]">
           {t.enterprise.migrateDescription}
         </p>
       </section>

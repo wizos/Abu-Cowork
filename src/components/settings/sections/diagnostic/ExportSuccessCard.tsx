@@ -36,9 +36,9 @@ export default function ExportSuccessCard({ path, sizeBytes, scrubbedTextCount, 
       <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 flex items-start gap-3">
         <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
-          <div className="text-[14px] font-medium text-emerald-900">{t.diagnostic.successTitle}</div>
-          <div className="text-[12px] font-mono text-emerald-800/90 mt-0.5 break-all">{getBaseName(path)}</div>
-          <div className="text-[11px] text-emerald-700/80 mt-0.5">
+          <div className="text-h-sm font-medium text-emerald-900">{t.diagnostic.successTitle}</div>
+          <div className="text-minor font-mono text-emerald-800/90 mt-0.5 break-all">{getBaseName(path)}</div>
+          <div className="text-caption text-emerald-700/80 mt-0.5">
             {i18nFormat(t.diagnostic.successMeta, {
               size: formatBundleSize(sizeBytes),
               count: fileList.length,
@@ -48,21 +48,21 @@ export default function ExportSuccessCard({ path, sizeBytes, scrubbedTextCount, 
           <div className="flex flex-wrap items-center gap-2 mt-3">
             <button
               onClick={onShowInFinder}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-medium bg-white border border-emerald-200 text-emerald-800 hover:bg-emerald-100 transition-colors"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-caption font-medium bg-white border border-emerald-200 text-emerald-800 hover:bg-emerald-100 transition-colors"
             >
               <FolderOpen className="h-3 w-3" />
               {t.diagnostic.successOpenFinder}
             </button>
             <button
               onClick={onCopyPath}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-medium bg-white border border-emerald-200 text-emerald-800 hover:bg-emerald-100 transition-colors"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-caption font-medium bg-white border border-emerald-200 text-emerald-800 hover:bg-emerald-100 transition-colors"
             >
               {pathCopied ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
               {pathCopied ? t.diagnostic.pathCopied : t.diagnostic.successCopyPath}
             </button>
             <button
               onClick={() => setManifestOpen(true)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-medium bg-white border border-emerald-200 text-emerald-800 hover:bg-emerald-100 transition-colors"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-caption font-medium bg-white border border-emerald-200 text-emerald-800 hover:bg-emerald-100 transition-colors"
             >
               <FileText className="h-3 w-3" />
               {t.diagnostic.successManifest}

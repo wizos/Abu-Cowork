@@ -151,10 +151,10 @@ export default function PptxPreview({ filePath }: { filePath: string }) {
           <Presentation className="w-7 h-7 text-[var(--abu-text-tertiary)]" />
         </div>
         <div className="flex flex-col gap-1 max-w-[280px]">
-          <p className="text-[13px] font-medium text-[var(--abu-text-primary)] truncate">
+          <p className="text-body font-medium text-[var(--abu-text-primary)] truncate">
             {getBaseName(filePath)}
           </p>
-          <p className="text-[12px] text-[var(--abu-text-tertiary)]">
+          <p className="text-minor text-[var(--abu-text-tertiary)]">
             {t.panel.pptxPreviewUnavailable}
           </p>
         </div>
@@ -177,7 +177,7 @@ export default function PptxPreview({ filePath }: { filePath: string }) {
       {loading && (
         <div className="flex items-center justify-center h-full">
           <Loader2 className="w-5 h-5 text-[var(--abu-clay)] animate-spin" />
-          <span className="ml-2 text-[13px] text-[var(--abu-text-tertiary)]">{t.panel.loadingDocument}</span>
+          <span className="ml-2 text-body text-[var(--abu-text-tertiary)]">{t.panel.loadingDocument}</span>
         </div>
       )}
       <ScrollArea className={`flex-1 min-h-0 ${loading ? 'hidden' : ''}`}>

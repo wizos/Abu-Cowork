@@ -37,7 +37,7 @@ export default function TriggerRunHistory({ runs }: Props) {
 
   if (runs.length === 0) {
     return (
-      <div className="px-4 py-3 text-[12px] text-[var(--abu-text-tertiary)]">
+      <div className="px-4 py-3 text-minor text-[var(--abu-text-tertiary)]">
         {t.trigger.noRuns}
       </div>
     );
@@ -63,14 +63,14 @@ export default function TriggerRunHistory({ runs }: Props) {
           />
 
           {/* Time */}
-          <span className="text-[11px] text-[var(--abu-text-tertiary)] shrink-0">
+          <span className="text-caption text-[var(--abu-text-tertiary)] shrink-0">
             {formatTimeAgo(run.startedAt, t.trigger)}
           </span>
 
           {/* Status text */}
           <span
             className={cn(
-              'text-[11px] flex-1 truncate',
+              'text-caption flex-1 truncate',
               run.status === 'running' && 'text-amber-600',
               run.status === 'completed' && 'text-green-600',
               run.status === 'error' && 'text-red-500',
@@ -86,11 +86,11 @@ export default function TriggerRunHistory({ runs }: Props) {
 
           {/* Output push status */}
           {run.outputStatus === 'sent' && (
-            <span className="text-[10px] text-green-500 shrink-0">{t.trigger.outputSent}</span>
+            <span className="text-caption text-green-500 shrink-0">{t.trigger.outputSent}</span>
           )}
           {run.outputStatus === 'failed' && (
             <span
-              className="text-[10px] text-red-500 shrink-0 cursor-help"
+              className="text-caption text-red-500 shrink-0 cursor-help"
               title={run.outputError}
             >
               {t.trigger.outputFailed}

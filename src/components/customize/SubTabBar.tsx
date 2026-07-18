@@ -20,7 +20,7 @@ export default function SubTabBar({ tabs, activeTab, onChange }: SubTabBarProps)
           key={tab.id}
           onClick={() => onChange(tab.id)}
           className={cn(
-            'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-minor font-medium transition-colors',
             activeTab === tab.id
               ? 'bg-[var(--abu-bg-base)] text-[var(--abu-text-primary)]'
               : 'text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-white/50'
@@ -29,7 +29,7 @@ export default function SubTabBar({ tabs, activeTab, onChange }: SubTabBarProps)
           <span>{tab.label}</span>
           {tab.count !== undefined && (
             <span className={cn(
-              'text-[10px] min-w-[18px] text-center px-1 py-0.5 rounded-full',
+              'text-caption min-w-[18px] text-center px-1 py-0.5 rounded-full',
               activeTab === tab.id
                 ? 'bg-[var(--abu-clay-bg)] text-[var(--abu-clay)]'
                 : 'bg-neutral-200/60 text-[var(--abu-text-muted)]'

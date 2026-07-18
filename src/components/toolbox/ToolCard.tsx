@@ -55,11 +55,11 @@ export default function ToolCard({ item, onClick }: { item: ToolItem; onClick: (
     >
       {/* Row 1: avatar + name (centered so they align), optional badge + toggle */}
       <div className="flex items-center gap-3 w-full shrink-0">
-        <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-[var(--abu-bg-active)] text-xl select-none shrink-0 overflow-hidden">
+        <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-[var(--abu-bg-active)] text-h-md select-none shrink-0 overflow-hidden">
           {item.avatar ?? '🤖'}
         </div>
         <p
-          className="flex-1 min-w-0 text-sm font-semibold leading-snug truncate text-[var(--abu-text-primary)]"
+          className="flex-1 min-w-0 text-body font-semibold leading-snug truncate text-[var(--abu-text-primary)]"
           title={item.name}
         >
           {item.name}
@@ -70,7 +70,7 @@ export default function ToolCard({ item, onClick }: { item: ToolItem; onClick: (
 
       {/* Row 2: description — up to two lines. break-words so long unbreakable
           strings (e.g. URLs) wrap instead of overflowing. */}
-      <p className="w-full text-[12px] text-[var(--abu-text-secondary)] leading-relaxed line-clamp-2 break-words">
+      <p className="w-full text-minor text-[var(--abu-text-secondary)] leading-relaxed line-clamp-2 break-words">
         {item.description}
       </p>
     </div>

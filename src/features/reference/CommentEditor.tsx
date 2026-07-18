@@ -37,7 +37,7 @@ export function CommentEditor({ onSubmit, onCancel }: { onSubmit: (v: string) =>
         aria-label={t.reference.commentPlaceholder}
       />
       {over && (
-        <div className="px-1 text-[11px] text-red-500">{value.length}/{MAX}</div>
+        <div className="px-1 text-caption text-red-500">{value.length}/{MAX}</div>
       )}
     </div>
   );

@@ -132,9 +132,9 @@ export default function ContextSection() {
       >
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-[var(--abu-text-tertiary)]" />
-          <span className="text-[13px] font-medium text-[var(--abu-text-primary)]">{t.panel.context}</span>
+          <span className="text-body font-medium text-[var(--abu-text-primary)]">{t.panel.context}</span>
           {contextData.totalToolCalls > 0 && (
-            <span className="text-[12px] text-[var(--abu-text-muted)]">
+            <span className="text-minor text-[var(--abu-text-muted)]">
               {contextData.totalToolCalls} ops
             </span>
           )}
@@ -154,7 +154,7 @@ export default function ContextSection() {
               {/* Accessed Files - now with expandable content */}
               {contextData.accessedFiles.length > 0 && (
                 <div>
-                  <div className="text-[12px] text-[var(--abu-text-muted)] mb-2">{t.panel.accessedFiles}</div>
+                  <div className="text-minor text-[var(--abu-text-muted)] mb-2">{t.panel.accessedFiles}</div>
                   <div className="space-y-1">
                     {contextData.accessedFiles.slice(0, 10).map((file, i) => (
                       <FileRow
@@ -165,7 +165,7 @@ export default function ContextSection() {
                       />
                     ))}
                     {contextData.accessedFiles.length > 10 && (
-                      <div className="text-[11px] text-[var(--abu-text-muted)]">
+                      <div className="text-caption text-[var(--abu-text-muted)]">
                         {format(t.panel.moreFiles, { count: contextData.accessedFiles.length - 10 })}
                       </div>
                     )}
@@ -176,12 +176,12 @@ export default function ContextSection() {
               {/* Tool Stats */}
               {Object.keys(contextData.toolStats).length > 0 && (
                 <div>
-                  <div className="text-[12px] text-[var(--abu-text-muted)] mb-2">{t.panel.toolUsage}</div>
+                  <div className="text-minor text-[var(--abu-text-muted)] mb-2">{t.panel.toolUsage}</div>
                   <div className="flex flex-wrap gap-1.5">
                     {Object.entries(contextData.toolStats).map(([tool, count]) => (
                       <span
                         key={tool}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[var(--abu-bg-muted)] text-[11px] text-[var(--abu-text-tertiary)]"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[var(--abu-bg-muted)] text-caption text-[var(--abu-text-tertiary)]"
                       >
                         <Wrench className="h-3 w-3" />
                         {formatToolName(tool)}
@@ -211,7 +211,7 @@ export default function ContextSection() {
                 <div className="w-5 h-6 rounded bg-[var(--abu-bg-hover)]" />
                 <div className="w-5 h-6 rounded bg-[var(--abu-bg-hover)]" />
               </div>
-              <p className="text-[12px] text-[var(--abu-text-muted)]">
+              <p className="text-minor text-[var(--abu-text-muted)]">
                 {t.panel.contextEmptyHint}
               </p>
             </div>
@@ -252,7 +252,7 @@ function FileRow({ file, isExpanded, onToggle }: FileRowProps) {
         onClick={hasContent ? onToggle : undefined}
         onKeyDown={hasContent ? (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onToggle()) : undefined}
         className={cn(
-          'flex items-center gap-2 text-[12px] text-[var(--abu-text-tertiary)] py-0.5 rounded',
+          'flex items-center gap-2 text-minor text-[var(--abu-text-tertiary)] py-0.5 rounded',
           hasContent && 'cursor-pointer hover:bg-[var(--abu-bg-muted)] -mx-1 px-1'
         )}
       >
@@ -272,7 +272,7 @@ function FileRow({ file, isExpanded, onToggle }: FileRowProps) {
       {/* Expanded content */}
       {isExpanded && hasContent && (
         <div className="ml-5 mt-1 p-2 bg-[var(--abu-bg-muted)] rounded border border-[var(--abu-bg-hover)]">
-          <pre className="font-mono text-[11px] text-[var(--abu-text-tertiary)] whitespace-pre-wrap break-all max-h-[200px] overflow-y-auto">
+          <pre className="font-mono text-caption text-[var(--abu-text-tertiary)] whitespace-pre-wrap break-all max-h-[200px] overflow-y-auto">
             {truncateContent(file.content!, 2000)}
           </pre>
         </div>
@@ -302,8 +302,8 @@ function ConnectorsSection({ servers, expanded, onToggle, isLoading, t }: Connec
       >
         <div className="flex items-center gap-2">
           <Plug className="h-3.5 w-3.5 text-[var(--abu-text-muted)]" />
-          <span className="text-[12px] text-[var(--abu-text-muted)]">{t.panel.connectors}</span>
-          <span className="text-[11px] text-[var(--abu-text-muted)]">
+          <span className="text-minor text-[var(--abu-text-muted)]">{t.panel.connectors}</span>
+          <span className="text-caption text-[var(--abu-text-muted)]">
             {connectedCount}/{servers.length}
           </span>
         </div>
@@ -321,7 +321,7 @@ function ConnectorsSection({ servers, expanded, onToggle, isLoading, t }: Connec
             <ConnectorRow key={server.config.name} server={server} />
           ))}
           {isLoading && (
-            <div className="flex items-center gap-2 text-[11px] text-[var(--abu-text-muted)]">
+            <div className="flex items-center gap-2 text-caption text-[var(--abu-text-muted)]">
               <Loader2 className="h-3 w-3 animate-spin" />
               <span>{t.panel.refreshing}</span>
             </div>
@@ -353,9 +353,9 @@ function ConnectorRow({ server }: ConnectorRowProps) {
   return (
     <div className="flex items-center gap-3 py-1">
       {renderStatusIcon()}
-      <span className="text-[13px] text-[var(--abu-text-tertiary)]">{config.name}</span>
+      <span className="text-body text-[var(--abu-text-tertiary)]">{config.name}</span>
       {status === 'connected' && tools.length > 0 && (
-        <span className="text-[11px] text-[var(--abu-text-muted)]">{tools.length} tools</span>
+        <span className="text-caption text-[var(--abu-text-muted)]">{tools.length} tools</span>
       )}
     </div>
   );

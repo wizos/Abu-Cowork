@@ -98,7 +98,7 @@ export default function ProjectsSection() {
         <div className="group/header flex items-center justify-between px-2 py-1.5">
           <button
             onClick={() => setSectionCollapsed(!sectionCollapsed)}
-            className="flex items-center gap-1 text-[13px] font-medium text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)]"
+            className="flex items-center gap-1 text-body font-medium text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)]"
           >
             <span>{t.project.sectionTitle}</span>
           </button>
@@ -128,7 +128,7 @@ export default function ProjectsSection() {
         ) : !sectionCollapsed ? (
           <button
             onClick={() => setShowCreateDialog(true)}
-            className="w-full px-2 py-2 text-[12px] text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] transition-colors text-left"
+            className="w-full px-2 py-2 text-minor text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] transition-colors text-left"
           >
             + {t.project.emptyState}
           </button>
@@ -139,14 +139,14 @@ export default function ProjectsSection() {
           <div className="px-2 mt-1">
             <button
               onClick={() => setShowArchived(!showArchived)}
-              className="text-[11px] text-[var(--abu-text-muted)] hover:text-[var(--abu-text-tertiary)] transition-colors"
+              className="text-caption text-[var(--abu-text-muted)] hover:text-[var(--abu-text-tertiary)] transition-colors"
             >
               {format(t.project.archivedCount, { count: String(archivedProjects.length) })}
             </button>
             {showArchived && (
               <div className="mt-1 space-y-0.5">
                 {archivedProjects.map((p) => (
-                  <div key={p.id} className="flex items-center gap-1.5 px-2 py-1 text-[12px] text-[var(--abu-text-muted)]">
+                  <div key={p.id} className="flex items-center gap-1.5 px-2 py-1 text-minor text-[var(--abu-text-muted)]">
                     <span className="truncate flex-1 flex items-center gap-1.5"><FolderClosed className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />{p.name}</span>
                     <button
                       onClick={() => restoreProject(p.id)}

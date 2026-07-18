@@ -57,16 +57,16 @@ export default function CloseDialog({
         >
           <X className="h-4 w-4" />
         </button>
-        <h3 className="text-[16px] font-semibold text-[var(--abu-text-primary)] mb-1.5">
+        <h3 className="text-h-sm font-semibold text-[var(--abu-text-primary)] mb-1.5">
           {t.windowClose.title}
         </h3>
-        <p className="text-[13.5px] text-[var(--abu-text-muted)] leading-relaxed mb-3">
+        <p className="text-body text-[var(--abu-text-muted)] leading-relaxed mb-3">
           {t.windowClose.message}
         </p>
         {hasRunningAgent && (
           <div className="flex items-start gap-2 mb-4 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
             <AlertTriangle className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
-            <p className="text-[12.5px] text-amber-600 dark:text-amber-400 leading-snug">
+            <p className="text-minor text-amber-600 dark:text-amber-400 leading-snug">
               {t.windowClose.agentRunningWarning}
             </p>
           </div>
@@ -81,21 +81,21 @@ export default function CloseDialog({
               onChange={(e) => setRemember(e.target.checked)}
               className="w-3.5 h-3.5 rounded border-[var(--abu-border-hover)] text-[var(--abu-clay)] focus:ring-[var(--abu-clay)] accent-[var(--abu-clay)]"
             />
-            <span className="text-[12px] text-[var(--abu-text-muted)]">
+            <span className="text-minor text-[var(--abu-text-muted)]">
               {t.windowClose.rememberChoice}
             </span>
           </label>
           <div className="flex items-center gap-2">
             <button
               onClick={handleMinimize}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[13px] font-medium border border-[var(--abu-border)] bg-[var(--abu-bg-base)] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-active)] transition-colors"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-body font-medium border border-[var(--abu-border)] bg-[var(--abu-bg-base)] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-active)] transition-colors"
             >
               <Minus className="h-3.5 w-3.5" />
               {t.windowClose.minimize}
             </button>
             <button
               onClick={handleQuit}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[13px] font-medium bg-[var(--abu-clay)] text-white hover:bg-[var(--abu-clay-hover)] transition-colors"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-body font-medium bg-[var(--abu-clay)] text-white hover:bg-[var(--abu-clay-hover)] transition-colors"
             >
               <X className="h-3.5 w-3.5" />
               {t.windowClose.quit}

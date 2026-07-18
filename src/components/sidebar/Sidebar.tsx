@@ -61,7 +61,7 @@ function StatusIndicator({ status, onComplete }: StatusIndicatorProps) {
 function IMPlatformDot({ platform }: { platform: string }) {
   return (
     <span
-      className="shrink-0 h-4 w-4 rounded text-[8px] font-bold leading-4 text-center bg-[var(--abu-clay-bg-15)] text-[var(--abu-clay)]"
+      className="shrink-0 h-4 w-4 rounded text-caption font-bold leading-4 text-center bg-[var(--abu-clay-bg-15)] text-[var(--abu-clay)]"
       title={platform}
     >
       {getPlatformShortLabel(platform)}
@@ -270,7 +270,7 @@ export default function Sidebar() {
         <button
           onClick={() => { startNewConversation(); setViewMode('chat'); setShowFileTree(false); }}
           className={cn(
-            'btn-ghost flex items-center gap-3 w-full px-3 py-2.5 text-[14px] font-medium rounded-lg',
+            'btn-ghost flex items-center gap-3 w-full px-3 py-2.5 text-body font-medium rounded-lg',
             activeConversationId === null && viewMode === 'chat'
               ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]'
               : 'text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]'
@@ -284,7 +284,7 @@ export default function Sidebar() {
             <button
               onClick={() => setViewMode('todos')}
               className={cn(
-                'btn-ghost flex items-center gap-3 w-full px-3 py-2.5 text-[14px] rounded-lg',
+                'btn-ghost flex items-center gap-3 w-full px-3 py-2.5 text-body rounded-lg',
                 viewMode === 'todos'
                   ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]'
                   : 'text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]'
@@ -296,7 +296,7 @@ export default function Sidebar() {
             <button
               onClick={() => setViewMode('inbox')}
               className={cn(
-                'btn-ghost flex items-center gap-3 w-full px-3 py-2.5 text-[14px] rounded-lg',
+                'btn-ghost flex items-center gap-3 w-full px-3 py-2.5 text-body rounded-lg',
                 viewMode === 'inbox'
                   ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]'
                   : 'text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]'
@@ -305,7 +305,7 @@ export default function Sidebar() {
               <Inbox className={cn('h-[18px] w-[18px]', viewMode === 'inbox' ? 'text-[var(--abu-clay)]' : 'text-[var(--abu-text-tertiary)]')} strokeWidth={1.75} />
               <span className="flex-1 text-left">{t.sidebar.inbox}</span>
               {pendingInboxCount > 0 && (
-                <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-red-500 text-white text-[11px] font-medium leading-[18px] text-center">
+                <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-red-500 text-white text-caption font-medium leading-[18px] text-center">
                   {pendingInboxCount > 99 ? '99+' : pendingInboxCount}
                 </span>
               )}
@@ -315,7 +315,7 @@ export default function Sidebar() {
         <button
           onClick={() => { openToolbox(); setShowFileTree(false); }}
           className={cn(
-            'btn-ghost flex items-center gap-3 w-full px-3 py-2.5 text-[14px] rounded-lg',
+            'btn-ghost flex items-center gap-3 w-full px-3 py-2.5 text-body rounded-lg',
             viewMode === 'toolbox'
               ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]'
               : 'text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]'
@@ -327,7 +327,7 @@ export default function Sidebar() {
         <button
           onClick={() => { openAutomation(); setShowFileTree(false); }}
           className={cn(
-            'btn-ghost flex items-center gap-3 w-full px-3 py-2.5 text-[14px] rounded-lg',
+            'btn-ghost flex items-center gap-3 w-full px-3 py-2.5 text-body rounded-lg',
             viewMode === 'automation'
               ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]'
               : 'text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]'
@@ -345,7 +345,7 @@ export default function Sidebar() {
         <div className="flex-1 min-h-0 flex flex-col">
           <button
             onClick={() => setShowFileTree(false)}
-            className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] shrink-0"
+            className="flex items-center gap-1.5 px-4 py-2 text-body font-medium text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)] shrink-0"
           >
             <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2} />
             <span>{t.sidebar.backToConversations}</span>
@@ -365,7 +365,7 @@ export default function Sidebar() {
           <div className="group flex items-center justify-between pr-1">
             <button
               onClick={() => setRecentsCollapsed(!recentsCollapsed)}
-              className="flex items-center gap-1 px-2 py-1.5 text-[13px] font-medium text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)]"
+              className="flex items-center gap-1 px-2 py-1.5 text-body font-medium text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)]"
             >
               <span>{t.sidebar.recents}</span>
             </button>
@@ -389,7 +389,7 @@ export default function Sidebar() {
         <div className="px-4">
         {sortedConvs.length === 0 ? (
           <div className="px-4 py-3">
-            <p className="text-[13px] text-[var(--abu-text-tertiary)]">{t.sidebar.noSessionsYet}</p>
+            <p className="text-body text-[var(--abu-text-tertiary)]">{t.sidebar.noSessionsYet}</p>
           </div>
         ) : (
           <div className="space-y-0.5">
@@ -421,7 +421,7 @@ export default function Sidebar() {
                   <input
                     autoFocus
                     defaultValue={conv.title}
-                    className="flex-1 text-[13px] bg-transparent border-b border-[var(--abu-clay)] outline-none min-w-0"
+                    className="flex-1 text-body bg-transparent border-b border-[var(--abu-clay)] outline-none min-w-0"
                     onClick={(e) => e.stopPropagation()}
                     onBlur={(e) => {
                       const val = e.target.value.trim();
@@ -434,7 +434,7 @@ export default function Sidebar() {
                     }}
                   />
                 ) : (
-                  <span className="flex-1 truncate text-[13px]">{conv.title.replace(/\[Attachment:\s*`[^`]*`\]\s*/g, '').trim() || conv.title}</span>
+                  <span className="flex-1 truncate text-body">{conv.title.replace(/\[Attachment:\s*`[^`]*`\]\s*/g, '').trim() || conv.title}</span>
                 )}
                 <StatusIndicator
                   status={convStatus}
@@ -495,14 +495,14 @@ export default function Sidebar() {
               setEditingId(contextMenu.convId);
               setContextMenu(null);
             }}
-            className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-active)]"
+            className="flex items-center gap-2 w-full px-3 py-1.5 text-body text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-active)]"
           >
             <Pencil className="h-3.5 w-3.5" />
             {t.sidebar.renameConversation}
           </button>
           <button
             onClick={() => handleExport(contextMenu.convId)}
-            className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-active)]"
+            className="flex items-center gap-2 w-full px-3 py-1.5 text-body text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-active)]"
           >
             <Download className="h-3.5 w-3.5" />
             {t.sidebar.exportConversation}
@@ -516,7 +516,7 @@ export default function Sidebar() {
               <div className="relative">
                 <button
                   onClick={(e) => { e.stopPropagation(); setShowMoveSubmenu(!showMoveSubmenu); }}
-                  className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-active)]"
+                  className="flex items-center gap-2 w-full px-3 py-1.5 text-body text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-active)]"
                 >
                   <FolderInput className="h-3.5 w-3.5" />
                   <span className="flex-1 text-left">{t.project.moveToProject}</span>
@@ -537,7 +537,7 @@ export default function Sidebar() {
                           setShowMoveSubmenu(false);
                         }}
                         className={cn(
-                          'flex items-center gap-2 w-full px-3 py-1.5 text-[13px] hover:bg-[var(--abu-bg-active)]',
+                          'flex items-center gap-2 w-full px-3 py-1.5 text-body hover:bg-[var(--abu-bg-active)]',
                           convMeta?.projectId === p.id ? 'text-[var(--abu-clay)]' : 'text-[var(--abu-text-secondary)]'
                         )}
                       >
@@ -554,7 +554,7 @@ export default function Sidebar() {
                             setContextMenu(null);
                             setShowMoveSubmenu(false);
                           }}
-                          className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-[var(--abu-text-tertiary)] hover:bg-[var(--abu-bg-active)]"
+                          className="flex items-center gap-2 w-full px-3 py-1.5 text-body text-[var(--abu-text-tertiary)] hover:bg-[var(--abu-bg-active)]"
                         >
                           <Minus className="h-3.5 w-3.5" />
                           {t.project.removeFromProject}
@@ -571,7 +571,7 @@ export default function Sidebar() {
               handleDeleteConversation(e, contextMenu.convId);
               setContextMenu(null);
             }}
-            className="flex items-center gap-2 w-full px-3 py-1.5 text-[13px] text-red-500 hover:bg-[var(--abu-bg-active)]"
+            className="flex items-center gap-2 w-full px-3 py-1.5 text-body text-red-500 hover:bg-[var(--abu-bg-active)]"
           >
             <Trash2 className="h-3.5 w-3.5" />
             {t.sidebar.deleteConversation}
@@ -604,10 +604,10 @@ export default function Sidebar() {
       {/* Undo delete toast */}
       {pendingDelete && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 bg-[var(--abu-text-primary)] text-white rounded-xl shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-200" role="alert" aria-live="assertive">
-          <span className="text-sm">{t.sidebar.conversationDeleted}</span>
+          <span className="text-body">{t.sidebar.conversationDeleted}</span>
           <button
             onClick={handleUndoDelete}
-            className="flex items-center gap-1 text-sm font-medium text-[var(--abu-clay)] hover:text-[var(--abu-clay)] transition-colors"
+            className="flex items-center gap-1 text-body font-medium text-[var(--abu-clay)] hover:text-[var(--abu-clay)] transition-colors"
           >
             <Undo2 className="h-3.5 w-3.5" />
             {t.sidebar.undo}

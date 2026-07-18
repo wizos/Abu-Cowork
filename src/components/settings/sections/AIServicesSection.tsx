@@ -34,7 +34,7 @@ export default function AIServicesSection() {
   if (isEnterprise) {
     return (
       <div className="space-y-4">
-        <h3 className="text-base font-semibold text-[var(--abu-text-primary)]">
+        <h3 className="text-h-sm font-semibold text-[var(--abu-text-primary)]">
           {t.settings.aiServices}
         </h3>
         <EnterpriseLlmBadge />
@@ -86,8 +86,8 @@ export default function AIServicesSection() {
       {/* Provider List */}
       {visibleProviders.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
-          <p className="text-sm text-[var(--abu-text-muted)]">{t.settings.noProviders}</p>
-          <p className="text-xs text-[var(--abu-text-muted)] mt-1">{t.settings.noProvidersHint}</p>
+          <p className="text-body text-[var(--abu-text-muted)]">{t.settings.noProviders}</p>
+          <p className="text-minor text-[var(--abu-text-muted)] mt-1">{t.settings.noProvidersHint}</p>
           <Button
             variant="outline"
             size="sm"
@@ -114,7 +114,7 @@ export default function AIServicesSection() {
       {/* Auxiliary Capabilities */}
       <div className="border border-[var(--abu-border)] rounded-xl">
         <div className="px-4 py-3 bg-[var(--abu-bg-muted)] rounded-t-xl">
-          <h4 className="text-xs font-medium text-[var(--abu-text-tertiary)] uppercase tracking-wider">
+          <h4 className="text-minor font-medium text-[var(--abu-text-tertiary)] uppercase tracking-wider">
             {t.settings.auxiliary}
           </h4>
         </div>
@@ -131,10 +131,10 @@ export default function AIServicesSection() {
                 )}
                 <div className="flex items-center gap-2">
                   <Globe className="h-3.5 w-3.5 text-[var(--abu-text-muted)]" />
-                  <span className="text-sm text-[var(--abu-text-primary)]">{t.settings.auxiliarySearch}</span>
+                  <span className="text-body text-[var(--abu-text-primary)]">{t.settings.auxiliarySearch}</span>
                 </div>
                 {hasBuiltinSearch ? (
-                  <span className="text-xs px-1.5 py-0.5 rounded bg-green-50 text-green-700">
+                  <span className="text-minor px-1.5 py-0.5 rounded bg-green-50 text-green-700">
                     {t.settings.builtinVia.replace('{name}', searchProviderName ?? '')}
                   </span>
                 ) : (
@@ -142,7 +142,7 @@ export default function AIServicesSection() {
                     type="button"
                     onClick={() => setSearchExpanded(!searchExpanded)}
                     className={cn(
-                      'text-xs px-1.5 py-0.5 rounded cursor-pointer transition-colors',
+                      'text-minor px-1.5 py-0.5 rounded cursor-pointer transition-colors',
                       'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30'
                     )}
                   >
@@ -180,13 +180,13 @@ export default function AIServicesSection() {
                 )}
                 <div className="flex items-center gap-2">
                   <ImageIcon className="h-3.5 w-3.5 text-[var(--abu-text-muted)]" />
-                  <span className="text-sm text-[var(--abu-text-primary)]">{t.settings.auxiliaryImageGen}</span>
+                  <span className="text-body text-[var(--abu-text-primary)]">{t.settings.auxiliaryImageGen}</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setImageGenExpanded(!imageGenExpanded)}
                   className={cn(
-                    'text-xs px-1.5 py-0.5 rounded cursor-pointer transition-colors',
+                    'text-minor px-1.5 py-0.5 rounded cursor-pointer transition-colors',
                     imageGenBackends.length > 0
                       ? 'bg-green-50 text-green-700 hover:bg-green-100'
                       : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30'

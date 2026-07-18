@@ -95,7 +95,7 @@ export default function ScheduleTaskCard({ task }: Props) {
         <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-[var(--abu-bg-active)] shrink-0">
           <Clock className="h-5 w-5 text-[var(--abu-text-muted)]" />
         </div>
-        <span className="flex-1 min-w-0 text-sm font-semibold leading-snug truncate text-[var(--abu-text-primary)]">
+        <span className="flex-1 min-w-0 text-body font-semibold leading-snug truncate text-[var(--abu-text-primary)]">
           {task.name}
         </span>
         <button
@@ -115,7 +115,7 @@ export default function ScheduleTaskCard({ task }: Props) {
       </div>
 
       {/* Row 2: schedule + last-run meta */}
-      <div className="flex-1 min-h-0 flex flex-col gap-0.5 text-[12px] text-[var(--abu-text-tertiary)]">
+      <div className="flex-1 min-h-0 flex flex-col gap-0.5 text-minor text-[var(--abu-text-tertiary)]">
         <span className="truncate">{scheduleDesc}</span>
         {task.lastRunAt && (
           <span className="truncate">

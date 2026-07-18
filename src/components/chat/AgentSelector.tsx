@@ -64,7 +64,7 @@ export default function AgentSelector({
       <button
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          'btn-ghost flex items-center gap-1 px-2 py-1 text-[12px] font-medium rounded-md transition-colors',
+          'btn-ghost flex items-center gap-1 px-2 py-1 text-minor font-medium rounded-md transition-colors',
           selected
             ? 'text-[var(--abu-clay)] hover:bg-[var(--abu-clay-bg)]'
             : 'text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]',
@@ -72,7 +72,7 @@ export default function AgentSelector({
       >
         {selected ? (
           <>
-            <span className="text-sm leading-none">{selected.avatar ?? '@'}</span>
+            <span className="text-body leading-none">{selected.avatar ?? '@'}</span>
             <span>{selected.name}</span>
           </>
         ) : (
@@ -87,7 +87,7 @@ export default function AgentSelector({
       {open && (
         <div className="absolute bottom-full left-0 mb-1.5 z-50 min-w-[240px] max-w-[320px] max-h-[280px] overflow-y-auto rounded-lg border border-[var(--abu-border)] bg-[var(--abu-bg-base)] shadow-lg py-1">
           {available.length === 0 ? (
-            <div className="px-3 py-2 text-[12px] text-[var(--abu-text-muted)]">
+            <div className="px-3 py-2 text-minor text-[var(--abu-text-muted)]">
               {t.chat.pickAgentEmpty}
             </div>
           ) : (
@@ -96,7 +96,7 @@ export default function AgentSelector({
                 <>
                   <button
                     onClick={handleClear}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)] transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-minor text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)] transition-colors"
                   >
                     <X className="h-3.5 w-3.5" />
                     <span>{t.chat.pickAgentClear}</span>
@@ -117,18 +117,18 @@ export default function AgentSelector({
                         : 'hover:bg-[var(--abu-bg-hover)]',
                     )}
                   >
-                    <span className="text-base leading-none mt-0.5 shrink-0">{a.avatar ?? '🤖'}</span>
+                    <span className="text-body leading-none mt-0.5 shrink-0">{a.avatar ?? '🤖'}</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className={cn(
-                          'text-[13px] font-medium truncate',
+                          'text-body font-medium truncate',
                           isActive ? 'text-[var(--abu-clay)]' : 'text-[var(--abu-text-primary)]',
                         )}>
                           {a.name}
                         </span>
                         {isActive && <Check className="h-3 w-3 text-[var(--abu-clay)] shrink-0" />}
                       </div>
-                      <p className="text-[11px] text-[var(--abu-text-tertiary)] mt-0.5 line-clamp-2 leading-snug">
+                      <p className="text-caption text-[var(--abu-text-tertiary)] mt-0.5 line-clamp-2 leading-snug">
                         {a.description}
                       </p>
                     </div>

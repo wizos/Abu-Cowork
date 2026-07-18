@@ -101,12 +101,12 @@ export default function SkillEditor({ skill, onClose, onSave }: SkillEditorProps
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <h2 className="text-sm font-semibold text-[var(--abu-text-primary)] flex-1">{t.toolbox.skillEditorTitle}</h2>
+        <h2 className="text-body font-semibold text-[var(--abu-text-primary)] flex-1">{t.toolbox.skillEditorTitle}</h2>
         <div className="flex gap-2">
           <button
             onClick={handleSave}
             disabled={!isValid || saving}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--abu-text-primary)] text-[var(--abu-bg-base)] hover:bg-[var(--abu-text-primary)] disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-minor font-medium bg-[var(--abu-text-primary)] text-[var(--abu-bg-base)] hover:bg-[var(--abu-text-primary)] disabled:opacity-50 transition-colors"
           >
             <Save className="h-3.5 w-3.5" />
             {t.toolbox.skillSave}
@@ -114,7 +114,7 @@ export default function SkillEditor({ skill, onClose, onSave }: SkillEditorProps
           <button
             onClick={handleSaveAndTest}
             disabled={!isValid || saving}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--abu-clay)] text-white hover:bg-[var(--abu-clay-hover)] disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-minor font-medium bg-[var(--abu-clay)] text-white hover:bg-[var(--abu-clay-hover)] disabled:opacity-50 transition-colors"
           >
             <Play className="h-3.5 w-3.5" />
             {t.toolbox.skillSaveAndTest}
@@ -128,31 +128,31 @@ export default function SkillEditor({ skill, onClose, onSave }: SkillEditorProps
         <div className="space-y-3">
           {/* Name */}
           <div>
-            <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.skillEditorName}</label>
+            <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.skillEditorName}</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="my-skill"
               className={cn(
-                'w-full px-3 py-1.5 rounded-lg border text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all',
+                'w-full px-3 py-1.5 rounded-lg border text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all',
                 name.trim() && !nameValid ? 'border-red-300' : 'border-[var(--abu-border)]',
               )}
             />
             {name.trim() && !nameValid && (
-              <p className="text-[11px] text-red-500 mt-1">{t.toolbox.nameFormatHint}</p>
+              <p className="text-caption text-red-500 mt-1">{t.toolbox.nameFormatHint}</p>
             )}
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.skillEditorDescription}</label>
+            <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.skillEditorDescription}</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t.toolbox.skillEditorDescriptionPlaceholder}
               rows={2}
-              className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all resize-none"
+              className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all resize-none"
             />
           </div>
         </div>
@@ -160,10 +160,10 @@ export default function SkillEditor({ skill, onClose, onSave }: SkillEditorProps
         {/* Instructions */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="block text-xs font-medium text-[var(--abu-text-secondary)]">{t.toolbox.skillEditorContent}</label>
+            <label className="block text-minor font-medium text-[var(--abu-text-secondary)]">{t.toolbox.skillEditorContent}</label>
             <button
               onClick={() => setShowPreview(!showPreview)}
-              className={`text-[11px] px-2 py-0.5 rounded-full transition-colors ${
+              className={`text-caption px-2 py-0.5 rounded-full transition-colors ${
                 showPreview
                   ? 'bg-[var(--abu-text-primary)] text-[var(--abu-bg-base)]'
                   : 'bg-[var(--abu-bg-muted)] text-[var(--abu-text-tertiary)] hover:bg-[var(--abu-border)]'
@@ -182,7 +182,7 @@ export default function SkillEditor({ skill, onClose, onSave }: SkillEditorProps
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Write skill instructions in Markdown..."
-              className="w-full min-h-[200px] max-h-[400px] px-3 py-2 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] font-mono focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all resize-y"
+              className="w-full min-h-[200px] max-h-[400px] px-3 py-2 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] font-mono focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all resize-y"
             />
           )}
         </div>
@@ -190,11 +190,11 @@ export default function SkillEditor({ skill, onClose, onSave }: SkillEditorProps
         {/* Supporting Files */}
         {supportingFiles.length > 0 && (
           <div className="space-y-2">
-            <h3 className="text-xs font-semibold text-[var(--abu-text-tertiary)] uppercase tracking-wide">
+            <h3 className="text-minor font-semibold text-[var(--abu-text-tertiary)] uppercase tracking-wide">
               {t.toolbox.skillFiles}
             </h3>
             <div className="border border-[var(--abu-border)] rounded-lg p-3 bg-[var(--abu-bg-base)]">
-              <div className="text-xs font-mono space-y-0.5">
+              <div className="text-minor font-mono space-y-0.5">
                 <div className="flex items-center gap-1.5 text-[var(--abu-text-primary)] font-medium">
                   <File className="h-3 w-3 text-[var(--abu-text-tertiary)]" />
                   SKILL.md
@@ -247,7 +247,7 @@ export default function SkillEditor({ skill, onClose, onSave }: SkillEditorProps
         <div className="space-y-3">
           <button
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--abu-text-tertiary)] uppercase tracking-wide hover:text-[var(--abu-text-primary)] transition-colors"
+            className="flex items-center gap-1.5 text-minor font-semibold text-[var(--abu-text-tertiary)] uppercase tracking-wide hover:text-[var(--abu-text-primary)] transition-colors"
           >
             {showAdvanced ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
             {t.toolbox.skillAdvancedSettings}
@@ -257,55 +257,55 @@ export default function SkillEditor({ skill, onClose, onSave }: SkillEditorProps
             <div className="space-y-3">
               {/* License */}
               <div>
-                <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.skillLicense}</label>
+                <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.skillLicense}</label>
                 <input
                   type="text"
                   value={license}
                   onChange={(e) => setLicense(e.target.value)}
-                  className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
+                  className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
                 />
               </div>
 
               {/* Trigger */}
               <div>
-                <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.skillTrigger}</label>
+                <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.skillTrigger}</label>
                 <input
                   type="text"
                   value={trigger}
                   onChange={(e) => setTrigger(e.target.value)}
                   placeholder={t.toolbox.skillTriggerPlaceholder}
-                  className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
+                  className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
                 />
               </div>
 
               {/* Do Not Trigger */}
               <div>
-                <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.skillDoNotTrigger}</label>
+                <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.skillDoNotTrigger}</label>
                 <input
                   type="text"
                   value={doNotTrigger}
                   onChange={(e) => setDoNotTrigger(e.target.value)}
                   placeholder={t.toolbox.skillDoNotTriggerPlaceholder}
-                  className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
+                  className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
                 />
               </div>
 
               {/* Tags */}
               <div>
-                <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.skillTags}</label>
+                <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.skillTags}</label>
                 <input
                   type="text"
                   value={tagsStr}
                   onChange={(e) => setTagsStr(e.target.value)}
                   placeholder="research, analysis"
-                  className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
+                  className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
                 />
               </div>
 
               {/* Context + Max Turns row */}
               <div className="flex gap-3">
                 <div className="flex-1">
-                  <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.skillContext}</label>
+                  <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.skillContext}</label>
                   <Select
                     value={context}
                     onChange={(v) => setContext(v as 'inline' | 'fork')}
@@ -316,7 +316,7 @@ export default function SkillEditor({ skill, onClose, onSave }: SkillEditorProps
                   />
                 </div>
                 <div className="w-32">
-                  <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.skillMaxTurns}</label>
+                  <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.skillMaxTurns}</label>
                   <input
                     type="number"
                     min={1}
@@ -328,37 +328,37 @@ export default function SkillEditor({ skill, onClose, onSave }: SkillEditorProps
                       if (!isNaN(v) && v >= 1) setMaxTurns(String(v));
                     }}
                     placeholder={t.toolbox.maxTurnsInheritGlobalHint}
-                    className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
+                    className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
                   />
                 </div>
               </div>
 
               {/* Allowed Tools */}
               <div>
-                <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.skillAllowedTools}</label>
+                <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.skillAllowedTools}</label>
                 <input
                   type="text"
                   value={allowedToolsStr}
                   onChange={(e) => setAllowedToolsStr(e.target.value)}
                   placeholder="read_file, write_file, web_search"
-                  className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
+                  className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
                 />
               </div>
 
               {/* Argument Hint + User Invocable row */}
               <div className="flex gap-3 items-end">
                 <div className="flex-1">
-                  <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.skillArgumentHint}</label>
+                  <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.skillArgumentHint}</label>
                   <input
                     type="text"
                     value={argumentHint}
                     onChange={(e) => setArgumentHint(e.target.value)}
                     placeholder="<topic>"
-                    className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
+                    className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
                   />
                 </div>
                 <div className="flex items-center gap-2 pb-1">
-                  <label className="text-xs font-medium text-[var(--abu-text-secondary)]">{t.toolbox.skillUserInvocable}</label>
+                  <label className="text-minor font-medium text-[var(--abu-text-secondary)]">{t.toolbox.skillUserInvocable}</label>
                   <Toggle checked={userInvocable} onChange={() => setUserInvocable(!userInvocable)} size="md" />
                 </div>
               </div>

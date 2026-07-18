@@ -461,7 +461,7 @@ export default function PreviewPanel({
         {!embedded || isFullscreen ? (
           <>
             <Icon className="w-4 h-4 text-[var(--abu-text-tertiary)] shrink-0" />
-            <span className="text-[13px] font-medium text-[var(--abu-text-primary)] truncate flex-1">
+            <span className="text-body font-medium text-[var(--abu-text-primary)] truncate flex-1">
               {fileName}
             </span>
           </>
@@ -472,14 +472,14 @@ export default function PreviewPanel({
           <div className="flex items-center bg-[var(--abu-bg-hover)] rounded p-0.5 mr-1">
             <button
               onClick={() => setViewMode('source')}
-              className={`p-1 rounded text-[10px] ${viewMode === 'source' ? 'bg-white' : ''}`}
+              className={`p-1 rounded text-caption ${viewMode === 'source' ? 'bg-white' : ''}`}
               title={t.panel.sourceMode}
             >
               <Code className="w-3 h-3" strokeWidth={1.5} />
             </button>
             <button
               onClick={() => setViewMode('preview')}
-              className={`p-1 rounded text-[10px] ${viewMode === 'preview' ? 'bg-white' : ''}`}
+              className={`p-1 rounded text-caption ${viewMode === 'preview' ? 'bg-white' : ''}`}
               title={t.panel.previewMode}
             >
               <Eye className="w-3 h-3" strokeWidth={1.5} />
@@ -557,7 +557,7 @@ export default function PreviewPanel({
           </Button>
           <div className="flex-1 min-w-0 flex items-center gap-1.5 h-6 px-2 rounded-md bg-[var(--abu-bg-base)] border border-[var(--abu-bg-pressed)]">
             <Globe className="w-3 h-3 text-[var(--abu-text-tertiary)] shrink-0" strokeWidth={1.5} />
-            <span className="truncate text-[11px] text-[var(--abu-text-secondary)]">{previewFilePath}</span>
+            <span className="truncate text-caption text-[var(--abu-text-secondary)]">{previewFilePath}</span>
           </div>
         </div>
       )}
@@ -570,7 +570,7 @@ export default function PreviewPanel({
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-            <p className="text-[13px] text-red-500">{error}</p>
+            <p className="text-body text-red-500">{error}</p>
           </div>
         ) : rendererType === 'pdf' || rendererType === 'docx' || rendererType === 'pptx' || rendererType === 'xlsx' || (rendererType === 'csv' && content !== null) ? (
           <Suspense fallback={<LazyFallback />}>
@@ -630,7 +630,7 @@ export default function PreviewPanel({
           <CodeMirrorEditor value={draft} language={getFileExtension(previewFilePath)} onChange={setDraft} />
         ) : (
           <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-            <p className="text-[13px] text-[var(--abu-text-tertiary)]">{t.panel.unsupportedFileType}</p>
+            <p className="text-body text-[var(--abu-text-tertiary)]">{t.panel.unsupportedFileType}</p>
             <Button variant="outline" size="sm" onClick={handleOpenInFinder} className="mt-3">
               <FolderOpen className="w-3.5 h-3.5 mr-1.5" />
               {t.panel.showInFinder}

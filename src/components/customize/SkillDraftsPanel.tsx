@@ -85,11 +85,11 @@ export default function SkillDraftsPanel() {
       <div className="mx-4 my-3 p-4 rounded-xl border border-[var(--abu-border)] bg-[var(--abu-bg-elevated)]">
         <div className="flex items-center gap-2 mb-2">
           <Sparkles className="h-4 w-4 text-[var(--abu-clay)]" />
-          <span className="text-sm font-semibold text-[var(--abu-text-primary)]">
+          <span className="text-body font-semibold text-[var(--abu-text-primary)]">
             {t.toolbox.draftsOnboardTitle}
           </span>
         </div>
-        <p className="text-xs text-[var(--abu-text-tertiary)] leading-relaxed mb-3">
+        <p className="text-minor text-[var(--abu-text-tertiary)] leading-relaxed mb-3">
           {t.toolbox.draftsOnboardBody}
         </p>
         <div className="flex flex-col gap-1.5 mb-4">
@@ -104,12 +104,12 @@ export default function SkillDraftsPanel() {
                   : 'border-transparent hover:bg-[var(--abu-bg-active)]',
               )}
             >
-              <span className="text-base leading-none mt-0.5">{lv.emoji}</span>
+              <span className="text-h-sm leading-none mt-0.5">{lv.emoji}</span>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-semibold text-[var(--abu-text-primary)]">
+                <div className="text-minor font-semibold text-[var(--abu-text-primary)]">
                   {lv.title}
                 </div>
-                <div className="text-[11px] text-[var(--abu-text-muted)] mt-0.5">
+                <div className="text-caption text-[var(--abu-text-muted)] mt-0.5">
                   {lv.desc}
                 </div>
               </div>
@@ -119,7 +119,7 @@ export default function SkillDraftsPanel() {
         <div className="flex justify-end">
           <button
             onClick={handleConfirmOnboarding}
-            className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-[var(--abu-clay)] hover:bg-[var(--abu-clay-hover)] transition-colors"
+            className="px-3 py-1.5 rounded-lg text-minor font-medium text-white bg-[var(--abu-clay)] hover:bg-[var(--abu-clay-hover)] transition-colors"
           >
             {t.toolbox.draftsOnboardConfirm}
           </button>
@@ -174,23 +174,23 @@ export default function SkillDraftsPanel() {
         <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--abu-border)]">
           <div className="flex items-center gap-2">
             <Sparkles className="h-3.5 w-3.5 text-[var(--abu-clay)]" />
-            <span className="text-xs font-semibold text-[var(--abu-text-primary)]">
+            <span className="text-minor font-semibold text-[var(--abu-text-primary)]">
               {t.toolbox.draftsTitle}
             </span>
-            <span className="text-[11px] text-[var(--abu-text-muted)]">
+            <span className="text-caption text-[var(--abu-text-muted)]">
               {format(t.toolbox.draftsCount, { count: String(drafts.length) })}
             </span>
           </div>
           <div className="flex items-center gap-1">
             <button
               onClick={() => (needsBatchConfirm ? setConfirmAllOpen('accept') : handleAcceptAll())}
-              className="px-2 py-1 rounded-md text-[11px] text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-active)] transition-colors"
+              className="px-2 py-1 rounded-md text-caption text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-active)] transition-colors"
             >
               {t.toolbox.draftsAcceptAll}
             </button>
             <button
               onClick={() => (needsBatchConfirm ? setConfirmAllOpen('reject') : handleRejectAll())}
-              className="px-2 py-1 rounded-md text-[11px] text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-active)] transition-colors"
+              className="px-2 py-1 rounded-md text-caption text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-active)] transition-colors"
             >
               {t.toolbox.draftsRejectAll}
             </button>
@@ -245,18 +245,18 @@ function DraftCard({
     <div className="px-3 py-2 border-b border-[var(--abu-border-subtle)] last:border-b-0 hover:bg-[var(--abu-bg-active)] transition-colors">
       <div className="flex items-start gap-2">
         <div className="flex-1 min-w-0">
-          <div className="text-xs font-semibold text-[var(--abu-text-primary)] truncate">
+          <div className="text-minor font-semibold text-[var(--abu-text-primary)] truncate">
             {draft.skillName}
           </div>
           {draft.triggerReason && (
-            <div className="text-[11px] text-[var(--abu-text-muted)] mt-0.5 line-clamp-2">
+            <div className="text-caption text-[var(--abu-text-muted)] mt-0.5 line-clamp-2">
               <span className="text-[var(--abu-text-tertiary)]">
                 {t.toolbox.draftsTriggerReason}:
               </span>{' '}
               {draft.triggerReason}
             </div>
           )}
-          <div className="flex items-center gap-1.5 mt-1 text-[10px] text-[var(--abu-text-muted)]">
+          <div className="flex items-center gap-1.5 mt-1 text-caption text-[var(--abu-text-muted)]">
             <span>{format(t.toolbox.draftsCreatedAgo, { when: createdWhen })}</span>
             <span>·</span>
             <span className={cn(isExpired && 'text-red-500 font-medium')}>

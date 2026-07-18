@@ -27,14 +27,14 @@ export default function AutomationView() {
         <>
           <button
             onClick={() => navigateToChatWithInput(t.schedule.askAbuCreatePrompt)}
-            className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-[13px] font-medium bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)] hover:bg-[var(--abu-border)] transition-colors shrink-0"
+            className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-body font-medium bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)] hover:bg-[var(--abu-border)] transition-colors shrink-0"
           >
             <Wand2 className="h-3.5 w-3.5 text-[var(--abu-clay)]" />
             {t.schedule.askAbuToCreate}
           </button>
           <button
             onClick={() => useScheduleStore.getState().openEditor()}
-            className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-[13px] font-medium bg-[var(--abu-clay)] text-white hover:bg-[var(--abu-clay-hover)] transition-colors shrink-0"
+            className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-body font-medium bg-[var(--abu-clay)] text-white hover:bg-[var(--abu-clay-hover)] transition-colors shrink-0"
           >
             <Plus className="h-3.5 w-3.5" />
             {t.schedule.newTask}
@@ -46,14 +46,14 @@ export default function AutomationView() {
       <>
         <button
           onClick={() => navigateToChatWithInput(t.trigger.askAbuCreatePrompt)}
-          className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-[13px] font-medium bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)] hover:bg-[var(--abu-border)] transition-colors shrink-0"
+          className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-body font-medium bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)] hover:bg-[var(--abu-border)] transition-colors shrink-0"
         >
           <Wand2 className="h-3.5 w-3.5 text-[var(--abu-clay)]" />
           {t.trigger.askAbuToCreate}
         </button>
         <button
           onClick={() => useTriggerStore.getState().openEditor()}
-          className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-[13px] font-medium bg-[var(--abu-clay)] text-white hover:bg-[var(--abu-clay-hover)] transition-colors shrink-0"
+          className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-body font-medium bg-[var(--abu-clay)] text-white hover:bg-[var(--abu-clay-hover)] transition-colors shrink-0"
         >
           <Plus className="h-3.5 w-3.5" />
           {t.trigger.newTrigger}

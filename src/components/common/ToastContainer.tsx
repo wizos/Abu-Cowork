@@ -61,11 +61,11 @@ export default function ToastContainer() {
           >
             <Icon className={cn('h-4 w-4 mt-0.5 shrink-0', colors.icon)} />
             <div className="flex-1 min-w-0">
-              <p className={cn('text-[13px] font-medium', colors.title)}>
+              <p className={cn('text-body font-medium', colors.title)}>
                 {toast.title}
               </p>
               {toast.message && (
-                <p className={cn('text-[12px] mt-0.5', colors.message)}>
+                <p className={cn('text-minor mt-0.5', colors.message)}>
                   {toast.message}
                 </p>
               )}
@@ -79,7 +79,7 @@ export default function ToastContainer() {
                         removeToast(toast.id);
                       }}
                       className={cn(
-                        'px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors',
+                        'px-2.5 py-1 text-caption font-medium rounded-md transition-colors',
                         i === 0 ? colors.action : 'bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-gray-700 dark:text-[var(--abu-text-secondary)]',
                       )}
                     >

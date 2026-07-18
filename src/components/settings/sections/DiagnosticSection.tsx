@@ -84,7 +84,7 @@ export default function DiagnosticSection() {
         <button
           type="button"
           onClick={() => setActiveSystemTab('feedback')}
-          className="text-[12px] text-[var(--abu-text-muted)] hover:text-[var(--abu-clay)] transition-colors"
+          className="text-minor text-[var(--abu-text-muted)] hover:text-[var(--abu-clay)] transition-colors"
         >
           {t.diagnostic.feedbackPageHint}
         </button>

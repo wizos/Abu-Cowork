@@ -148,11 +148,11 @@ export default function SensitiveAuditDialog() {
         <div className="px-6 pt-6 pb-3 border-b border-[var(--abu-bg-muted)]">
           <div className="flex items-center gap-2 mb-2">
             <ShieldAlert className="h-5 w-5 text-amber-600" />
-            <h3 className="text-[16px] font-semibold text-[var(--abu-text-primary)]">
+            <h3 className="text-h-sm font-semibold text-[var(--abu-text-primary)]">
               {t.memory.auditTitle}
             </h3>
           </div>
-          <p className="text-[13px] text-[var(--abu-text-tertiary)] leading-relaxed">
+          <p className="text-body text-[var(--abu-text-tertiary)] leading-relaxed">
             {isEmpty
               ? t.memory.auditEmpty
               : format(t.memory.auditIntro, { count: String(entries.length) })}
@@ -180,17 +180,17 @@ export default function SensitiveAuditDialog() {
                     className="mt-0.5 h-3.5 w-3.5 accent-[var(--abu-clay)] cursor-pointer"
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="text-[13px] text-[var(--abu-text-primary)] truncate">
+                    <div className="text-body text-[var(--abu-text-primary)] truncate">
                       {h.name}
                     </div>
-                    <div className="text-[11px] text-[var(--abu-text-placeholder)] mt-0.5">
+                    <div className="text-caption text-[var(--abu-text-placeholder)] mt-0.5">
                       {h.filename}
                     </div>
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {entry.result.matches.map((m) => (
                         <span
                           key={m.patternId}
-                          className="text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 px-1.5 py-0.5 rounded"
+                          className="text-caption bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 px-1.5 py-0.5 rounded"
                         >
                           {patternLabel(m.patternId, t)}
                         </span>
@@ -205,7 +205,7 @@ export default function SensitiveAuditDialog() {
 
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[var(--abu-bg-muted)]">
           {!isEmpty && (
-            <span className="text-[11px] text-[var(--abu-text-placeholder)] mr-auto">
+            <span className="text-caption text-[var(--abu-text-placeholder)] mr-auto">
               {format(t.memory.bulkSelected, { count: String(selectedCount) })}
             </span>
           )}

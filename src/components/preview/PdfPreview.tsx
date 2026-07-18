@@ -23,7 +23,7 @@ function LoadingIndicator({ label }: { label?: string }) {
   return (
     <div className="flex items-center justify-center gap-2 h-full">
       <Loader2 className="w-5 h-5 text-[var(--abu-clay)] animate-spin" />
-      {label && <span className="text-[13px] text-[var(--abu-text-tertiary)]">{label}</span>}
+      {label && <span className="text-body text-[var(--abu-text-tertiary)]">{label}</span>}
     </div>
   );
 }
@@ -79,7 +79,7 @@ export default function PdfPreview({ filePath }: { filePath: string }) {
   if (error) {
     return (
       <div className="flex items-center justify-center h-full p-4">
-        <p className="text-[13px] text-red-500">{error}</p>
+        <p className="text-body text-red-500">{error}</p>
       </div>
     );
   }
@@ -100,7 +100,7 @@ export default function PdfPreview({ filePath }: { filePath: string }) {
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
-            <span className="text-[11px] text-[var(--abu-text-tertiary)] min-w-[80px] text-center">
+            <span className="text-caption text-[var(--abu-text-tertiary)] min-w-[80px] text-center">
               {format(t.panel.pdfPage, { current: String(currentPage), total: String(numPages) })}
             </span>
             <Button
@@ -125,7 +125,7 @@ export default function PdfPreview({ filePath }: { filePath: string }) {
             >
               <ZoomOut className="h-3.5 w-3.5" />
             </Button>
-            <span className="text-[11px] text-[var(--abu-text-tertiary)] min-w-[40px] text-center">
+            <span className="text-caption text-[var(--abu-text-tertiary)] min-w-[40px] text-center">
               {Math.round(scale * 100)}%
             </span>
             <Button

@@ -62,7 +62,7 @@ export default function TriggerCard({ trigger }: Props) {
         <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-[var(--abu-bg-active)] shrink-0">
           <Zap className="h-5 w-5 text-[var(--abu-text-muted)]" />
         </div>
-        <span className="flex-1 min-w-0 text-sm font-semibold leading-snug truncate text-[var(--abu-text-primary)]">
+        <span className="flex-1 min-w-0 text-body font-semibold leading-snug truncate text-[var(--abu-text-primary)]">
           {trigger.name}
         </span>
         <button
@@ -82,7 +82,7 @@ export default function TriggerCard({ trigger }: Props) {
       </div>
 
       {/* Row 2: filter + output + last-triggered meta */}
-      <div className="flex-1 min-h-0 flex flex-col gap-0.5 text-[12px] text-[var(--abu-text-tertiary)]">
+      <div className="flex-1 min-h-0 flex flex-col gap-0.5 text-minor text-[var(--abu-text-tertiary)]">
         <span className="truncate">{getFilterDescription(trigger, t.trigger)}</span>
         <div className="flex items-center gap-3 min-w-0">
           {trigger.output?.enabled && (

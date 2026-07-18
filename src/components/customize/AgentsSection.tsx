@@ -194,20 +194,20 @@ export default function AgentsSection({ manualCreateTrigger }: AgentsSectionProp
           TopTabNav), with a centered max-width so cards don't stretch edge-to-edge. */}
       <div className="flex-1 overflow-y-scroll overlay-scroll px-8 pb-6">
         {filteredAgents.length === 0 ? (
-          <div className="text-sm text-[var(--abu-text-muted)] py-16 text-center">{t.toolbox.noAgentsFound}</div>
+          <div className="text-body text-[var(--abu-text-muted)] py-16 text-center">{t.toolbox.noAgentsFound}</div>
         ) : (
           <div className="max-w-5xl mx-auto space-y-6">
             {/* My agents (user-created) */}
             {userAgents.length > 0 && (
               <div>
-                <div className="mb-3 text-[13px] font-medium text-[var(--abu-text-muted)]">{t.toolbox.myAgents}</div>
+                <div className="mb-3 text-body font-medium text-[var(--abu-text-muted)]">{t.toolbox.myAgents}</div>
                 <ToolGrid>{userAgents.map((agent) => renderAgentCard(agent))}</ToolGrid>
               </div>
             )}
             {/* System agents (builtin/marketplace) */}
             {systemAgents.length > 0 && (
               <div>
-                <div className="mb-3 text-[13px] font-medium text-[var(--abu-text-muted)]">{t.toolbox.exampleAgents}</div>
+                <div className="mb-3 text-body font-medium text-[var(--abu-text-muted)]">{t.toolbox.exampleAgents}</div>
                 <ToolGrid>{systemAgents.map((agent) => renderAgentCard(agent))}</ToolGrid>
               </div>
             )}
@@ -228,7 +228,7 @@ export default function AgentsSection({ manualCreateTrigger }: AgentsSectionProp
             {!disabledSet.has(selected.name) && (
               <button
                 onClick={() => startChatWithAgent(selected)}
-                className="flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs font-medium text-[var(--abu-clay)] bg-[var(--abu-clay-bg)] hover:bg-[var(--abu-clay-bg-15)] border border-[var(--abu-clay-40)] hover:border-[var(--abu-clay)] transition-colors"
+                className="flex items-center gap-1.5 px-2.5 h-7 rounded-md text-minor font-medium text-[var(--abu-clay)] bg-[var(--abu-clay-bg)] hover:bg-[var(--abu-clay-bg-15)] border border-[var(--abu-clay-40)] hover:border-[var(--abu-clay)] transition-colors"
                 title={t.toolbox.agentStartChat}
               >
                 <MessageCircle className="h-3.5 w-3.5" />
@@ -252,14 +252,14 @@ export default function AgentsSection({ manualCreateTrigger }: AgentsSectionProp
                 {menuAgent === selected.name && (
                   <div className="absolute right-0 top-8 z-10 bg-[var(--abu-bg-base)] border border-[var(--abu-border)] rounded-lg shadow-lg py-1 min-w-[140px]">
                     <button
-                      className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)] transition-colors"
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-minor text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)] transition-colors"
                       onClick={() => { setEditorAgent(selected); setMenuAgent(null); setSelectedAgent(null); }}
                     >
                       <Pencil className="h-3 w-3" />
                       {t.toolbox.agentEdit}
                     </button>
                     <button
-                      className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 transition-colors"
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-minor text-red-600 hover:bg-red-50 transition-colors"
                       onClick={() => { handleDelete(selected); setMenuAgent(null); }}
                     >
                       <Trash2 className="h-3 w-3" />
@@ -276,21 +276,21 @@ export default function AgentsSection({ manualCreateTrigger }: AgentsSectionProp
           <div className="space-y-5">
             {/* Added by */}
             <div>
-              <div className="text-xs text-[var(--abu-text-muted)] mb-0.5">{t.toolbox.skillAddedBy}</div>
-              <div className="text-sm font-medium text-[var(--abu-text-primary)]">{isSystemAgent(selected) ? 'System' : 'User'}</div>
+              <div className="text-minor text-[var(--abu-text-muted)] mb-0.5">{t.toolbox.skillAddedBy}</div>
+              <div className="text-body font-medium text-[var(--abu-text-primary)]">{isSystemAgent(selected) ? 'System' : 'User'}</div>
             </div>
 
             {/* Description */}
             <div>
-              <span className="text-xs text-[var(--abu-text-muted)]">Description</span>
-              <p className="text-sm text-[var(--abu-text-primary)] leading-relaxed mt-1.5">{localizedDescription(selected, locale)}</p>
+              <span className="text-minor text-[var(--abu-text-muted)]">Description</span>
+              <p className="text-body text-[var(--abu-text-primary)] leading-relaxed mt-1.5">{localizedDescription(selected, locale)}</p>
             </div>
 
             {/* Intro — agent self-introduction shown when there's an intro paragraph */}
             {localizedIntro(selected, locale) && (
               <div>
-                <span className="text-xs text-[var(--abu-text-muted)]">{t.toolbox.agentIntro}</span>
-                <p className="text-sm text-[var(--abu-text-primary)] leading-relaxed mt-1.5">
+                <span className="text-minor text-[var(--abu-text-muted)]">{t.toolbox.agentIntro}</span>
+                <p className="text-body text-[var(--abu-text-primary)] leading-relaxed mt-1.5">
                   {localizedIntro(selected, locale)}
                 </p>
               </div>
@@ -302,10 +302,10 @@ export default function AgentsSection({ manualCreateTrigger }: AgentsSectionProp
               if (!expertise || expertise.length === 0) return null;
               return (
                 <div>
-                  <span className="text-xs text-[var(--abu-text-muted)]">{t.toolbox.agentExpertise}</span>
+                  <span className="text-minor text-[var(--abu-text-muted)]">{t.toolbox.agentExpertise}</span>
                   <ul className="space-y-1.5 mt-1.5">
                     {expertise.map((item) => (
-                      <li key={item} className="flex items-start gap-2 text-sm text-[var(--abu-text-primary)] leading-relaxed">
+                      <li key={item} className="flex items-start gap-2 text-body text-[var(--abu-text-primary)] leading-relaxed">
                         <Check className="h-3.5 w-3.5 text-[var(--abu-clay)] shrink-0 mt-0.5" />
                         <span>{item}</span>
                       </li>
@@ -321,13 +321,13 @@ export default function AgentsSection({ manualCreateTrigger }: AgentsSectionProp
               if (!prompts || prompts.length === 0) return null;
               return (
                 <div>
-                  <span className="text-xs text-[var(--abu-text-muted)]">{t.toolbox.agentSamplePrompts}</span>
+                  <span className="text-minor text-[var(--abu-text-muted)]">{t.toolbox.agentSamplePrompts}</span>
                   <ul className="space-y-1.5 mt-1.5">
                     {prompts.map((prompt) => (
                       <li key={prompt}>
                         <button
                           onClick={() => startChatWithAgent(selected, prompt)}
-                          className="w-full text-left flex items-center gap-2 text-sm text-[var(--abu-text-secondary)] bg-[var(--abu-bg-subtle)] hover:bg-[var(--abu-bg-active)] hover:text-[var(--abu-text-primary)] border border-[var(--abu-border)] rounded-lg px-3 py-2 transition-colors cursor-pointer"
+                          className="w-full text-left flex items-center gap-2 text-body text-[var(--abu-text-secondary)] bg-[var(--abu-bg-subtle)] hover:bg-[var(--abu-bg-active)] hover:text-[var(--abu-text-primary)] border border-[var(--abu-border)] rounded-lg px-3 py-2 transition-colors cursor-pointer"
                         >
                           <span className="text-[var(--abu-clay)] shrink-0">›</span>
                           <span className="italic">&ldquo;{prompt}&rdquo;</span>
@@ -363,7 +363,7 @@ export default function AgentsSection({ manualCreateTrigger }: AgentsSectionProp
                   {contentViewMode === 'preview' ? (
                     <MarkdownRenderer content={selected.systemPrompt} />
                   ) : (
-                    <pre className="text-xs text-[var(--abu-text-primary)] whitespace-pre-wrap break-words font-mono leading-relaxed">{selected.systemPrompt}</pre>
+                    <pre className="text-minor text-[var(--abu-text-primary)] whitespace-pre-wrap break-words font-mono leading-relaxed">{selected.systemPrompt}</pre>
                   )}
                 </div>
               </div>
