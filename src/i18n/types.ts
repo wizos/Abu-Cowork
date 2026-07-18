@@ -138,6 +138,7 @@ export interface TranslationDict {
     toolbox: string;
     recents: string;
     searchPlaceholder: string;
+    noSearchResults: string;
     noSessionsYet: string;
     hideSidebar: string;
     showSidebar: string;
@@ -1236,7 +1237,7 @@ export interface TranslationDict {
     categoryAgentEvolved: string;      // "阿布沉淀"
     categoryAgentEvolvedBadge: string; // small badge e.g. "自进化"
     categoryAgentEvolvedEmpty: string; // placeholder when no drafts + no workspace-auto skills
-    categoryBuiltin: string;           // "内置"
+    categoryBuiltin: string;           // "市场" (ships-with-Abu / catalog, vs "我的")
     skillSourceBuiltin: string;
     skillSourceUser: string;
     skillSourceStandard: string;
@@ -1503,6 +1504,7 @@ export interface TranslationDict {
     openInApp: string;
     openInAppFailed: string;
     previewMode: string;
+    reloadPreview: string;
     sourceMode: string;
     unsupportedFileType: string;
     showInFinder: string;
@@ -1532,6 +1534,7 @@ export interface TranslationDict {
     details: string;
     hidePanel: string;
     showPanel: string;
+    taskSummary: string;
     // TaskProgressPanel
     progress: string;
     progressEmptyHint: string;
@@ -1594,6 +1597,36 @@ export interface TranslationDict {
       deleteFailed: string;
       invalidName: string;
       alreadyExists: string;
+    };
+  };
+
+  // Workspace tabs (preview / browser / terminal tab strip)
+  workspace: {
+    newTab: string;
+    newBrowserTab: string;
+    newTerminalTab: string;
+    closeTab: string;
+    closeOtherTabs: string;
+    closeAllTabs: string;
+    newTabPage: string;
+    terminalTitle: string;
+    browserTitle: string;
+    summaryTitle: string;
+    summaryDesc: string;
+    browserDesc: string;
+    terminalDesc: string;
+    startHere: string;
+    terminalProcessExited: string;
+    terminalStartFailed: string;
+    browser: {
+      back: string;
+      forward: string;
+      reload: string;
+      openExternal: string;
+      addressPlaceholder: string;
+      startPrompt: string;
+      framingHint: string;
+      dismissHint: string;
     };
   };
 
@@ -1956,6 +1989,7 @@ export interface TranslationDict {
     currentVersion: string;
     latestVersion: string;
     checkForUpdates: string;
+    update: string;
     checking: string;
     upToDate: string;
     downloadUpdate: string;

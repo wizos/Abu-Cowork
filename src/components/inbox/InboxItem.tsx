@@ -16,11 +16,11 @@ function iconFor(type: InboxItem['type']) {
     case 'agent_proposed_todo':
       return <Bot className="h-4 w-4 text-[var(--abu-clay)]" />;
     case 'agent_confirmation':
-      return <AlertTriangle className="h-4 w-4 text-amber-500" />;
+      return <AlertTriangle className="h-4 w-4 text-[var(--abu-warning)]" />;
     case 'agent_result':
-      return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+      return <CheckCircle2 className="h-4 w-4 text-[var(--abu-success)]" />;
     case 'agent_error':
-      return <XCircle className="h-4 w-4 text-red-500" />;
+      return <XCircle className="h-4 w-4 text-[var(--abu-danger)]" />;
   }
 }
 
@@ -46,7 +46,7 @@ export default function InboxItemRow({
   const { t } = useI18n();
   const processed = item.status !== 'pending';
   const statusBadge = item.status === 'accepted'
-    ? { label: t.inboxTabs.statusAccepted, cls: 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' }
+    ? { label: t.inboxTabs.statusAccepted, cls: 'bg-[var(--abu-success-bg)] text-[var(--abu-success)]' }
     : item.status === 'ignored'
       ? { label: t.inboxTabs.statusIgnored, cls: 'bg-gray-100 dark:bg-[var(--abu-bg-muted)] text-gray-500 dark:text-[var(--abu-text-secondary)]' }
       : null;
@@ -58,19 +58,19 @@ export default function InboxItemRow({
     )}>
       <div className="flex items-center gap-2 mb-2">
         {iconFor(item.type)}
-        <span className="text-[12px] font-medium text-[var(--abu-text-secondary)]">
+        <span className="text-minor font-medium text-[var(--abu-text-secondary)]">
           {labelFor(item.type, t)}
         </span>
         {item.unread && !processed && (
-          <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+          <span className="w-1.5 h-1.5 rounded-full bg-[var(--abu-danger-solid)]" />
         )}
         {statusBadge && (
-          <span className={cn('ml-auto text-[11px] px-1.5 py-0.5 rounded', statusBadge.cls)}>
+          <span className={cn('ml-auto text-caption px-1.5 py-0.5 rounded', statusBadge.cls)}>
             {statusBadge.label}
           </span>
         )}
       </div>
-      <p className="text-[14px] text-[var(--abu-text-primary)] mb-3 whitespace-pre-wrap">
+      <p className="text-body text-[var(--abu-text-primary)] mb-3 whitespace-pre-wrap">
         {item.summary}
       </p>
       {!processed && (

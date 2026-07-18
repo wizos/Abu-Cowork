@@ -53,10 +53,10 @@ export default function BatchProgress({ toolCallId }: BatchProgressProps) {
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--abu-border-subtle)]">
         {isAnyRunning && <Loader2 className="h-3.5 w-3.5 text-[var(--abu-clay)] animate-spin shrink-0" />}
-        <span className="text-[12px] font-medium text-[var(--abu-text-primary)] flex-1 min-w-0">
+        <span className="text-minor font-medium text-[var(--abu-text-primary)] flex-1 min-w-0">
           {t.batch.runningTitle.replace('{n}', String(totalCount))}
         </span>
-        <span className="text-[11px] text-[var(--abu-text-muted)] font-mono shrink-0">
+        <span className="text-caption text-[var(--abu-text-muted)] font-mono shrink-0">
           {formatElapsed(elapsed)}
         </span>
         {isAnyRunning && (
@@ -64,7 +64,7 @@ export default function BatchProgress({ toolCallId }: BatchProgressProps) {
             size="xs"
             variant="ghost"
             onClick={handleStop}
-            className="h-5 px-2 text-[10px] text-[var(--abu-text-muted)] hover:text-red-400 shrink-0"
+            className="h-5 px-2 text-caption text-[var(--abu-text-muted)] hover:text-[var(--abu-danger)] shrink-0"
           >
             {t.batch.stopButton}
           </Button>
@@ -79,22 +79,22 @@ export default function BatchProgress({ toolCallId }: BatchProgressProps) {
             <div className="mt-0.5 shrink-0">
               {task.status === 'queued' && <Clock className="h-3 w-3 text-[var(--abu-text-muted)]" />}
               {task.status === 'running' && <Loader2 className="h-3 w-3 text-[var(--abu-clay)] animate-spin" />}
-              {task.status === 'done' && <Check className="h-3 w-3 text-emerald-500" />}
-              {task.status === 'error' && <X className="h-3 w-3 text-red-400" />}
+              {task.status === 'done' && <Check className="h-3 w-3 text-[var(--abu-success)]" />}
+              {task.status === 'error' && <X className="h-3 w-3 text-[var(--abu-danger)]" />}
             </div>
 
             {/* Label + activity */}
             <div className="flex-1 min-w-0">
               <span className={cn(
-                'text-[11px] truncate block',
+                'text-caption truncate block',
                 task.status === 'running' ? 'text-[var(--abu-text-primary)]' : 'text-[var(--abu-text-muted)]',
                 task.status === 'done' && 'line-through opacity-60',
-                task.status === 'error' && 'text-red-400',
+                task.status === 'error' && 'text-[var(--abu-danger)]',
               )}>
                 {task.label}
               </span>
               {task.status === 'running' && (task.activity || (task.turn !== undefined && task.turn > 0)) && (
-                <span className="text-[10px] text-[var(--abu-text-tertiary)] font-mono">
+                <span className="text-caption text-[var(--abu-text-tertiary)] font-mono">
                   {task.activity?.trim()}
                   {task.turn !== undefined && task.turn > 0
                     ? ` · ${t.batch.turnLabel.replace('{n}', String(task.turn))}`

@@ -79,15 +79,15 @@ export default function SkillCategoryBlocksPanel() {
       <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--abu-border)]">
         <div className="flex items-center gap-2">
           <Ban className="h-3.5 w-3.5 text-[var(--abu-text-muted)]" />
-          <span className="text-xs font-semibold text-[var(--abu-text-primary)]">
+          <span className="text-minor font-semibold text-[var(--abu-text-primary)]">
             {t.toolbox.categoryBlocksTitle}
           </span>
-          <span className="text-[11px] text-[var(--abu-text-muted)]">
+          <span className="text-caption text-[var(--abu-text-muted)]">
             {format(t.toolbox.categoryBlocksCount, { count: String(blocks.length) })}
           </span>
         </div>
       </div>
-      <div className="px-3 py-1.5 text-[11px] text-[var(--abu-text-muted)] border-b border-[var(--abu-border-subtle)]">
+      <div className="px-3 py-1.5 text-caption text-[var(--abu-text-muted)] border-b border-[var(--abu-border-subtle)]">
         {t.toolbox.categoryBlocksHint}
       </div>
       <div className="max-h-48 overflow-y-auto overlay-scroll">
@@ -97,18 +97,18 @@ export default function SkillCategoryBlocksPanel() {
             className="flex items-center gap-2 px-3 py-2 border-b border-[var(--abu-border-subtle)] last:border-b-0 hover:bg-[var(--abu-bg-active)] transition-colors"
           >
             <div className="flex-1 min-w-0">
-              <div className="text-xs font-medium text-[var(--abu-text-primary)] truncate">
+              <div className="text-minor font-medium text-[var(--abu-text-primary)] truncate">
                 {entry.skillName}
               </div>
               {entry.description && (
-                <div className="text-[10px] text-[var(--abu-text-muted)] mt-0.5 line-clamp-1">
+                <div className="text-caption text-[var(--abu-text-muted)] mt-0.5 line-clamp-1">
                   {entry.description}
                 </div>
               )}
             </div>
             <button
               onClick={() => handleUnblock(entry)}
-              className="px-2 py-1 rounded-md text-[11px] text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)] transition-colors shrink-0"
+              className="px-2 py-1 rounded-md text-caption text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)] transition-colors shrink-0"
             >
               {t.toolbox.categoryBlocksUnblock}
             </button>

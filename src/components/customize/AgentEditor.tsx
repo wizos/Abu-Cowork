@@ -118,12 +118,12 @@ export default function AgentEditor({ agent, onClose, onSave }: AgentEditorProps
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <h2 className="text-sm font-semibold text-[var(--abu-text-primary)] flex-1">{t.toolbox.agentEditorTitle}</h2>
+        <h2 className="text-body font-semibold text-[var(--abu-text-primary)] flex-1">{t.toolbox.agentEditorTitle}</h2>
         <div className="flex gap-2">
           <button
             onClick={handleSave}
             disabled={!isValid || saving}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--abu-text-primary)] text-[var(--abu-bg-base)] hover:bg-[var(--abu-text-primary)] disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-minor font-medium bg-[var(--abu-text-primary)] text-[var(--abu-bg-base)] hover:bg-[var(--abu-text-primary)] disabled:opacity-50 transition-colors"
           >
             <Save className="h-3.5 w-3.5" />
             {t.toolbox.agentSave}
@@ -131,7 +131,7 @@ export default function AgentEditor({ agent, onClose, onSave }: AgentEditorProps
           <button
             onClick={handleSaveAndTest}
             disabled={!isValid || saving}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--abu-clay)] text-white hover:bg-[var(--abu-clay-hover)] disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-minor font-medium bg-[var(--abu-clay)] text-white hover:bg-[var(--abu-clay-hover)] disabled:opacity-50 transition-colors"
           >
             <Play className="h-3.5 w-3.5" />
             {t.toolbox.agentSaveAndTest}
@@ -143,55 +143,55 @@ export default function AgentEditor({ agent, onClose, onSave }: AgentEditorProps
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {/* Metadata Section */}
         <div className="space-y-3">
-          <h3 className="text-xs font-semibold text-[var(--abu-text-tertiary)] uppercase tracking-wide">
+          <h3 className="text-minor font-semibold text-[var(--abu-text-tertiary)] uppercase tracking-wide">
             {t.toolbox.agentEditorMetadata}
           </h3>
 
           {/* Name + Avatar row */}
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentEditorName}</label>
+              <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentEditorName}</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="my-agent"
                 className={cn(
-                  'w-full px-3 py-1.5 rounded-lg border text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all',
-                  name.trim() && !nameValid ? 'border-red-300' : 'border-[var(--abu-border)]',
+                  'w-full px-3 py-1.5 rounded-lg border text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all',
+                  name.trim() && !nameValid ? 'border-[var(--abu-danger)]' : 'border-[var(--abu-border)]',
                 )}
               />
               {name.trim() && !nameValid && (
-                <p className="text-[11px] text-red-500 mt-1">{t.toolbox.nameFormatHint}</p>
+                <p className="text-caption text-[var(--abu-danger)] mt-1">{t.toolbox.nameFormatHint}</p>
               )}
             </div>
             <div className="w-20">
-              <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentAvatar}</label>
+              <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentAvatar}</label>
               <input
                 type="text"
                 value={avatar}
                 onChange={(e) => setAvatar(e.target.value)}
                 placeholder="🤖"
-                className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all text-center"
+                className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all text-center"
               />
             </div>
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentEditorDescription}</label>
+            <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentEditorDescription}</label>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
+              className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
             />
           </div>
 
           {/* Model + Max Turns row */}
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentModel}</label>
+              <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentModel}</label>
               <Select
                 value={model}
                 onChange={setModel}
@@ -205,7 +205,7 @@ export default function AgentEditor({ agent, onClose, onSave }: AgentEditorProps
               />
             </div>
             <div className="w-32">
-              <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentMaxTurns}</label>
+              <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentMaxTurns}</label>
               <input
                 type="number"
                 min={1}
@@ -217,51 +217,51 @@ export default function AgentEditor({ agent, onClose, onSave }: AgentEditorProps
                   if (!isNaN(v) && v >= 1) setMaxTurns(String(v));
                 }}
                 placeholder={t.toolbox.maxTurnsInheritGlobalHint}
-                className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
+                className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
               />
             </div>
           </div>
 
           {/* Tools */}
           <div>
-            <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentTools}</label>
+            <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentTools}</label>
             <input
               type="text"
               value={toolsStr}
               onChange={(e) => setToolsStr(e.target.value)}
               placeholder="web_search, read_file, write_file"
-              className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
+              className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
             />
           </div>
 
           {/* Disallowed Tools */}
           <div>
-            <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentDisallowedTools}</label>
+            <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentDisallowedTools}</label>
             <input
               type="text"
               value={disallowedToolsStr}
               onChange={(e) => setDisallowedToolsStr(e.target.value)}
               placeholder="execute_command"
-              className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
+              className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
             />
           </div>
 
           {/* Skills */}
           <div>
-            <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentSkills}</label>
+            <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentSkills}</label>
             <input
               type="text"
               value={skillsStr}
               onChange={(e) => setSkillsStr(e.target.value)}
               placeholder="deep-research, code-review"
-              className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
+              className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
             />
           </div>
 
           {/* Memory + Background row */}
           <div className="flex gap-3 items-end">
             <div className="flex-1">
-              <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentMemory}</label>
+              <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentMemory}</label>
               <Select
                 value={memory}
                 onChange={(v) => setMemory(v as 'session' | 'project' | 'user')}
@@ -273,67 +273,67 @@ export default function AgentEditor({ agent, onClose, onSave }: AgentEditorProps
               />
             </div>
             <div className="flex items-center gap-2 pb-1">
-              <label className="text-xs font-medium text-[var(--abu-text-secondary)]">{t.toolbox.agentBackground}</label>
+              <label className="text-minor font-medium text-[var(--abu-text-secondary)]">{t.toolbox.agentBackground}</label>
               <Toggle checked={background} onChange={() => setBackground(!background)} size="md" />
             </div>
           </div>
 
           {/* Intro — shown on chat welcome screen and toolbox detail */}
           <div>
-            <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentIntro}</label>
+            <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentIntro}</label>
             <textarea
               value={intro}
               onChange={(e) => setIntro(e.target.value)}
               rows={2}
               placeholder={t.toolbox.agentIntroPlaceholder}
-              className="w-full px-3 py-2 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all resize-y"
+              className="w-full px-3 py-2 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all resize-y"
             />
           </div>
 
           {/* Expertise — one item per line, rendered as bullets */}
           <div>
-            <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentExpertise}</label>
+            <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentExpertise}</label>
             <textarea
               value={expertiseStr}
               onChange={(e) => setExpertiseStr(e.target.value)}
               rows={3}
               placeholder={t.toolbox.agentExpertisePlaceholder}
-              className="w-full px-3 py-2 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all resize-y"
+              className="w-full px-3 py-2 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all resize-y"
             />
           </div>
 
           {/* Sample Prompts — one per line, clickable in toolbox detail */}
           <div>
-            <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentSamplePrompts}</label>
+            <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentSamplePrompts}</label>
             <textarea
               value={samplePromptsStr}
               onChange={(e) => setSamplePromptsStr(e.target.value)}
               rows={3}
               placeholder={t.toolbox.agentSamplePromptsPlaceholder}
-              className="w-full px-3 py-2 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all resize-y"
+              className="w-full px-3 py-2 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all resize-y"
             />
           </div>
 
           {/* Category + Tags row */}
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentCategoryField}</label>
+              <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentCategoryField}</label>
               <input
                 type="text"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 placeholder="tech-engineering"
-                className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
+                className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
               />
             </div>
             <div className="flex-1">
-              <label className="block text-xs font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentTagsField}</label>
+              <label className="block text-minor font-medium text-[var(--abu-text-secondary)] mb-1">{t.toolbox.agentTagsField}</label>
               <input
                 type="text"
                 value={tagsStr}
                 onChange={(e) => setTagsStr(e.target.value)}
                 placeholder={t.toolbox.agentTagsPlaceholder}
-                className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
+                className="w-full px-3 py-1.5 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all"
               />
             </div>
           </div>
@@ -342,12 +342,12 @@ export default function AgentEditor({ agent, onClose, onSave }: AgentEditorProps
         {/* Content Section */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-semibold text-[var(--abu-text-tertiary)] uppercase tracking-wide">
+            <h3 className="text-minor font-semibold text-[var(--abu-text-tertiary)] uppercase tracking-wide">
               {t.toolbox.agentEditorContent}
             </h3>
             <button
               onClick={() => setShowPreview(!showPreview)}
-              className={`text-[11px] px-2 py-0.5 rounded-full transition-colors ${
+              className={`text-caption px-2 py-0.5 rounded-full transition-colors ${
                 showPreview
                   ? 'bg-[var(--abu-text-primary)] text-[var(--abu-bg-base)]'
                   : 'bg-[var(--abu-bg-muted)] text-[var(--abu-text-tertiary)] hover:bg-[var(--abu-border)]'
@@ -366,7 +366,7 @@ export default function AgentEditor({ agent, onClose, onSave }: AgentEditorProps
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}
               placeholder="Write agent system prompt in Markdown..."
-              className="w-full min-h-[200px] max-h-[400px] px-3 py-2 rounded-lg border border-[var(--abu-border)] text-sm text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] font-mono focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all resize-y"
+              className="w-full min-h-[200px] max-h-[400px] px-3 py-2 rounded-lg border border-[var(--abu-border)] text-body text-[var(--abu-text-primary)] bg-[var(--abu-bg-base)] font-mono focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)] transition-all resize-y"
             />
           )}
         </div>

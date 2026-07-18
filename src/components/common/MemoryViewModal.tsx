@@ -23,10 +23,10 @@ interface PersonalMemoryProps {
 type MemoryViewModalProps = ProjectMemoryProps | PersonalMemoryProps;
 
 const TYPE_COLORS: Record<MemoryType, string> = {
-  user: 'bg-orange-100 text-orange-700 dark:bg-orange-400/15 dark:text-orange-300',
+  user: 'bg-[var(--abu-clay-bg)] text-[var(--abu-clay)]',
   project: 'bg-purple-100 text-purple-700 dark:bg-purple-400/15 dark:text-purple-300',
   feedback: 'bg-teal-100 text-teal-700 dark:bg-teal-400/15 dark:text-teal-300',
-  reference: 'bg-blue-100 text-blue-700 dark:bg-blue-400/15 dark:text-blue-300',
+  reference: 'bg-[var(--abu-info-bg)] text-[var(--abu-info)]',
 };
 
 function getTypeLabel(type: MemoryType, t: ReturnType<typeof useI18n>['t']): string {
@@ -164,10 +164,10 @@ export default function MemoryViewModal(props: MemoryViewModalProps) {
         }}
       >
         <div className="bg-[var(--abu-bg-base)] rounded-2xl shadow-xl w-[480px] flex flex-col p-6 animate-in zoom-in-95 duration-150">
-          <h3 className="text-[16px] font-semibold text-[var(--abu-text-primary)] mb-1">
+          <h3 className="text-h-sm font-semibold text-[var(--abu-text-primary)] mb-1">
             {title}
           </h3>
-          <p className="text-[13px] text-[var(--abu-text-muted)] mb-4">
+          <p className="text-body text-[var(--abu-text-muted)] mb-4">
             {desc}
           </p>
 
@@ -180,7 +180,7 @@ export default function MemoryViewModal(props: MemoryViewModalProps) {
             </div>
           ) : headers.length > 0 ? (
             <div className="max-h-[60vh] overflow-y-auto space-y-2 mb-4">
-              <div className="text-[12px] text-[var(--abu-text-placeholder)] mb-2">
+              <div className="text-minor text-[var(--abu-text-placeholder)] mb-2">
                 {format(t.memory.entryCount, { count: String(headers.length) })}
               </div>
               {headers.map((header) => (
@@ -192,13 +192,13 @@ export default function MemoryViewModal(props: MemoryViewModalProps) {
                     className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-[var(--abu-bg-hover)] transition-colors"
                     onClick={() => handleExpand(header)}
                   >
-                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0 ${TYPE_COLORS[header.type]}`}>
+                    <span className={`text-caption font-medium px-1.5 py-0.5 rounded shrink-0 ${TYPE_COLORS[header.type]}`}>
                       {getTypeLabel(header.type, t)}
                     </span>
-                    <span className="text-[12px] text-[var(--abu-text-primary)] flex-1 truncate">
+                    <span className="text-minor text-[var(--abu-text-primary)] flex-1 truncate">
                       {header.name}
                     </span>
-                    <span className="text-[10px] text-[var(--abu-text-placeholder)] whitespace-nowrap shrink-0">
+                    <span className="text-caption text-[var(--abu-text-placeholder)] whitespace-nowrap shrink-0">
                       {formatAge(header.updated, t)}
                     </span>
                     {expandedId === header.filename ? (
@@ -210,13 +210,13 @@ export default function MemoryViewModal(props: MemoryViewModalProps) {
 
                   {expandedId === header.filename && (
                     <div className="px-3 pb-2.5 border-t border-[var(--abu-bg-active)]">
-                      <p className="text-[11px] text-[var(--abu-text-tertiary)] leading-relaxed mt-2 whitespace-pre-wrap">
+                      <p className="text-caption text-[var(--abu-text-tertiary)] leading-relaxed mt-2 whitespace-pre-wrap">
                         {expandedContent[header.filename] ?? header.description}
                       </p>
                       <div className="flex justify-end mt-2">
                         <button
                           onClick={(e) => { e.stopPropagation(); setDeleteTarget(header); }}
-                          className="p-1 rounded text-[var(--abu-text-placeholder)] hover:text-red-500 hover:bg-red-50 transition-colors"
+                          className="p-1 rounded text-[var(--abu-text-placeholder)] hover:text-[var(--abu-danger)] hover:bg-[var(--abu-danger-bg)] transition-colors"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -228,7 +228,7 @@ export default function MemoryViewModal(props: MemoryViewModalProps) {
             </div>
           ) : (
             <div className="flex items-center justify-center py-12">
-              <p className="text-[13px] text-[var(--abu-text-placeholder)]">
+              <p className="text-body text-[var(--abu-text-placeholder)]">
                 {t.panel.memoryEmpty}
               </p>
             </div>
@@ -238,7 +238,7 @@ export default function MemoryViewModal(props: MemoryViewModalProps) {
             {headers.length > 0 && (
               <button
                 onClick={() => setShowClearConfirm(true)}
-                className="px-4 py-2.5 rounded-lg text-[13px] font-medium text-red-500 hover:bg-red-50 transition-colors"
+                className="px-4 py-2.5 rounded-lg text-body font-medium text-[var(--abu-danger)] hover:bg-[var(--abu-danger-bg)] transition-colors"
               >
                 {t.panel.memoryClear}
               </button>
@@ -246,7 +246,7 @@ export default function MemoryViewModal(props: MemoryViewModalProps) {
             <div className="flex-1" />
             <button
               onClick={onClose}
-              className="px-4 py-2.5 rounded-lg text-[13px] font-medium bg-[var(--abu-bg-muted)] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)] transition-colors"
+              className="px-4 py-2.5 rounded-lg text-body font-medium bg-[var(--abu-bg-muted)] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)] transition-colors"
             >
               {t.common.close}
             </button>

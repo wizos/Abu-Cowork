@@ -78,7 +78,7 @@ export default function PermissionModeChip({ conversationId }: Props) {
         onClick={() => setOpen((v) => !v)}
         title={`${t.settings.permissionMode}: ${currentLabel}`}
         className={cn(
-          'btn-ghost flex items-center gap-1 px-2 py-1 h-7 text-[12px] font-normal rounded-md transition-colors hover:bg-[var(--abu-bg-hover)]',
+          'btn-ghost flex items-center gap-1 px-2 py-1 h-7 text-minor font-normal rounded-md transition-colors hover:bg-[var(--abu-bg-hover)]',
           MODE_CHIP_COLOR[effectiveMode] ?? MODE_CHIP_COLOR.standard
         )}
       >
@@ -109,8 +109,8 @@ export default function PermissionModeChip({ conversationId }: Props) {
               >
                 <Icon className="h-4 w-4 mt-0.5 shrink-0" />
                 <div className="flex flex-col gap-0.5 min-w-0">
-                  <span className="text-[13px] font-medium">{info.label}</span>
-                  <span className="text-[11px] text-[var(--abu-text-muted)] leading-snug">
+                  <span className="text-body font-medium">{info.label}</span>
+                  <span className="text-caption text-[var(--abu-text-muted)] leading-snug">
                     {info.description}
                   </span>
                 </div>

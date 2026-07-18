@@ -47,7 +47,7 @@ function readLoadingMessages(input: Record<string, unknown> | undefined): string
  *  list, so without this row a failed widget would vanish without a trace). */
 function WidgetStatusRow({ label, title }: { label: string; title?: string }) {
   return (
-    <div className="my-2 flex items-center gap-1.5 text-[12px] text-[var(--abu-text-muted)]">
+    <div className="my-2 flex items-center gap-1.5 text-minor text-[var(--abu-text-muted)]">
       <AlertCircle className="h-3.5 w-3.5 shrink-0" />
       <span className="min-w-0 truncate">
         {label}
@@ -75,7 +75,7 @@ function WidgetSkeleton({ messages, fallback }: { messages: string[]; fallback: 
     <div className="my-3 rounded-lg bg-[var(--abu-bg-muted)] p-5 space-y-3 animate-pulse">
       <div className="h-4 w-2/5 rounded bg-[var(--abu-bg-pressed)]" />
       <div className="h-3 w-3/5 rounded bg-[var(--abu-bg-pressed)]" />
-      <div className="text-[12px] text-[var(--abu-text-muted)]">
+      <div className="text-minor text-[var(--abu-text-muted)]">
         {messages[idx] ?? fallback}
       </div>
     </div>

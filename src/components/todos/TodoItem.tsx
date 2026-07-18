@@ -34,12 +34,12 @@ export default function TodoItem({ todo, onToggle, onDelete, onClick }: TodoItem
         {done ? <CheckCircle2 className="h-5 w-5 text-[var(--abu-clay)]" /> : <Circle className="h-5 w-5" />}
       </button>
       <div className="flex-1 min-w-0">
-        <div className={cn('text-[14px] truncate', done && 'line-through text-[var(--abu-text-muted)]')}>
+        <div className={cn('text-body truncate', done && 'line-through text-[var(--abu-text-muted)]')}>
           {todo.title}
         </div>
         {hasNotes && (
           <div className={cn(
-            'text-[12px] text-[var(--abu-text-muted)] whitespace-pre-wrap line-clamp-3 mt-0.5',
+            'text-minor text-[var(--abu-text-muted)] whitespace-pre-wrap line-clamp-3 mt-0.5',
             done && 'line-through',
           )}>
             {todo.notes}
@@ -48,22 +48,22 @@ export default function TodoItem({ todo, onToggle, onDelete, onClick }: TodoItem
       </div>
       {priorityLabel && (
         <span className={cn(
-          'shrink-0 text-[11px] px-1.5 py-0.5 rounded',
-          todo.priority === 'high' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+          'shrink-0 text-caption px-1.5 py-0.5 rounded',
+          todo.priority === 'high' ? 'bg-[var(--abu-danger-bg)] text-[var(--abu-danger)]'
             : todo.priority === 'low' ? 'bg-gray-100 dark:bg-[var(--abu-bg-muted)] text-gray-600 dark:text-[var(--abu-text-secondary)]'
-            : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
+            : 'bg-[var(--abu-warning-bg)] text-[var(--abu-warning)]',
         )}>
           {priorityLabel}
         </span>
       )}
       {todo.assignee === 'agent' && (
-        <span className="shrink-0 text-[11px] px-1.5 py-0.5 rounded bg-[var(--abu-clay-bg-15)] text-[var(--abu-clay)]">
+        <span className="shrink-0 text-caption px-1.5 py-0.5 rounded bg-[var(--abu-clay-bg-15)] text-[var(--abu-clay)]">
           {t.todos.assigneeAgent}
         </span>
       )}
       <button
         onClick={(e) => { e.stopPropagation(); onDelete(); }}
-        className="opacity-0 group-hover:opacity-100 p-1 text-[var(--abu-text-tertiary)] hover:text-red-500 shrink-0"
+        className="opacity-0 group-hover:opacity-100 p-1 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-danger)] shrink-0"
         aria-label="delete"
       >
         <Trash2 className="h-3.5 w-3.5" />

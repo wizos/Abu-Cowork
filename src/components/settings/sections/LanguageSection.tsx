@@ -15,7 +15,7 @@ export default function LanguageSection() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-[var(--abu-text-tertiary)]">
+      <p className="text-body text-[var(--abu-text-tertiary)]">
         {t.settings.languageDescription}
       </p>
 
@@ -33,12 +33,12 @@ export default function LanguageSection() {
           >
             <div>
               <p className={cn(
-                'text-sm font-medium',
+                'text-body font-medium',
                 language === option.value ? 'text-[var(--abu-clay)]' : 'text-[var(--abu-text-primary)]'
               )}>
                 {option.label}
               </p>
-              <p className="text-xs text-[var(--abu-text-muted)] mt-0.5">{option.desc}</p>
+              <p className="text-minor text-[var(--abu-text-muted)] mt-0.5">{option.desc}</p>
             </div>
             {language === option.value && (
               <div className="w-5 h-5 rounded-full bg-[var(--abu-clay)] flex items-center justify-center">

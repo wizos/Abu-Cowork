@@ -65,42 +65,42 @@ export default function ModelsSection() {
         <div className="py-4">
           <div className="flex items-center gap-2 mb-3">
             <Cpu className="h-4 w-4 text-[var(--abu-text-tertiary)]" />
-            <h3 className="text-sm font-medium text-[var(--abu-text-secondary)]">{t.toolbox.currentConfig}</h3>
+            <h3 className="text-body font-medium text-[var(--abu-text-secondary)]">{t.toolbox.currentConfig}</h3>
           </div>
 
           <div className="p-4 rounded-lg bg-[var(--abu-bg-muted)] border border-[var(--abu-border)]/60">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-[var(--abu-text-tertiary)]">{t.settings.model}</span>
-                <span className="text-sm font-medium text-[var(--abu-text-primary)] font-mono">
+                <span className="text-minor text-[var(--abu-text-tertiary)]">{t.settings.model}</span>
+                <span className="text-body font-medium text-[var(--abu-text-primary)] font-mono">
                   {effectiveModel || t.settings.notSet}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-[var(--abu-text-tertiary)]">{t.settings.provider}</span>
-                <span className="text-sm text-[var(--abu-text-secondary)]">{activeProvider?.name ?? '-'}</span>
+                <span className="text-minor text-[var(--abu-text-tertiary)]">{t.settings.provider}</span>
+                <span className="text-body text-[var(--abu-text-secondary)]">{activeProvider?.name ?? '-'}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-[var(--abu-text-tertiary)]">{t.settings.apiFormat}</span>
-                <span className="text-sm text-[var(--abu-text-secondary)]">{activeProvider?.apiFormat ?? '-'}</span>
+                <span className="text-minor text-[var(--abu-text-tertiary)]">{t.settings.apiFormat}</span>
+                <span className="text-body text-[var(--abu-text-secondary)]">{activeProvider?.apiFormat ?? '-'}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-[var(--abu-text-tertiary)]">{t.settings.apiKey}</span>
-                <span className="text-sm text-[var(--abu-text-secondary)]">
+                <span className="text-minor text-[var(--abu-text-tertiary)]">{t.settings.apiKey}</span>
+                <span className="text-body text-[var(--abu-text-secondary)]">
                   {hasApiKey ? (
-                    <span className="flex items-center gap-1 text-green-600">
+                    <span className="flex items-center gap-1 text-[var(--abu-success)]">
                       <Check className="h-3.5 w-3.5" />
                       {t.toolbox.configured}
                     </span>
                   ) : (
-                    <span className="text-amber-600">{t.toolbox.notConfigured}</span>
+                    <span className="text-[var(--abu-warning)]">{t.toolbox.notConfigured}</span>
                   )}
                 </span>
               </div>
               {activeProvider?.baseUrl && (
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-[var(--abu-text-tertiary)]">Base URL</span>
-                  <span className="text-sm text-[var(--abu-text-secondary)] font-mono text-right max-w-[200px] truncate">
+                  <span className="text-minor text-[var(--abu-text-tertiary)]">Base URL</span>
+                  <span className="text-body text-[var(--abu-text-secondary)] font-mono text-right max-w-[200px] truncate">
                     {activeProvider.baseUrl}
                   </span>
                 </div>
@@ -116,7 +116,7 @@ export default function ModelsSection() {
         <div className="py-4">
           <div className="flex items-center gap-2 mb-3">
             <Zap className="h-4 w-4 text-[var(--abu-text-tertiary)]" />
-            <h3 className="text-sm font-medium text-[var(--abu-text-secondary)]">{t.toolbox.quickSwitch}</h3>
+            <h3 className="text-body font-medium text-[var(--abu-text-secondary)]">{t.toolbox.quickSwitch}</h3>
           </div>
 
           {PRESET_GROUP_KEYS.map(({ key, labelKey }) => {
@@ -124,7 +124,7 @@ export default function ModelsSection() {
             if (!presets || presets.length === 0) return null;
             return (
               <div key={key} className="mb-4">
-                <div className="text-xs font-medium text-[var(--abu-text-muted)] mb-2 uppercase tracking-wide">
+                <div className="text-minor font-medium text-[var(--abu-text-muted)] mb-2 uppercase tracking-wide">
                   {t.toolbox[labelKey]}
                 </div>
                 <div className="space-y-2">
@@ -143,14 +143,14 @@ export default function ModelsSection() {
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm text-[var(--abu-text-primary)]">{pick(preset.name, preset.nameEn)}</span>
+                            <span className="font-medium text-body text-[var(--abu-text-primary)]">{pick(preset.name, preset.nameEn)}</span>
                             {isActive && (
-                              <span className="text-[10px] px-1.5 py-0.5 bg-[var(--abu-clay-20)] text-[var(--abu-clay)] rounded">
+                              <span className="text-caption px-1.5 py-0.5 bg-[var(--abu-clay-20)] text-[var(--abu-clay)] rounded">
                                 {t.toolbox.current}
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-[var(--abu-text-tertiary)] mt-0.5">{pick(preset.description, preset.descriptionEn)}</p>
+                          <p className="text-minor text-[var(--abu-text-tertiary)] mt-0.5">{pick(preset.description, preset.descriptionEn)}</p>
                         </div>
                         {isActive && <Check className="h-4 w-4 text-[var(--abu-clay)] shrink-0" />}
                       </button>
@@ -176,8 +176,8 @@ export default function ModelsSection() {
                 <ExternalLink className="h-4 w-4 text-[var(--abu-text-tertiary)]" />
               </div>
               <div className="text-left">
-                <div className="text-sm font-medium text-[var(--abu-text-primary)]">{t.toolbox.advancedSettings}</div>
-                <div className="text-xs text-[var(--abu-text-tertiary)]">{t.toolbox.advancedSettingsDesc}</div>
+                <div className="text-body font-medium text-[var(--abu-text-primary)]">{t.toolbox.advancedSettings}</div>
+                <div className="text-minor text-[var(--abu-text-tertiary)]">{t.toolbox.advancedSettingsDesc}</div>
               </div>
             </div>
           </button>

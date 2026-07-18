@@ -41,16 +41,16 @@ export default function MarketplaceCard({
     >
       <div className="min-w-0 pr-6">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-sm text-[var(--abu-text-primary)]">{item.name}</span>
-          <span className="text-[10px] px-1.5 py-0.5 bg-[var(--abu-bg-active)] text-[var(--abu-text-tertiary)] rounded">
+          <span className="font-medium text-body text-[var(--abu-text-primary)]">{item.name}</span>
+          <span className="text-caption px-1.5 py-0.5 bg-[var(--abu-bg-active)] text-[var(--abu-text-tertiary)] rounded">
             {item.category}
           </span>
         </div>
-        <p className="text-xs text-[var(--abu-text-tertiary)] mt-1 line-clamp-2">{pick(item.description, item.descriptionEn)}</p>
+        <p className="text-minor text-[var(--abu-text-tertiary)] mt-1 line-clamp-2">{pick(item.description, item.descriptionEn)}</p>
       </div>
       <div className="flex items-center justify-between mt-2">
         <div className="flex items-center gap-2">
-          <p className="text-[10px] text-[var(--abu-text-muted)]">by {pick(item.author, item.authorEn)}</p>
+          <p className="text-caption text-[var(--abu-text-muted)]">by {pick(item.author, item.authorEn)}</p>
           {isInstalled && onToggleEnabled && (
             <Toggle checked={isEnabled} onChange={onToggleEnabled} />
           )}
@@ -60,9 +60,9 @@ export default function MarketplaceCard({
             onClick={(e) => { e.stopPropagation(); if (!isInstalled) onInstall(); }}
             disabled={isInstalled || isInstalling}
             className={cn(
-              'flex items-center justify-center gap-1.5 w-[68px] py-1 rounded-md text-xs font-medium transition-colors',
+              'flex items-center justify-center gap-1.5 w-[68px] py-1 rounded-md text-minor font-medium transition-colors',
               isInstalled
-                ? 'bg-green-50 text-green-600 cursor-default'
+                ? 'bg-[var(--abu-success-bg)] text-[var(--abu-success)] cursor-default'
                 : isInstalling
                   ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-muted)] cursor-wait'
                   : 'bg-[var(--abu-clay)] text-white hover:bg-[var(--abu-clay-hover)]'
@@ -88,7 +88,7 @@ export default function MarketplaceCard({
           {isInstalled && onUninstall && (
             <button
               onClick={(e) => { e.stopPropagation(); onUninstall(); }}
-              className="absolute right-1 bottom-1 p-1 text-[var(--abu-text-muted)] hover:text-red-500 hover:bg-red-50 rounded transition-colors opacity-0 group-hover:opacity-100"
+              className="absolute right-1 bottom-1 p-1 text-[var(--abu-text-muted)] hover:text-[var(--abu-danger)] hover:bg-[var(--abu-danger-bg)] rounded transition-colors opacity-0 group-hover:opacity-100"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>

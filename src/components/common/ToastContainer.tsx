@@ -11,32 +11,32 @@ const iconMap = {
 
 const colorMap = {
   success: {
-    bg: 'bg-green-50 dark:bg-green-950/80 border-green-200 dark:border-green-900',
-    icon: 'text-green-500 dark:text-green-400',
-    title: 'text-green-800 dark:text-green-300',
-    message: 'text-green-600 dark:text-green-400',
-    action: 'bg-green-600 hover:bg-green-700 text-white',
+    bg: 'bg-[var(--abu-success-bg)] border-[var(--abu-success)]',
+    icon: 'text-[var(--abu-success)]',
+    title: 'text-[var(--abu-success)]',
+    message: 'text-[var(--abu-success)]',
+    action: 'bg-[var(--abu-success-solid)] hover:opacity-90 text-white',
   },
   error: {
-    bg: 'bg-red-50 dark:bg-red-950/80 border-red-200 dark:border-red-900',
-    icon: 'text-red-500 dark:text-red-400',
-    title: 'text-red-800 dark:text-red-300',
-    message: 'text-red-600 dark:text-red-400',
-    action: 'bg-red-600 hover:bg-red-700 text-white',
+    bg: 'bg-[var(--abu-danger-bg)] border-[var(--abu-danger)]',
+    icon: 'text-[var(--abu-danger)]',
+    title: 'text-[var(--abu-danger)]',
+    message: 'text-[var(--abu-danger)]',
+    action: 'bg-[var(--abu-danger-solid)] hover:opacity-90 text-white',
   },
   info: {
-    bg: 'bg-blue-50 dark:bg-blue-950/80 border-blue-200 dark:border-blue-900',
-    icon: 'text-blue-500 dark:text-blue-400',
-    title: 'text-blue-800 dark:text-blue-300',
-    message: 'text-blue-600 dark:text-blue-400',
-    action: 'bg-blue-600 hover:bg-blue-700 text-white',
+    bg: 'bg-[var(--abu-info-bg)] border-[var(--abu-info)]',
+    icon: 'text-[var(--abu-info)]',
+    title: 'text-[var(--abu-info)]',
+    message: 'text-[var(--abu-info)]',
+    action: 'bg-[var(--abu-info-solid)] hover:opacity-90 text-white',
   },
   warning: {
-    bg: 'bg-amber-50 dark:bg-amber-950/80 border-amber-200 dark:border-amber-900',
-    icon: 'text-amber-500 dark:text-amber-400',
-    title: 'text-amber-800 dark:text-amber-300',
-    message: 'text-amber-600 dark:text-amber-400',
-    action: 'bg-amber-600 hover:bg-amber-700 text-white',
+    bg: 'bg-[var(--abu-warning-bg)] border-[var(--abu-warning)]',
+    icon: 'text-[var(--abu-warning)]',
+    title: 'text-[var(--abu-warning)]',
+    message: 'text-[var(--abu-warning)]',
+    action: 'bg-[var(--abu-warning-solid)] hover:opacity-90 text-white',
   },
 };
 
@@ -61,11 +61,11 @@ export default function ToastContainer() {
           >
             <Icon className={cn('h-4 w-4 mt-0.5 shrink-0', colors.icon)} />
             <div className="flex-1 min-w-0">
-              <p className={cn('text-[13px] font-medium', colors.title)}>
+              <p className={cn('text-body font-medium', colors.title)}>
                 {toast.title}
               </p>
               {toast.message && (
-                <p className={cn('text-[12px] mt-0.5', colors.message)}>
+                <p className={cn('text-minor mt-0.5', colors.message)}>
                   {toast.message}
                 </p>
               )}
@@ -79,7 +79,7 @@ export default function ToastContainer() {
                         removeToast(toast.id);
                       }}
                       className={cn(
-                        'px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors',
+                        'px-2.5 py-1 text-caption font-medium rounded-md transition-colors',
                         i === 0 ? colors.action : 'bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-gray-700 dark:text-[var(--abu-text-secondary)]',
                       )}
                     >

@@ -188,11 +188,11 @@ export default function CreateProjectDialog({
             </button>
           )}
           <div className="flex-1">
-            <h2 className="text-[18px] font-semibold text-[var(--abu-text-primary)]">
+            <h2 className="text-h-md font-semibold text-[var(--abu-text-primary)]">
               {t.project.createTitle}
             </h2>
             {mode === null && (
-              <p className="text-[13px] text-[var(--abu-text-tertiary)] mt-0.5">
+              <p className="text-body text-[var(--abu-text-tertiary)] mt-0.5">
                 {t.project.createDesc}
               </p>
             )}
@@ -215,8 +215,8 @@ export default function CreateProjectDialog({
               >
                 <FolderPlus className="h-5 w-5 text-[var(--abu-text-tertiary)] shrink-0" />
                 <div>
-                  <div className="text-[14px] font-medium text-[var(--abu-text-primary)]">{t.project.modeFromScratch}</div>
-                  <div className="text-[12px] text-[var(--abu-text-tertiary)] mt-0.5">{t.project.modeFromScratchDesc}</div>
+                  <div className="text-body font-medium text-[var(--abu-text-primary)]">{t.project.modeFromScratch}</div>
+                  <div className="text-minor text-[var(--abu-text-tertiary)] mt-0.5">{t.project.modeFromScratchDesc}</div>
                 </div>
               </button>
               <button
@@ -225,8 +225,8 @@ export default function CreateProjectDialog({
               >
                 <FolderOpen className="h-5 w-5 text-[var(--abu-text-tertiary)] shrink-0" />
                 <div>
-                  <div className="text-[14px] font-medium text-[var(--abu-text-primary)]">{t.project.modeExistingFolder}</div>
-                  <div className="text-[12px] text-[var(--abu-text-tertiary)] mt-0.5">{t.project.modeExistingFolderDesc}</div>
+                  <div className="text-body font-medium text-[var(--abu-text-primary)]">{t.project.modeExistingFolder}</div>
+                  <div className="text-minor text-[var(--abu-text-tertiary)] mt-0.5">{t.project.modeExistingFolderDesc}</div>
                 </div>
               </button>
             </div>
@@ -237,7 +237,7 @@ export default function CreateProjectDialog({
             <div className="space-y-4 mt-4">
               {/* Name */}
               <div>
-                <label className="text-[13px] font-medium text-[var(--abu-text-secondary)] mb-1.5 block">
+                <label className="text-body font-medium text-[var(--abu-text-secondary)] mb-1.5 block">
                   {t.project.nameLabel} *
                 </label>
                 <Input
@@ -250,7 +250,7 @@ export default function CreateProjectDialog({
 
               {/* Instructions */}
               <div>
-                <label className="text-[13px] font-medium text-[var(--abu-text-secondary)] mb-1.5 block">
+                <label className="text-body font-medium text-[var(--abu-text-secondary)] mb-1.5 block">
                   Instructions
                 </label>
                 <Textarea
@@ -263,7 +263,7 @@ export default function CreateProjectDialog({
 
 
               {/* Project location (read-only) */}
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--abu-bg-subtle)] text-[12px] text-[var(--abu-text-tertiary)]">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--abu-bg-subtle)] text-minor text-[var(--abu-text-tertiary)]">
                 <FolderOpen className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">
                   {projectName.trim()
@@ -285,7 +285,7 @@ export default function CreateProjectDialog({
             <div className="space-y-4 mt-4">
               {/* Folder picker */}
               <div>
-                <label className="text-[13px] font-medium text-[var(--abu-text-secondary)] mb-1.5 block">
+                <label className="text-body font-medium text-[var(--abu-text-secondary)] mb-1.5 block">
                   {t.project.selectFolder}
                 </label>
                 <button
@@ -293,7 +293,7 @@ export default function CreateProjectDialog({
                   className="w-full flex items-center gap-2 p-3 rounded-lg border border-[var(--abu-border)] hover:border-[var(--abu-clay)] transition-colors text-left"
                 >
                   <FolderOpen className="h-4 w-4 text-[var(--abu-clay)] shrink-0" />
-                  <span className="text-[13px] text-[var(--abu-text-primary)] truncate flex-1">
+                  <span className="text-body text-[var(--abu-text-primary)] truncate flex-1">
                     {selectedFolder || t.project.selectFolder}
                   </span>
                 </button>
@@ -303,12 +303,12 @@ export default function CreateProjectDialog({
               {selectedFolder && (
                 <div className="space-y-2">
                   {hasAbuConfig && (
-                    <div className="px-3 py-2 rounded-lg bg-[var(--abu-clay-bg)] text-[13px] text-[var(--abu-clay)]">
+                    <div className="px-3 py-2 rounded-lg bg-[var(--abu-clay-bg)] text-body text-[var(--abu-clay)]">
                       ✓ {t.project.detectedConfig}
                     </div>
                   )}
                   {conflictProject && (
-                    <div className="px-3 py-2 rounded-lg bg-red-50 text-[13px] text-red-600">
+                    <div className="px-3 py-2 rounded-lg bg-[var(--abu-danger-bg)] text-body text-[var(--abu-danger)]">
                       ✗ {t.project.folderConflict.replace('{name}', conflictProject)}
                     </div>
                   )}
@@ -317,7 +317,7 @@ export default function CreateProjectDialog({
 
               {/* Name */}
               <div>
-                <label className="text-[13px] font-medium text-[var(--abu-text-secondary)] mb-1.5 block">
+                <label className="text-body font-medium text-[var(--abu-text-secondary)] mb-1.5 block">
                   {t.project.nameLabel} *
                 </label>
                 <Input

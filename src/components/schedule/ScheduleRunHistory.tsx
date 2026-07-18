@@ -30,7 +30,7 @@ export default function ScheduleRunHistory({ runs }: Props) {
 
   if (runs.length === 0) {
     return (
-      <div className="px-4 py-3 text-[12px] text-[var(--abu-text-tertiary)]">
+      <div className="px-4 py-3 text-minor text-[var(--abu-text-tertiary)]">
         {t.schedule.noRuns}
       </div>
     );
@@ -47,24 +47,24 @@ export default function ScheduleRunHistory({ runs }: Props) {
           <span
             className={cn(
               'w-1.5 h-1.5 rounded-full shrink-0',
-              run.status === 'running' && 'bg-amber-400 animate-pulse',
-              run.status === 'completed' && 'bg-green-500',
-              run.status === 'error' && 'bg-red-500'
+              run.status === 'running' && 'bg-[var(--abu-warning-solid)] animate-pulse',
+              run.status === 'completed' && 'bg-[var(--abu-success-solid)]',
+              run.status === 'error' && 'bg-[var(--abu-danger-solid)]'
             )}
           />
 
           {/* Start / End times + status */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-[11px] text-[var(--abu-text-secondary)]">
+              <span className="text-caption text-[var(--abu-text-secondary)]">
                 {t.schedule.startedAtLabel} {formatDateTime(run.startedAt)}
               </span>
               <span
                 className={cn(
-                  'text-[11px]',
-                  run.status === 'running' && 'text-amber-600',
-                  run.status === 'completed' && 'text-green-600',
-                  run.status === 'error' && 'text-red-500'
+                  'text-caption',
+                  run.status === 'running' && 'text-[var(--abu-warning)]',
+                  run.status === 'completed' && 'text-[var(--abu-success)]',
+                  run.status === 'error' && 'text-[var(--abu-danger)]'
                 )}
               >
                 {run.status === 'running' && t.schedule.runStatusRunning}
@@ -73,7 +73,7 @@ export default function ScheduleRunHistory({ runs }: Props) {
               </span>
             </div>
             {run.completedAt && (
-              <div className="text-[11px] text-[var(--abu-text-tertiary)]">
+              <div className="text-caption text-[var(--abu-text-tertiary)]">
                 {t.schedule.completedAtLabel} {formatDateTime(run.completedAt)}
               </div>
             )}

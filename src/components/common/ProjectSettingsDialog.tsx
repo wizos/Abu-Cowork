@@ -46,7 +46,7 @@ function ChipMultiSelect({ selected, options, onChange, placeholder }: {
         type="button"
         onClick={() => setOpen(!open)}
         className={cn(
-          'flex items-center gap-2 w-full min-h-9 px-3 py-1.5 rounded-lg border text-sm text-left transition-all',
+          'flex items-center gap-2 w-full min-h-9 px-3 py-1.5 rounded-lg border text-body text-left transition-all',
           'border-[var(--abu-border)] bg-[var(--abu-bg-muted)]',
           'focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)]',
           'hover:border-[var(--abu-border-hover)]',
@@ -62,7 +62,7 @@ function ChipMultiSelect({ selected, options, onChange, placeholder }: {
               return (
                 <span
                   key={v}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[var(--abu-clay-bg)] text-xs text-[var(--abu-clay)]"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[var(--abu-clay-bg)] text-minor text-[var(--abu-clay)]"
                 >
                   {opt?.label ?? v}
                   <button
@@ -88,7 +88,7 @@ function ChipMultiSelect({ selected, options, onChange, placeholder }: {
             style={dropdownStyle}
           >
             {options.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-[var(--abu-text-muted)]">-</div>
+              <div className="px-3 py-2 text-body text-[var(--abu-text-muted)]">-</div>
             ) : (
               options.map((opt) => {
                 const isSelected = selected.includes(opt.value);
@@ -100,7 +100,7 @@ function ChipMultiSelect({ selected, options, onChange, placeholder }: {
                       onChange(isSelected ? selected.filter((s) => s !== opt.value) : [...selected, opt.value]);
                     }}
                     className={cn(
-                      'w-full px-3 py-2 text-sm text-left transition-colors hover:bg-[var(--abu-bg-muted)]',
+                      'w-full px-3 py-2 text-body text-left transition-colors hover:bg-[var(--abu-bg-muted)]',
                       isSelected
                         ? 'text-[var(--abu-clay)] bg-[var(--abu-clay-bg)]'
                         : 'text-[var(--abu-text-primary)]',
@@ -213,7 +213,7 @@ export default function ProjectSettingsDialog({ open, onClose, projectId }: Proj
         <div className="bg-[var(--abu-bg-base)] rounded-2xl shadow-xl w-[480px] max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-150">
           {/* Header */}
           <div className="flex items-center justify-between px-6 pt-6 pb-2 shrink-0">
-            <h2 className="text-[16px] font-semibold text-[var(--abu-text-primary)]">
+            <h2 className="text-h-sm font-semibold text-[var(--abu-text-primary)]">
               {t.project.settingsTitle}
             </h2>
             <button
@@ -232,14 +232,14 @@ export default function ProjectSettingsDialog({ open, onClose, projectId }: Proj
                 {/* Icon + Name row */}
                 <div className="flex items-end gap-3">
                   <div className="relative">
-                    <label className="text-[13px] font-medium text-[var(--abu-text-secondary)] mb-1.5 block">
+                    <label className="text-body font-medium text-[var(--abu-text-secondary)] mb-1.5 block">
                       {t.project.iconLabel}
                     </label>
                     <button
                       type="button"
                       onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                       className={cn(
-                        'flex items-center justify-center w-[36px] h-[36px] rounded-lg border text-[18px]',
+                        'flex items-center justify-center w-[36px] h-[36px] rounded-lg border text-h-sm',
                         'border-[var(--abu-border)] hover:border-[var(--abu-border-hover)] bg-[var(--abu-bg-primary)]',
                       )}
                     >
@@ -254,7 +254,7 @@ export default function ProjectSettingsDialog({ open, onClose, projectId }: Proj
                               key={emoji}
                               type="button"
                               onClick={() => { setIcon(emoji); setShowEmojiPicker(false); }}
-                              className="flex items-center justify-center w-8 h-8 rounded hover:bg-[var(--abu-bg-hover)] text-[16px]"
+                              className="flex items-center justify-center w-8 h-8 rounded hover:bg-[var(--abu-bg-hover)] text-h-sm"
                             >
                               {emoji}
                             </button>
@@ -263,7 +263,7 @@ export default function ProjectSettingsDialog({ open, onClose, projectId }: Proj
                             <button
                               type="button"
                               onClick={() => { setIcon(''); setShowEmojiPicker(false); }}
-                              className="flex items-center justify-center w-8 h-8 rounded hover:bg-[var(--abu-bg-hover)] text-[11px] text-[var(--abu-text-muted)] col-span-8 border-t border-[var(--abu-border)] mt-1 pt-1"
+                              className="flex items-center justify-center w-8 h-8 rounded hover:bg-[var(--abu-bg-hover)] text-caption text-[var(--abu-text-muted)] col-span-8 border-t border-[var(--abu-border)] mt-1 pt-1"
                             >
                               {t.project.delete}
                             </button>
@@ -273,7 +273,7 @@ export default function ProjectSettingsDialog({ open, onClose, projectId }: Proj
                     )}
                   </div>
                   <div className="flex-1">
-                    <label className="text-[13px] font-medium text-[var(--abu-text-secondary)] mb-1.5 block">
+                    <label className="text-body font-medium text-[var(--abu-text-secondary)] mb-1.5 block">
                       {t.project.nameLabel}
                     </label>
                     <Input
@@ -286,7 +286,7 @@ export default function ProjectSettingsDialog({ open, onClose, projectId }: Proj
 
                 {/* Description */}
                 <div>
-                  <label className="text-[13px] font-medium text-[var(--abu-text-secondary)] mb-1.5 block">
+                  <label className="text-body font-medium text-[var(--abu-text-secondary)] mb-1.5 block">
                     {t.project.descLabel}
                   </label>
                   <Input
@@ -297,7 +297,7 @@ export default function ProjectSettingsDialog({ open, onClose, projectId }: Proj
                 </div>
 
                 {/* Folder path (read-only) */}
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--abu-bg-subtle)] text-[12px] text-[var(--abu-text-tertiary)]">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--abu-bg-subtle)] text-minor text-[var(--abu-text-tertiary)]">
                   <FolderOpen className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate flex-1">{project.workspacePath}</span>
                   <span className="shrink-0">{format(t.project.conversationCount, { count: String(convCount) })}</span>
@@ -306,13 +306,13 @@ export default function ProjectSettingsDialog({ open, onClose, projectId }: Proj
 
               {/* === Defaults (inherited by new conversations) === */}
               <div className="space-y-3">
-                <h3 className="text-[12px] font-semibold text-[var(--abu-text-muted)] uppercase tracking-wider">
+                <h3 className="text-minor font-semibold text-[var(--abu-text-muted)] uppercase tracking-wider">
                   {t.project.defaultsSection}
                 </h3>
 
                 {/* Model Override */}
                 <div>
-                  <label className="text-[13px] font-medium text-[var(--abu-text-secondary)] mb-1.5 block">
+                  <label className="text-body font-medium text-[var(--abu-text-secondary)] mb-1.5 block">
                     {t.project.modelOverrideLabel}
                   </label>
                   <Select
@@ -325,7 +325,7 @@ export default function ProjectSettingsDialog({ open, onClose, projectId }: Proj
 
                 {/* Default Skills */}
                 <div>
-                  <label className="text-[13px] font-medium text-[var(--abu-text-secondary)] mb-1.5 block">
+                  <label className="text-body font-medium text-[var(--abu-text-secondary)] mb-1.5 block">
                     {t.project.defaultSkillsLabel}
                   </label>
                   <ChipMultiSelect
@@ -338,7 +338,7 @@ export default function ProjectSettingsDialog({ open, onClose, projectId }: Proj
 
                 {/* Default MCP Servers */}
                 <div>
-                  <label className="text-[13px] font-medium text-[var(--abu-text-secondary)] mb-1.5 block">
+                  <label className="text-body font-medium text-[var(--abu-text-secondary)] mb-1.5 block">
                     {t.project.defaultMCPLabel}
                   </label>
                   <ChipMultiSelect
@@ -352,14 +352,14 @@ export default function ProjectSettingsDialog({ open, onClose, projectId }: Proj
 
               {/* === Danger Zone === */}
               <div className="space-y-3 pt-1">
-                <h3 className="text-[12px] font-semibold text-red-400 uppercase tracking-wider">
+                <h3 className="text-minor font-semibold text-[var(--abu-danger)] uppercase tracking-wider">
                   {t.project.dangerZone}
                 </h3>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setShowArchiveConfirm(true)}
-                  className="text-red-500 border-red-200 hover:bg-red-50"
+                  className="text-[var(--abu-danger)] border-[var(--abu-danger)] hover:bg-[var(--abu-danger-bg)]"
                 >
                   <Archive className="h-3.5 w-3.5 mr-1.5" />
                   {t.project.archiveProject}
@@ -387,16 +387,16 @@ export default function ProjectSettingsDialog({ open, onClose, projectId }: Proj
           onMouseDown={(e) => { if (e.target === e.currentTarget) setShowArchiveConfirm(false); }}
         >
           <div className="bg-[var(--abu-bg-base)] rounded-2xl shadow-xl w-[380px] p-6 animate-in zoom-in-95 duration-150">
-            <h3 className="text-[16px] font-semibold text-[var(--abu-text-primary)] mb-2">
+            <h3 className="text-h-sm font-semibold text-[var(--abu-text-primary)] mb-2">
               {t.project.archiveProject}
             </h3>
-            <p className="text-[14px] text-[var(--abu-text-tertiary)] leading-relaxed mb-6">
+            <p className="text-body text-[var(--abu-text-tertiary)] leading-relaxed mb-6">
               {format(t.project.archiveConfirm, { name: project.name })}
             </p>
             <div className="flex items-center justify-end gap-3">
               <button
                 onClick={() => setShowArchiveConfirm(false)}
-                className="px-4 py-2 rounded-lg text-[13px] font-medium text-[var(--abu-text-tertiary)] hover:bg-[var(--abu-bg-muted)] transition-colors"
+                className="px-4 py-2 rounded-lg text-body font-medium text-[var(--abu-text-tertiary)] hover:bg-[var(--abu-bg-muted)] transition-colors"
               >
                 {t.project.cancel}
               </button>
@@ -406,7 +406,7 @@ export default function ProjectSettingsDialog({ open, onClose, projectId }: Proj
                   setShowArchiveConfirm(false);
                   onClose();
                 }}
-                className="px-4 py-2 rounded-lg text-[13px] font-medium text-white bg-red-500 hover:bg-red-600 transition-colors"
+                className="px-4 py-2 rounded-lg text-body font-medium text-white bg-[var(--abu-danger-solid)] hover:opacity-90 transition-colors"
               >
                 {t.project.archive}
               </button>

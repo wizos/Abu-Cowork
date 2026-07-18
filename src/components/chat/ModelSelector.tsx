@@ -36,7 +36,7 @@ function ModelRow({
       role="button"
       tabIndex={0}
       className={cn(
-        'flex items-center w-full px-3 py-1.5 text-left text-sm rounded-md transition-colors cursor-pointer',
+        'flex items-center w-full px-3 py-1.5 text-left text-body rounded-md transition-colors cursor-pointer',
         'hover:bg-[var(--abu-bg-hover)]',
         isActive && !dim && 'bg-[var(--abu-bg-hover)]'
       )}
@@ -58,7 +58,7 @@ function ModelRow({
         className={cn(
           'p-0.5 rounded shrink-0 mr-1 transition-colors',
           'hover:bg-[var(--abu-bg-muted)]',
-          isFavorite ? 'text-amber-500' : 'text-[var(--abu-text-muted)] opacity-0 group-hover/row:opacity-100'
+          isFavorite ? 'text-[var(--abu-warning)]' : 'text-[var(--abu-text-muted)] opacity-0 group-hover/row:opacity-100'
         )}
         onClick={(e) => {
           e.stopPropagation();
@@ -256,24 +256,24 @@ export function ModelSelector({ open, onClose, anchorRef }: ModelSelectorProps) 
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t.common.search + '...'}
-              className="h-7 pl-7 pr-2 text-xs bg-transparent border-none focus:ring-0"
+              className="h-7 pl-7 pr-2 text-minor bg-transparent border-none focus:ring-0"
             />
           </div>
         </div>
         <div className="overflow-y-auto max-h-80">
           <div className="p-1">
             {enterpriseModels === null ? (
-              <div className="px-3 py-4 text-center text-xs text-[var(--abu-text-muted)]">
+              <div className="px-3 py-4 text-center text-minor text-[var(--abu-text-muted)]">
                 {t.chat.enterpriseModelLoading}
               </div>
             ) : filtered.length === 0 ? (
-              <div className="px-3 py-4 text-center text-xs text-[var(--abu-text-muted)]">
+              <div className="px-3 py-4 text-center text-minor text-[var(--abu-text-muted)]">
                 {lowerQuery ? t.chat.enterpriseModelNoMatch : t.chat.enterpriseModelEmpty}
               </div>
             ) : (
               <div className="mb-1">
                 <div className="px-3 py-1">
-                  <span className="text-[10px] font-medium uppercase tracking-wider text-orange-400">
+                  <span className="text-caption font-medium uppercase tracking-wider text-[var(--abu-clay)]">
                     {t.chat.enterpriseGatewayLabel}
                   </span>
                 </div>
@@ -285,7 +285,7 @@ export function ModelSelector({ open, onClose, anchorRef }: ModelSelectorProps) 
                       onClick={() => { selectModel('enterprise-gateway', modelId); onClose(); }}
                       className={cn(
                         'w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-left',
-                        'text-xs transition-colors',
+                        'text-minor transition-colors',
                         isActive
                           ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]'
                           : 'text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]'
@@ -328,7 +328,7 @@ export function ModelSelector({ open, onClose, anchorRef }: ModelSelectorProps) 
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t.common.search + '...'}
-            className="h-7 pl-7 pr-2 text-xs bg-transparent border-none focus:ring-0"
+            className="h-7 pl-7 pr-2 text-minor bg-transparent border-none focus:ring-0"
           />
         </div>
       </div>
@@ -336,10 +336,10 @@ export function ModelSelector({ open, onClose, anchorRef }: ModelSelectorProps) 
       {hasNoProviders ? (
         /* No providers message */
         <div className="p-4 text-center">
-          <p className="text-sm text-[var(--abu-text-tertiary)]">{t.settings.noProviders}</p>
-          <p className="text-xs text-[var(--abu-text-muted)] mt-1">{t.settings.noProvidersHint}</p>
+          <p className="text-body text-[var(--abu-text-tertiary)]">{t.settings.noProviders}</p>
+          <p className="text-minor text-[var(--abu-text-muted)] mt-1">{t.settings.noProvidersHint}</p>
           <button
-            className="mt-2 text-xs text-[var(--abu-clay)] hover:underline"
+            className="mt-2 text-minor text-[var(--abu-clay)] hover:underline"
             onClick={() => {
               onClose();
               openSystemSettings('ai-services');
@@ -356,8 +356,8 @@ export function ModelSelector({ open, onClose, anchorRef }: ModelSelectorProps) 
             {resolvedFavorites.length > 0 && (
               <div className="mb-1">
                 <div className="flex items-center gap-1.5 px-3 py-1">
-                  <Star className="h-3 w-3 text-amber-500 fill-amber-500" />
-                  <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--abu-text-muted)]">
+                  <Star className="h-3 w-3 text-[var(--abu-warning)] fill-[var(--abu-warning-solid)]" />
+                  <span className="text-caption font-medium uppercase tracking-wider text-[var(--abu-text-muted)]">
                     Favorites
                   </span>
                 </div>
@@ -380,7 +380,7 @@ export function ModelSelector({ open, onClose, anchorRef }: ModelSelectorProps) 
               <div className="mb-1">
                 <div className="flex items-center gap-1.5 px-3 py-1">
                   <Clock className="h-3 w-3 text-[var(--abu-text-muted)]" />
-                  <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--abu-text-muted)]">
+                  <span className="text-caption font-medium uppercase tracking-wider text-[var(--abu-text-muted)]">
                     Recent
                   </span>
                 </div>
@@ -408,7 +408,7 @@ export function ModelSelector({ open, onClose, anchorRef }: ModelSelectorProps) 
             {filteredProviders.map(({ provider, models }) => (
               <div key={provider.id} className="mb-1">
                 <div className="px-3 py-1">
-                  <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--abu-text-muted)]">
+                  <span className="text-caption font-medium uppercase tracking-wider text-[var(--abu-text-muted)]">
                     {provider.name}
                   </span>
                 </div>
@@ -428,7 +428,7 @@ export function ModelSelector({ open, onClose, anchorRef }: ModelSelectorProps) 
 
             {/* No results */}
             {filteredProviders.length === 0 && resolvedFavorites.length === 0 && resolvedRecents.length === 0 && (
-              <div className="px-3 py-4 text-center text-xs text-[var(--abu-text-muted)]">
+              <div className="px-3 py-4 text-center text-minor text-[var(--abu-text-muted)]">
                 No models found
               </div>
             )}

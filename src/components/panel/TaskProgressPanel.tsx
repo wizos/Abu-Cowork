@@ -92,9 +92,9 @@ export default function TaskProgressPanel() {
       >
         <div className="flex items-center gap-2">
           <ListChecks className="h-4 w-4 text-[var(--abu-text-tertiary)]" />
-          <span className="text-[13px] font-medium text-[var(--abu-text-primary)]">{t.panel.progress}</span>
+          <span className="text-body font-medium text-[var(--abu-text-primary)]">{t.panel.progress}</span>
           {hasPlannedSteps && (
-            <span className="text-[11px] text-[var(--abu-text-muted)]">
+            <span className="text-caption text-[var(--abu-text-muted)]">
               {plannedSteps.filter((s) => s.status === 'completed').length}/{plannedSteps.length}
             </span>
           )}
@@ -127,7 +127,7 @@ export default function TaskProgressPanel() {
                 <div className="w-4 h-px bg-[var(--abu-bg-pressed)]" />
                 <Circle className="h-3 w-3 text-[var(--abu-bg-pressed)]" />
               </div>
-              <p className="text-[12px] text-[var(--abu-text-muted)]">
+              <p className="text-minor text-[var(--abu-text-muted)]">
                 {t.panel.progressEmptyHint}
               </p>
             </div>
@@ -183,8 +183,8 @@ function ProgressStepRow({ step, isLive }: ProgressStepRowProps) {
         // Legacy status, no longer produced going forward — kept only to
         // render historical snapshots that predate the status narrowing.
         return (
-          <div className="w-5 h-5 rounded-full border-2 border-red-500 flex items-center justify-center">
-            <AlertCircle className="h-3 w-3 text-red-500" />
+          <div className="w-5 h-5 rounded-full border-2 border-[var(--abu-danger)] flex items-center justify-center">
+            <AlertCircle className="h-3 w-3 text-[var(--abu-danger)]" />
           </div>
         );
       default:
@@ -201,10 +201,10 @@ function ProgressStepRow({ step, isLive }: ProgressStepRowProps) {
       <div className="shrink-0 mt-0.5">{renderStatusIcon()}</div>
       <span
         className={cn(
-          'text-[13px] leading-6',
+          'text-body leading-6',
           status === 'completed' && 'text-[var(--abu-text-tertiary)]',
           status === 'in_progress' && 'text-[var(--abu-text-primary)]',
-          status === 'error' && 'text-red-500',
+          status === 'error' && 'text-[var(--abu-danger)]',
           status === 'pending' && 'text-[var(--abu-text-muted)]'
         )}
       >

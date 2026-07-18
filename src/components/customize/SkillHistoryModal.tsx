@@ -74,6 +74,14 @@ export default function SkillHistoryModal({ skillDir, skillName, onClose }: Prop
     void loadEntries();
   }, [loadEntries]);
 
+  // Own the Escape key while stacked on top of the skill detail modal (which
+  // suppresses its own Escape via disableEscape when this modal is open).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   const handleRevert = async (turnId: string) => {
     setRevertingTurnId(turnId);
     try {
@@ -115,7 +123,7 @@ export default function SkillHistoryModal({ skillDir, skillName, onClose }: Prop
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--abu-bg-active)]">
           <div className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-[var(--abu-text-tertiary)]" />
-            <h2 className="text-base font-semibold text-[var(--abu-text-primary)]">
+            <h2 className="text-h-sm font-semibold text-[var(--abu-text-primary)]">
               {t.toolbox.historyModalTitle} — {skillName}
             </h2>
           </div>
@@ -130,11 +138,11 @@ export default function SkillHistoryModal({ skillDir, skillName, onClose }: Prop
         {/* Body */}
         <div className="flex-1 overflow-y-auto overlay-scroll">
           {loading ? (
-            <div className="py-12 text-center text-sm text-[var(--abu-text-muted)]">
+            <div className="py-12 text-center text-body text-[var(--abu-text-muted)]">
               <Loader2 className="h-4 w-4 mx-auto animate-spin" />
             </div>
           ) : entries.length === 0 ? (
-            <div className="py-12 px-8 text-center text-sm text-[var(--abu-text-muted)]">
+            <div className="py-12 px-8 text-center text-body text-[var(--abu-text-muted)]">
               {t.toolbox.historyEmpty}
             </div>
           ) : (
@@ -188,17 +196,17 @@ function HistoryRow({ entry, skillDir, expanded, onToggle, onRevert, isReverting
         ) : (
           <ChevronRight className="h-3.5 w-3.5 text-[var(--abu-text-muted)] shrink-0" />
         )}
-        <span className="text-xs text-[var(--abu-text-muted)] shrink-0">
+        <span className="text-minor text-[var(--abu-text-muted)] shrink-0">
           {relativeTime(entry.ts)}
         </span>
-        <span className="text-xs font-medium text-[var(--abu-text-primary)] shrink-0">
+        <span className="text-minor font-medium text-[var(--abu-text-primary)] shrink-0">
           {t.toolbox[historyOpLabelKey(entry.op)]}
         </span>
-        <span className="text-xs text-[var(--abu-text-tertiary)] truncate flex-1">
+        <span className="text-minor text-[var(--abu-text-tertiary)] truncate flex-1">
           {fileCount === 1 ? fileNames : format(t.toolbox.historyFileCount, { count: String(fileCount) })}
         </span>
         {entry.summary && !isRevertEntry && (
-          <span className="text-[11px] text-[var(--abu-text-muted)] truncate max-w-[180px]">
+          <span className="text-caption text-[var(--abu-text-muted)] truncate max-w-[180px]">
             {entry.summary}
           </span>
         )}
@@ -218,7 +226,7 @@ function HistoryRow({ entry, skillDir, expanded, onToggle, onRevert, isReverting
               <button
                 onClick={onRevert}
                 disabled={isReverting}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border border-[var(--abu-border)] text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)] transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-minor font-medium border border-[var(--abu-border)] text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)] transition-colors disabled:opacity-50"
               >
                 {isReverting ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -293,21 +301,21 @@ function FileDiffBlock({ skillDir, change }: { skillDir: string; change: History
 
   return (
     <div className="border border-[var(--abu-border-subtle)] rounded-md overflow-hidden">
-      <div className="px-3 py-1.5 bg-[var(--abu-bg-muted)] flex items-center gap-2 text-[11px]">
+      <div className="px-3 py-1.5 bg-[var(--abu-bg-muted)] flex items-center gap-2 text-caption">
         <span className={cn(
           'px-1.5 py-0.5 rounded font-medium',
-          change.action === 'modified' && 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
-          change.action === 'created' && 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400',
-          change.action === 'removed' && 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400',
+          change.action === 'modified' && 'bg-[var(--abu-info-bg)] text-[var(--abu-info)]',
+          change.action === 'created' && 'bg-[var(--abu-success-bg)] text-[var(--abu-success)]',
+          change.action === 'removed' && 'bg-[var(--abu-danger-bg)] text-[var(--abu-danger)]',
         )}>
           {t.toolbox[historyActionLabelKey(change.action)]}
         </span>
         <span className="text-[var(--abu-text-primary)] font-mono">{change.relPath}</span>
       </div>
       {error ? (
-        <div className="px-3 py-2 text-xs text-red-600">{error}</div>
+        <div className="px-3 py-2 text-minor text-[var(--abu-danger)]">{error}</div>
       ) : diffText === null ? (
-        <div className="px-3 py-2 text-xs text-[var(--abu-text-muted)]">…</div>
+        <div className="px-3 py-2 text-minor text-[var(--abu-text-muted)]">…</div>
       ) : (
         <DiffView text={diffText} />
       )}
@@ -317,7 +325,7 @@ function FileDiffBlock({ skillDir, change }: { skillDir: string; change: History
 
 function DiffView({ text }: { text: string }) {
   return (
-    <pre className="text-[11px] leading-relaxed font-mono max-h-64 overflow-y-auto overlay-scroll bg-[var(--abu-bg-base)]">
+    <pre className="text-caption leading-relaxed font-mono max-h-64 overflow-y-auto overlay-scroll bg-[var(--abu-bg-base)]">
       {text.split('\n').map((line, i) => (
         <div key={i} className={diffLineClass(line)}>
           {line || '\u00A0'}
@@ -330,8 +338,8 @@ function DiffView({ text }: { text: string }) {
 function diffLineClass(line: string): string {
   if (line.startsWith('+++') || line.startsWith('---')) return 'px-3 text-[var(--abu-text-muted)]';
   if (line.startsWith('@@')) return 'px-3 bg-[var(--abu-bg-muted)] text-[var(--abu-text-tertiary)]';
-  if (line.startsWith('+')) return 'px-3 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-400';
-  if (line.startsWith('-')) return 'px-3 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-400';
+  if (line.startsWith('+')) return 'px-3 bg-[var(--abu-success-bg)] text-[var(--abu-success)]';
+  if (line.startsWith('-')) return 'px-3 bg-[var(--abu-danger-bg)] text-[var(--abu-danger)]';
   return 'px-3 text-[var(--abu-text-secondary)]';
 }
 

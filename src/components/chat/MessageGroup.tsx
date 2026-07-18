@@ -31,6 +31,9 @@ import { cn } from '@/lib/utils';
 interface MessageGroupProps {
   messages: Message[];
   isLastGroup?: boolean;
+  // When set and this group contains that message, briefly ring-highlight the
+  // group (search-hit jump target). Cleared by the parent after a timeout.
+  highlightMessageId?: string | null;
 }
 
 // Home dir is resolved once per app session and cached at module level so the
@@ -54,7 +57,7 @@ function SkillPatchSummaryRow({ skillName, calls }: { skillName: string; calls: 
     <div className="my-1">
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--abu-border-subtle)] bg-[var(--abu-bg-muted)] text-xs text-[var(--abu-text-tertiary)] hover:bg-[var(--abu-bg-elevated)] transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--abu-border-subtle)] bg-[var(--abu-bg-muted)] text-minor text-[var(--abu-text-tertiary)] hover:bg-[var(--abu-bg-elevated)] transition-colors"
       >
         <Sparkles className="h-3.5 w-3.5 text-[var(--abu-clay)] flex-shrink-0" />
         <span className="flex-1 text-left">
@@ -73,7 +76,7 @@ function SkillPatchSummaryRow({ skillName, calls }: { skillName: string; calls: 
             let msg = '';
             try { msg = (JSON.parse(tc.result ?? '{}') as { message?: string }).message ?? ''; } catch { /* empty */ }
             return msg ? (
-              <div key={tc.id} className="text-[11px] text-[var(--abu-text-muted)] px-2 py-0.5">
+              <div key={tc.id} className="text-caption text-[var(--abu-text-muted)] px-2 py-0.5">
                 {msg}
               </div>
             ) : null;
@@ -318,7 +321,7 @@ export function streamingTurnHasRenderableContent(msg: Message | undefined): boo
  * User messages render standalone, assistant messages share one avatar.
  * Renders text → merged tool steps, with consecutive tool-only turns combined.
  */
-export default function MessageGroup({ messages, isLastGroup: isLastGroupProp = false }: MessageGroupProps) {
+export default function MessageGroup({ messages, isLastGroup: isLastGroupProp = false, highlightMessageId = null }: MessageGroupProps) {
   const { t } = useI18n();
   // Separate user and assistant messages
   const userMsg = messages.find((m) => m.role === 'user');
@@ -722,7 +725,18 @@ export default function MessageGroup({ messages, isLastGroup: isLastGroupProp = 
   };
 
   return (
-    <div ref={groupRef} className="message-group space-y-4 w-full">
+    <div
+      ref={groupRef}
+      className={cn(
+        // transition-colors lives on the base class so the highlight fades both
+        // in AND out (a conditional transition class vanishes with the bg and
+        // makes the removal instant).
+        'message-group space-y-4 w-full rounded-lg transition-colors duration-700',
+        highlightMessageId != null &&
+          messages.some((m) => m.id === highlightMessageId) &&
+          'bg-[var(--abu-clay-bg-15)]',
+      )}
+    >
       {/* User message renders standalone */}
       {userMsg && <MessageErrorBoundary><MessageBubble message={userMsg} /></MessageErrorBoundary>}
 
@@ -744,7 +758,7 @@ export default function MessageGroup({ messages, isLastGroup: isLastGroupProp = 
                 not suppress the dots for the fresh empty turn that follows. */}
             {isStreaming && !streamingHasContent && (
               <div className="flex items-center gap-1.5 py-2">
-                <span className="text-[12px] text-[var(--abu-text-muted)]">{t.status.thinking}</span>
+                <span className="text-minor text-[var(--abu-text-muted)]">{t.status.thinking}</span>
                 <span className="typing-dot w-1.5 h-1.5 rounded-full bg-[var(--abu-clay-60)]" />
                 <span className="typing-dot w-1.5 h-1.5 rounded-full bg-[var(--abu-clay-60)]" />
                 <span className="typing-dot w-1.5 h-1.5 rounded-full bg-[var(--abu-clay-60)]" />
@@ -763,7 +777,7 @@ export default function MessageGroup({ messages, isLastGroup: isLastGroupProp = 
                     style (muted text + trailing chevron, no card background). */}
                 <button
                   onClick={() => setWorkExpanded((v) => !v)}
-                  className="flex items-center gap-1 text-[13px] text-[var(--abu-text-muted)] hover:text-[var(--abu-text-muted)] transition-colors mb-2"
+                  className="flex items-center gap-1 text-body text-[var(--abu-text-muted)] hover:text-[var(--abu-text-muted)] transition-colors mb-2"
                 >
                   <span>{workLabel}</span>
                   <ChevronDown

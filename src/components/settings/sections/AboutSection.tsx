@@ -82,32 +82,32 @@ export default function AboutSection() {
     : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-full flex flex-col justify-center gap-6">
       {/* Logo & name */}
       <div className="flex flex-col items-center text-center space-y-3">
         <img src={abuAvatar} alt="Abu" className="w-20 h-20 rounded-2xl" />
         <div>
-          <h4 className="text-2xl font-bold text-[var(--abu-text-primary)]">{t.common.appName}</h4>
-          <p className="text-sm text-[var(--abu-text-tertiary)]">{t.common.appSlogan}</p>
+          <h4 className="text-h-xl font-semibold text-[var(--abu-text-primary)]">{t.common.appName}</h4>
+          <p className="text-body text-[var(--abu-text-tertiary)]">{t.common.appSlogan}</p>
         </div>
       </div>
 
       {/* Version info */}
       <div className="space-y-1">
         <div className="flex justify-between items-center py-3 border-b border-[var(--abu-border)]">
-          <span className="text-sm text-[var(--abu-text-tertiary)]">{t.updates.currentVersion}</span>
-          <span className="text-sm font-semibold text-[var(--abu-text-primary)]">v{APP_VERSION}</span>
+          <span className="text-body text-[var(--abu-text-tertiary)]">{t.updates.currentVersion}</span>
+          <span className="text-body font-semibold text-[var(--abu-text-primary)]">v{APP_VERSION}</span>
         </div>
         <div className="flex justify-between items-center py-3 border-b border-[var(--abu-border)]">
-          <span className="text-sm text-[var(--abu-text-tertiary)]">{t.about.deviceId}</span>
+          <span className="text-body text-[var(--abu-text-tertiary)]">{t.about.deviceId}</span>
           <button
             type="button"
             onClick={handleCopyDeviceId}
-            className="flex items-center gap-1.5 text-sm font-mono text-[var(--abu-text-secondary)] hover:text-[var(--abu-text-primary)] transition-colors"
+            className="flex items-center gap-1.5 text-body font-mono text-[var(--abu-text-secondary)] hover:text-[var(--abu-text-primary)] transition-colors"
             title={deviceId}
           >
             <span>{deviceId.slice(0, 8)}</span>
-            {idCopied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+            {idCopied ? <Check className="h-3.5 w-3.5 text-[var(--abu-success)]" /> : <Copy className="h-3.5 w-3.5" />}
           </button>
         </div>
       </div>
@@ -116,15 +116,15 @@ export default function AboutSection() {
       {updateInfo && (
         <div className="rounded-xl border border-[var(--abu-clay-ring)] bg-[var(--abu-clay-5)] p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-[var(--abu-clay)]">{t.updates.newVersionAvailable}</span>
-            <span className="text-sm font-mono font-semibold text-[var(--abu-text-primary)]">v{updateInfo.version}</span>
+            <span className="text-body font-semibold text-[var(--abu-clay)]">{t.updates.newVersionAvailable}</span>
+            <span className="text-body font-mono font-semibold text-[var(--abu-text-primary)]">v{updateInfo.version}</span>
           </div>
           {(updateInfo.releaseNotes || updateInfo.releaseUrl) && (
             <div className="space-y-1.5">
-              <span className="text-xs font-medium text-[var(--abu-text-tertiary)]">{t.updates.releaseNotes}</span>
+              <span className="text-minor font-medium text-[var(--abu-text-tertiary)]">{t.updates.releaseNotes}</span>
               {updateInfo.releaseNotes && updateInfo.releaseNotes.trim().length > 0 ? (
-                <div className="text-sm text-[var(--abu-text-secondary)] space-y-1.5
-                  [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:text-[var(--abu-text-primary)] [&_h3]:mt-2
+                <div className="text-body text-[var(--abu-text-secondary)] space-y-1.5
+                  [&_h3]:text-minor [&_h3]:font-semibold [&_h3]:text-[var(--abu-text-primary)] [&_h3]:mt-2
                   [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-0.5
                   [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-0.5
                   [&_strong]:font-semibold [&_strong]:text-[var(--abu-text-primary)]
@@ -153,7 +153,7 @@ export default function AboutSection() {
               {updateInfo.releaseUrl && (
                 <button
                   onClick={() => void handleOpenLink(updateInfo.releaseUrl)}
-                  className="flex items-center gap-1.5 text-xs text-[var(--abu-clay)] hover:underline"
+                  className="flex items-center gap-1.5 text-minor text-[var(--abu-clay)] hover:underline"
                 >
                   <ExternalLink className="h-3 w-3" />
                   {t.updates.viewOnGitHub}
@@ -165,7 +165,7 @@ export default function AboutSection() {
           {/* Download progress bar */}
           {downloadProgress && (
             <div className="space-y-1.5">
-              <div className="flex justify-between text-xs text-[var(--abu-text-tertiary)]">
+              <div className="flex justify-between text-minor text-[var(--abu-text-tertiary)]">
                 <span>{t.updates.downloading}</span>
                 <span>{progressPercent}%</span>
               </div>
@@ -180,12 +180,12 @@ export default function AboutSection() {
 
           {/* Download error */}
           {downloadError && (
-            <div className="flex items-center gap-2 text-sm text-red-500">
+            <div className="flex items-center gap-2 text-body text-[var(--abu-danger)]">
               <CircleAlert className="h-4 w-4 shrink-0" />
               <span className="flex-1">{t.updates.downloadFailed}</span>
               <button
                 onClick={handleDownload}
-                className="text-xs font-medium text-[var(--abu-clay)] hover:underline"
+                className="text-minor font-medium text-[var(--abu-clay)] hover:underline"
               >
                 {t.updates.retry}
               </button>
@@ -196,7 +196,7 @@ export default function AboutSection() {
           {updateInstalling ? (
             <button
               onClick={handleRestart}
-              className="flex items-center gap-2 w-full justify-center py-2 px-4 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors"
+              className="flex items-center gap-2 w-full justify-center py-2 px-4 rounded-lg bg-[var(--abu-success-solid)] text-white text-body font-medium hover:opacity-90 transition-colors"
             >
               <RotateCcw className="h-4 w-4" />
               {t.updates.restartToInstall}
@@ -204,7 +204,7 @@ export default function AboutSection() {
           ) : !downloadProgress && !downloadError && (
             <button
               onClick={handleDownload}
-              className="flex items-center gap-2 w-full justify-center py-2 px-4 rounded-lg bg-[var(--abu-clay)] text-white text-sm font-medium hover:bg-[var(--abu-clay-hover)] transition-colors"
+              className="flex items-center gap-2 w-full justify-center py-2 px-4 rounded-lg bg-[var(--abu-clay)] text-white text-body font-medium hover:bg-[var(--abu-clay-hover)] transition-colors"
             >
               <Download className="h-4 w-4" />
               {t.updates.downloadUpdate}
@@ -219,7 +219,7 @@ export default function AboutSection() {
           onClick={handleCheckUpdate}
           disabled={updateChecking || !!downloadProgress}
           className={cn(
-            'flex items-center gap-2 w-full justify-center py-2.5 px-4 rounded-lg border text-sm font-medium transition-all duration-200',
+            'flex items-center gap-2 w-full justify-center py-2.5 px-4 rounded-lg border text-body font-medium transition-all duration-200',
             updateChecking || downloadProgress
               ? 'border-[var(--abu-border)] text-[var(--abu-text-muted)] cursor-not-allowed'
               : 'border-[var(--abu-border)] text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-active)] hover:border-[var(--abu-border-hover)] active:scale-[0.98]'
@@ -233,8 +233,8 @@ export default function AboutSection() {
         {!updateInfo && !updateChecking && (
           <div
             className={cn(
-              'flex items-center justify-center gap-1.5 text-xs transition-all duration-300',
-              checkResult === 'error' ? 'text-red-500' : 'text-[var(--abu-text-muted)]'
+              'flex items-center justify-center gap-1.5 text-minor transition-all duration-300',
+              checkResult === 'error' ? 'text-[var(--abu-danger)]' : 'text-[var(--abu-text-muted)]'
             )}
           >
             {checkResult === 'error' ? (
@@ -244,7 +244,7 @@ export default function AboutSection() {
               </>
             ) : (
               <>
-                <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                <CheckCircle className="h-3.5 w-3.5 text-[var(--abu-success)]" />
                 <span>{t.updates.upToDate}</span>
                 {checkResult === 'just-checked' && (
                   <span className="text-[var(--abu-text-muted)]">· {t.updates.justChecked}</span>
@@ -257,7 +257,7 @@ export default function AboutSection() {
 
       {/* Footer */}
       <div className="text-center space-y-2 pt-2">
-        <p className="text-sm text-[var(--abu-text-tertiary)]">
+        <p className="text-body text-[var(--abu-text-tertiary)]">
           Made with ❤️ by{' '}
           <button
             onClick={() => handleOpenLink('https://github.com/PM-Shawn/Abu-Cowork')}
@@ -266,7 +266,7 @@ export default function AboutSection() {
             Shawn
           </button>
         </p>
-        <p className="text-xs text-[var(--abu-text-muted)]">
+        <p className="text-minor text-[var(--abu-text-muted)]">
           © 2026 {t.common.appName}. All rights reserved.
           <span className="mx-1.5">·</span>
           <button
@@ -294,22 +294,22 @@ export default function AboutSection() {
           ref={disclaimerRef}
           className="rounded-lg border border-[var(--abu-border)] bg-[var(--abu-bg-active)] p-3 max-h-64 overflow-y-auto space-y-2"
         >
-          <p className="text-xs font-semibold text-[var(--abu-text-primary)]">{t.about.disclaimerTitle}</p>
-          <div className="text-xs text-[var(--abu-text-secondary)] space-y-1.5 leading-relaxed">
+          <p className="text-minor font-semibold text-[var(--abu-text-primary)]">{t.about.disclaimerTitle}</p>
+          <div className="text-minor text-[var(--abu-text-secondary)] space-y-1.5 leading-relaxed">
             <p>· {t.disclaimerBanner.line1}</p>
             <p>· {t.disclaimerBanner.line2}</p>
             <p>· {t.disclaimerBanner.line3}</p>
           </div>
           <button
             onClick={() => void handleOpenLink(disclaimerUrl)}
-            className="flex items-center gap-1 text-xs text-[var(--abu-clay)] hover:underline mt-1"
+            className="flex items-center gap-1 text-minor text-[var(--abu-clay)] hover:underline mt-1"
           >
             <ExternalLink className="h-3 w-3" />
             {t.about.disclaimerLink}{t.about.disclaimerFullSuffix}
           </button>
           <button
             onClick={() => setDisclaimerOpen(false)}
-            className="block text-xs text-[var(--abu-text-muted)] hover:text-[var(--abu-text-secondary)] mt-1"
+            className="block text-minor text-[var(--abu-text-muted)] hover:text-[var(--abu-text-secondary)] mt-1"
           >
             {t.about.disclaimerClose}
           </button>

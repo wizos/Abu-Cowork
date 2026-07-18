@@ -89,7 +89,7 @@ export default function ConversationPicker({ selectedIds, onChange, disabled }: 
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          'w-full h-9 px-3 flex items-center justify-between rounded-lg border text-sm transition-all',
+          'w-full h-9 px-3 flex items-center justify-between rounded-lg border text-body transition-all',
           'bg-[var(--abu-bg-muted)] border-[var(--abu-border)]',
           'focus:outline-none focus:ring-2 focus:ring-[var(--abu-clay-ring)] focus:border-[var(--abu-clay)]',
           open && 'ring-2 ring-[var(--abu-clay-ring)] border-[var(--abu-clay)]',
@@ -123,11 +123,11 @@ export default function ConversationPicker({ selectedIds, onChange, disabled }: 
             placeholder={t.diagnostic.conversationPickerSearchPlaceholder}
             disabled={disabled}
             autoFocus
-            className="h-8 text-[12px] mb-2"
+            className="h-8 text-minor mb-2"
           />
 
           {filtered.length === 0 ? (
-            <div className="py-3 text-center text-[11px] text-[var(--abu-text-muted)]">
+            <div className="py-3 text-center text-caption text-[var(--abu-text-muted)]">
               {t.diagnostic.conversationPickerEmpty}
             </div>
           ) : (
@@ -149,18 +149,18 @@ export default function ConversationPicker({ selectedIds, onChange, disabled }: 
                     )}
                   >
                     <Checkbox checked={selectedSet.has(c.id)} onChange={() => toggle(c.id)} disabled={disabled} />
-                    <span className="flex-1 min-w-0 truncate text-[12px] text-[var(--abu-text-primary)]">
+                    <span className="flex-1 min-w-0 truncate text-minor text-[var(--abu-text-primary)]">
                       {c.title || t.diagnostic.conversationPickerNoTitle}
                     </span>
                     {c.id === activeConversationId && (
-                      <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] bg-[var(--abu-clay)]/15 text-[var(--abu-clay)]">
+                      <span className="shrink-0 px-1.5 py-0.5 rounded text-caption bg-[var(--abu-clay)]/15 text-[var(--abu-clay)]">
                         {t.diagnostic.conversationPickerCurrentBadge}
                       </span>
                     )}
-                    <span className="shrink-0 text-[11px] text-[var(--abu-text-muted)]">
+                    <span className="shrink-0 text-caption text-[var(--abu-text-muted)]">
                       {formatRelativeTime(c.updatedAt)}
                     </span>
-                    <span className="shrink-0 text-[11px] text-[var(--abu-text-muted)] w-16 text-right">
+                    <span className="shrink-0 text-caption text-[var(--abu-text-muted)] w-16 text-right">
                       {format(t.diagnostic.conversationPickerMessageCount, { count: c.messageCount })}
                     </span>
                   </div>

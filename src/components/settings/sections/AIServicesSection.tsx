@@ -5,6 +5,7 @@ import { useI18n } from '@/i18n';
 import { Plus, CircleCheck, CircleAlert, ChevronDown, Globe, ImageIcon, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import SettingsSectionHeader from '@/components/settings/SettingsSectionHeader';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import ProviderCard from './ai-services/ProviderCard';
 import AddProviderModal from './ai-services/AddProviderModal';
@@ -33,7 +34,7 @@ export default function AIServicesSection() {
   if (isEnterprise) {
     return (
       <div className="space-y-4">
-        <h3 className="text-base font-semibold text-[var(--abu-text-primary)]">
+        <h3 className="text-h-sm font-semibold text-[var(--abu-text-primary)]">
           {t.settings.aiServices}
         </h3>
         <EnterpriseLlmBadge />
@@ -65,34 +66,28 @@ export default function AIServicesSection() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-base font-semibold text-[var(--abu-text-primary)]">
-            {t.settings.aiServices}
-          </h3>
-          {enabledCount > 0 && (
-            <p className="text-xs text-[var(--abu-text-muted)] mt-0.5">
-              {t.settings.enabledCount.replace('{count}', String(enabledCount))}
-            </p>
-          )}
-        </div>
-        <Button
-          variant="default"
-          size="sm"
-          onClick={() => setShowAddModal(true)}
-          className="gap-1.5"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          {t.settings.add}
-        </Button>
-      </div>
+      {/* Header — shared component; add button in the action slot (clears the modal X). */}
+      <SettingsSectionHeader
+        title={t.settings.aiServices}
+        description={enabledCount > 0 ? t.settings.enabledCount.replace('{count}', String(enabledCount)) : undefined}
+        action={(
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => setShowAddModal(true)}
+            className="gap-1.5"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {t.settings.add}
+          </Button>
+        )}
+      />
 
       {/* Provider List */}
       {visibleProviders.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
-          <p className="text-sm text-[var(--abu-text-muted)]">{t.settings.noProviders}</p>
-          <p className="text-xs text-[var(--abu-text-muted)] mt-1">{t.settings.noProvidersHint}</p>
+          <p className="text-body text-[var(--abu-text-muted)]">{t.settings.noProviders}</p>
+          <p className="text-minor text-[var(--abu-text-muted)] mt-1">{t.settings.noProvidersHint}</p>
           <Button
             variant="outline"
             size="sm"
@@ -119,7 +114,7 @@ export default function AIServicesSection() {
       {/* Auxiliary Capabilities */}
       <div className="border border-[var(--abu-border)] rounded-xl">
         <div className="px-4 py-3 bg-[var(--abu-bg-muted)] rounded-t-xl">
-          <h4 className="text-xs font-medium text-[var(--abu-text-tertiary)] uppercase tracking-wider">
+          <h4 className="text-minor font-medium text-[var(--abu-text-tertiary)] uppercase tracking-wider">
             {t.settings.auxiliary}
           </h4>
         </div>
@@ -130,16 +125,16 @@ export default function AIServicesSection() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {hasBuiltinSearch ? (
-                  <CircleCheck className="h-4 w-4 text-green-600 shrink-0" />
+                  <CircleCheck className="h-4 w-4 text-[var(--abu-success)] shrink-0" />
                 ) : (
-                  <CircleAlert className="h-4 w-4 text-amber-500 shrink-0" />
+                  <CircleAlert className="h-4 w-4 text-[var(--abu-warning)] shrink-0" />
                 )}
                 <div className="flex items-center gap-2">
                   <Globe className="h-3.5 w-3.5 text-[var(--abu-text-muted)]" />
-                  <span className="text-sm text-[var(--abu-text-primary)]">{t.settings.auxiliarySearch}</span>
+                  <span className="text-body text-[var(--abu-text-primary)]">{t.settings.auxiliarySearch}</span>
                 </div>
                 {hasBuiltinSearch ? (
-                  <span className="text-xs px-1.5 py-0.5 rounded bg-green-50 text-green-700">
+                  <span className="text-minor px-1.5 py-0.5 rounded bg-[var(--abu-success-bg)] text-[var(--abu-success)]">
                     {t.settings.builtinVia.replace('{name}', searchProviderName ?? '')}
                   </span>
                 ) : (
@@ -147,8 +142,8 @@ export default function AIServicesSection() {
                     type="button"
                     onClick={() => setSearchExpanded(!searchExpanded)}
                     className={cn(
-                      'text-xs px-1.5 py-0.5 rounded cursor-pointer transition-colors',
-                      'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30'
+                      'text-minor px-1.5 py-0.5 rounded cursor-pointer transition-colors',
+                      'bg-[var(--abu-warning-bg)] text-[var(--abu-warning)] hover:bg-[var(--abu-warning-bg)]'
                     )}
                   >
                     <span className="flex items-center gap-1">
@@ -179,22 +174,22 @@ export default function AIServicesSection() {
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 {imageGenBackends.length > 0 ? (
-                  <CircleCheck className="h-4 w-4 text-green-600 shrink-0" />
+                  <CircleCheck className="h-4 w-4 text-[var(--abu-success)] shrink-0" />
                 ) : (
-                  <CircleAlert className="h-4 w-4 text-amber-500 shrink-0" />
+                  <CircleAlert className="h-4 w-4 text-[var(--abu-warning)] shrink-0" />
                 )}
                 <div className="flex items-center gap-2">
                   <ImageIcon className="h-3.5 w-3.5 text-[var(--abu-text-muted)]" />
-                  <span className="text-sm text-[var(--abu-text-primary)]">{t.settings.auxiliaryImageGen}</span>
+                  <span className="text-body text-[var(--abu-text-primary)]">{t.settings.auxiliaryImageGen}</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setImageGenExpanded(!imageGenExpanded)}
                   className={cn(
-                    'text-xs px-1.5 py-0.5 rounded cursor-pointer transition-colors',
+                    'text-minor px-1.5 py-0.5 rounded cursor-pointer transition-colors',
                     imageGenBackends.length > 0
-                      ? 'bg-green-50 text-green-700 hover:bg-green-100'
-                      : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30'
+                      ? 'bg-[var(--abu-success-bg)] text-[var(--abu-success)] hover:bg-[var(--abu-success-bg)]'
+                      : 'bg-[var(--abu-warning-bg)] text-[var(--abu-warning)] hover:bg-[var(--abu-warning-bg)]'
                   )}
                 >
                   <span className="flex items-center gap-1">
@@ -234,7 +229,7 @@ export default function AIServicesSection() {
             variant="ghost"
             size="sm"
             onClick={() => setShowClearConfirm(true)}
-            className="gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50"
+            className="gap-1.5 text-[var(--abu-danger)] hover:text-[var(--abu-danger)] hover:bg-[var(--abu-danger-bg)]"
           >
             <Trash2 className="h-3.5 w-3.5" />
             {t.settings.clearAllKeys}

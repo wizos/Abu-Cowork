@@ -84,8 +84,8 @@ function FileCard({ file, conversationId, operationLabels, previewTitle, finderT
       tabIndex={0}
       className={cn(
         'group flex items-center gap-2 px-2 py-1.5 rounded-md bg-[var(--abu-bg-base)] hover:bg-[var(--abu-bg-muted)] transition-colors cursor-pointer',
-        file.operation === 'write' && 'ring-1 ring-amber-500/30',
-        file.operation === 'create' && 'ring-1 ring-green-500/30',
+        file.operation === 'write' && 'ring-1 ring-[var(--abu-warning-bg)]',
+        file.operation === 'create' && 'ring-1 ring-[var(--abu-success-bg)]',
         isUnavailable && 'opacity-60'
       )}
       title={isUnavailable ? `${fileMissingTitle}: ${file.path}` : `${previewTitle}: ${file.path}`}
@@ -94,7 +94,7 @@ function FileCard({ file, conversationId, operationLabels, previewTitle, finderT
     >
       <Icon className="w-3.5 h-3.5 text-[var(--abu-text-tertiary)] shrink-0" />
       <span className={cn(
-        'text-[12px] truncate flex-1',
+        'text-minor truncate flex-1',
         isUnavailable
           ? file.operation === 'read'
             ? 'text-[var(--abu-text-muted)]'              // read: dim only, no strikethrough
@@ -103,10 +103,10 @@ function FileCard({ file, conversationId, operationLabels, previewTitle, finderT
       )}>{fileName}</span>
       <span
         className={cn(
-          'text-[9px] px-1 py-0.5 rounded font-medium',
-          file.operation === 'read' && 'bg-blue-500/15 text-blue-600',
-          file.operation === 'write' && 'bg-amber-500/15 text-amber-600',
-          file.operation === 'create' && 'bg-green-500/15 text-green-600'
+          'text-caption px-1 py-0.5 rounded font-medium',
+          file.operation === 'read' && 'bg-[var(--abu-info-bg)] text-[var(--abu-info)]',
+          file.operation === 'write' && 'bg-[var(--abu-warning-bg)] text-[var(--abu-warning)]',
+          file.operation === 'create' && 'bg-[var(--abu-success-bg)] text-[var(--abu-success)]'
         )}
       >
         {operationLabels[file.operation]}
@@ -178,10 +178,10 @@ export default function FilesSection() {
   return (
     <div className="space-y-2 mt-3">
       <div className="flex items-center justify-between">
-        <h4 className="text-[11px] font-medium text-[var(--abu-text-muted)] uppercase tracking-wider">
+        <h4 className="text-caption font-medium text-[var(--abu-text-muted)] uppercase tracking-wider">
           {t.panel.files}
         </h4>
-        <span className="text-[10px] text-[var(--abu-text-muted)]">
+        <span className="text-caption text-[var(--abu-text-muted)]">
           {i18nFormat(t.panel.filesCount, { count: trackedFiles.length })}
         </span>
       </div>
@@ -201,7 +201,7 @@ export default function FilesSection() {
         {hiddenCount > 0 && (
           <button
             onClick={() => setExpanded(!expanded)}
-            className="w-full text-center text-[11px] text-[var(--abu-text-muted)] hover:text-[var(--abu-text-tertiary)] py-1 transition-colors"
+            className="w-full text-center text-caption text-[var(--abu-text-muted)] hover:text-[var(--abu-text-tertiary)] py-1 transition-colors"
           >
             {expanded ? t.panel.collapse : i18nFormat(t.panel.moreFiles, { count: hiddenCount })}
           </button>

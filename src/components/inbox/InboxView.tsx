@@ -58,9 +58,9 @@ export default function InboxView() {
   return (
     <div className="flex flex-col h-full bg-[var(--abu-bg-base)]">
       <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--abu-border)]">
-        <h1 className="text-[18px] font-semibold text-[var(--abu-text-primary)]">{t.inbox.title}</h1>
+        <h1 className="text-h-md font-semibold text-[var(--abu-text-primary)]">{t.inbox.title}</h1>
         <div className="flex items-center gap-2">
-          <div className="flex gap-1 text-[13px]">
+          <div className="flex gap-1 text-body">
             {(['pending', 'all'] as Tab[]).map((k) => (
               <button
                 key={k}
@@ -77,7 +77,7 @@ export default function InboxView() {
             ))}
           </div>
           {pendingItems.length > 0 && (
-            <span className="text-[13px] text-[var(--abu-text-muted)]">
+            <span className="text-body text-[var(--abu-text-muted)]">
               {format(t.inbox.pendingCount, { count: pendingItems.length })}
             </span>
           )}
@@ -86,7 +86,7 @@ export default function InboxView() {
       <ScrollArea className="flex-1 min-h-0">
         <div className="px-6 py-4 space-y-2">
           {list.length === 0 ? (
-            <div className="px-6 py-16 text-center text-[var(--abu-text-muted)] text-[14px]">
+            <div className="px-6 py-16 text-center text-[var(--abu-text-muted)] text-body">
               {t.inbox.empty}
             </div>
           ) : (

@@ -37,7 +37,7 @@ export default function TriggerRunHistory({ runs }: Props) {
 
   if (runs.length === 0) {
     return (
-      <div className="px-4 py-3 text-[12px] text-[var(--abu-text-tertiary)]">
+      <div className="px-4 py-3 text-minor text-[var(--abu-text-tertiary)]">
         {t.trigger.noRuns}
       </div>
     );
@@ -54,26 +54,26 @@ export default function TriggerRunHistory({ runs }: Props) {
           <span
             className={cn(
               'w-1.5 h-1.5 rounded-full shrink-0',
-              run.status === 'running' && 'bg-amber-400 animate-pulse',
-              run.status === 'completed' && 'bg-green-500',
-              run.status === 'error' && 'bg-red-500',
+              run.status === 'running' && 'bg-[var(--abu-warning-solid)] animate-pulse',
+              run.status === 'completed' && 'bg-[var(--abu-success-solid)]',
+              run.status === 'error' && 'bg-[var(--abu-danger-solid)]',
               run.status === 'filtered' && 'bg-neutral-300',
               run.status === 'debounced' && 'bg-neutral-300'
             )}
           />
 
           {/* Time */}
-          <span className="text-[11px] text-[var(--abu-text-tertiary)] shrink-0">
+          <span className="text-caption text-[var(--abu-text-tertiary)] shrink-0">
             {formatTimeAgo(run.startedAt, t.trigger)}
           </span>
 
           {/* Status text */}
           <span
             className={cn(
-              'text-[11px] flex-1 truncate',
-              run.status === 'running' && 'text-amber-600',
-              run.status === 'completed' && 'text-green-600',
-              run.status === 'error' && 'text-red-500',
+              'text-caption flex-1 truncate',
+              run.status === 'running' && 'text-[var(--abu-warning)]',
+              run.status === 'completed' && 'text-[var(--abu-success)]',
+              run.status === 'error' && 'text-[var(--abu-danger)]',
               (run.status === 'filtered' || run.status === 'debounced') && 'text-[var(--abu-text-muted)]'
             )}
           >
@@ -86,11 +86,11 @@ export default function TriggerRunHistory({ runs }: Props) {
 
           {/* Output push status */}
           {run.outputStatus === 'sent' && (
-            <span className="text-[10px] text-green-500 shrink-0">{t.trigger.outputSent}</span>
+            <span className="text-caption text-[var(--abu-success)] shrink-0">{t.trigger.outputSent}</span>
           )}
           {run.outputStatus === 'failed' && (
             <span
-              className="text-[10px] text-red-500 shrink-0 cursor-help"
+              className="text-caption text-[var(--abu-danger)] shrink-0 cursor-help"
               title={run.outputError}
             >
               {t.trigger.outputFailed}

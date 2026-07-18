@@ -100,9 +100,9 @@ export default function TodoView() {
   return (
     <div className="flex flex-col h-full bg-[var(--abu-bg-base)]">
       <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--abu-border)]">
-        <h1 className="text-[18px] font-semibold text-[var(--abu-text-primary)]">{t.todos.title}</h1>
+        <h1 className="text-h-md font-semibold text-[var(--abu-text-primary)]">{t.todos.title}</h1>
         <div className="flex items-center gap-2">
-          <div className="flex gap-1 text-[13px]">
+          <div className="flex gap-1 text-body">
             {(['today', 'all'] as Tab[]).map((k) => (
               <button
                 key={k}
@@ -137,13 +137,13 @@ export default function TodoView() {
                 onCompositionStart={handleCompositionStart}
                 onCompositionEnd={handleCompositionEnd}
                 placeholder={t.todos.placeholder}
-                className="text-[14px]"
+                className="text-body"
               />
               <Textarea
                 value={notesDraft}
                 onChange={(e) => setNotesDraft(e.target.value)}
                 placeholder={t.todos.notesPlaceholder}
-                className="text-[13px] min-h-[64px]"
+                className="text-body min-h-[64px]"
                 rows={3}
               />
               <div className="flex justify-end gap-2">
@@ -158,7 +158,7 @@ export default function TodoView() {
             </div>
           )}
           {list.length === 0 && !editorOpen ? (
-            <div className="px-6 py-10 text-center text-[var(--abu-text-muted)] text-[14px]">
+            <div className="px-6 py-10 text-center text-[var(--abu-text-muted)] text-body">
               {t.todos.empty}
             </div>
           ) : (

@@ -234,9 +234,9 @@ export default function EnterpriseLoginPage({ serverUrl, bootstrap, onSuccess, o
               data-testid={`method-tab-${method}`}
               onClick={() => { setActiveMethod(method); setErr(null) }}
               className={cn(
-                'px-3 py-1.5 text-xs rounded-t transition-colors',
+                'px-3 py-1.5 text-minor rounded-t transition-colors',
                 activeMethod === method
-                  ? 'text-white border-b-2 border-blue-500 -mb-px'
+                  ? 'text-white border-b-2 border-[var(--abu-info)] -mb-px'
                   : 'text-neutral-400 hover:text-neutral-200',
               )}
             >
@@ -250,7 +250,7 @@ export default function EnterpriseLoginPage({ serverUrl, bootstrap, onSuccess, o
       {(activeMethod === 'password' || (!showTabs && methods.includes('password'))) && (
         <form data-testid="password-form" onSubmit={handlePassword} className="space-y-3">
           <div>
-            <label className="block text-xs text-neutral-300 mb-1">{tl.emailLabel}</label>
+            <label className="block text-minor text-neutral-300 mb-1">{tl.emailLabel}</label>
             <Input
               data-testid="email-input"
               type="email"
@@ -261,7 +261,7 @@ export default function EnterpriseLoginPage({ serverUrl, bootstrap, onSuccess, o
             />
           </div>
           <div>
-            <label className="block text-xs text-neutral-300 mb-1">{tl.passwordLabel}</label>
+            <label className="block text-minor text-neutral-300 mb-1">{tl.passwordLabel}</label>
             <Input
               data-testid="password-input"
               type="password"
@@ -271,7 +271,7 @@ export default function EnterpriseLoginPage({ serverUrl, bootstrap, onSuccess, o
               required
             />
           </div>
-          {err && <div className="text-xs text-rose-400">{err}</div>}
+          {err && <div className="text-minor text-rose-400">{err}</div>}
           <Button type="submit" size="sm" className="w-full" disabled={busy}>
             {busy ? tl.processing : tl.signInButton}
           </Button>
@@ -284,7 +284,7 @@ export default function EnterpriseLoginPage({ serverUrl, bootstrap, onSuccess, o
           {magicStep === 'start' ? (
             <form onSubmit={handleMagicStart} className="space-y-3">
               <div>
-                <label className="block text-xs text-neutral-300 mb-1">{tl.emailLabel}</label>
+                <label className="block text-minor text-neutral-300 mb-1">{tl.emailLabel}</label>
                 <Input
                   type="email"
                   value={magicEmail}
@@ -293,18 +293,18 @@ export default function EnterpriseLoginPage({ serverUrl, bootstrap, onSuccess, o
                   required
                 />
               </div>
-              {err && <div className="text-xs text-rose-400">{err}</div>}
+              {err && <div className="text-minor text-rose-400">{err}</div>}
               <Button type="submit" size="sm" className="w-full" disabled={busy}>
                 {busy ? tl.processing : tl.magicSendCodeButton}
               </Button>
             </form>
           ) : (
             <form onSubmit={handleMagicVerify} className="space-y-3">
-              <p className="text-xs text-neutral-400">
+              <p className="text-minor text-neutral-400">
                 {format(tl.magicSentHint, { email: magicEmail })}
               </p>
               <div>
-                <label className="block text-xs text-neutral-300 mb-1">{tl.magicCodeLabel}</label>
+                <label className="block text-minor text-neutral-300 mb-1">{tl.magicCodeLabel}</label>
                 <Input
                   type="text"
                   value={magicCode}
@@ -313,7 +313,7 @@ export default function EnterpriseLoginPage({ serverUrl, bootstrap, onSuccess, o
                   required
                 />
               </div>
-              {err && <div className="text-xs text-rose-400">{err}</div>}
+              {err && <div className="text-minor text-rose-400">{err}</div>}
               <Button type="submit" size="sm" className="w-full" disabled={busy}>
                 {busy ? tl.processing : tl.magicVerifyButton}
               </Button>
@@ -327,16 +327,16 @@ export default function EnterpriseLoginPage({ serverUrl, bootstrap, onSuccess, o
         <div data-testid="sso-section">
           {ssoUserCode ? (
             <div className="text-center space-y-2">
-              <p className="text-xs text-neutral-300">{tl.ssoCodeHint}</p>
-              <div className="text-2xl font-mono tracking-widest py-3 bg-neutral-800 rounded">
+              <p className="text-minor text-neutral-300">{tl.ssoCodeHint}</p>
+              <div className="text-h-xl font-mono tracking-widest py-3 bg-neutral-800 rounded">
                 {ssoUserCode}
               </div>
-              <p className="text-xs text-neutral-500">{tl.ssoWaiting}</p>
-              {err && <div className="text-xs text-rose-400">{err}</div>}
+              <p className="text-minor text-neutral-500">{tl.ssoWaiting}</p>
+              {err && <div className="text-minor text-rose-400">{err}</div>}
             </div>
           ) : (
             <>
-              {err && <div className="text-xs text-rose-400 mb-2">{err}</div>}
+              {err && <div className="text-minor text-rose-400 mb-2">{err}</div>}
               <Button
                 data-testid="sso-button"
                 type="button"
@@ -355,7 +355,7 @@ export default function EnterpriseLoginPage({ serverUrl, bootstrap, onSuccess, o
       {/* Cancel / back */}
       {onCancel && !busy && (
         <div className="flex justify-start pt-1">
-          <button onClick={onCancel} className="text-xs text-neutral-500 hover:text-neutral-300 transition-colors">
+          <button onClick={onCancel} className="text-minor text-neutral-500 hover:text-neutral-300 transition-colors">
             {tl.cancelButton}
           </button>
         </div>

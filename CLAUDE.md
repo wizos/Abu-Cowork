@@ -305,6 +305,51 @@ All form controls **MUST** use components from `src/components/ui/`. **Do NOT** 
 - Custom colors use hex literals in class strings (`bg-[#faf9f5]`, `text-[#29261b]`).
 - Custom CSS classes (`btn-ghost`, `btn-claude-primary`, `streaming-cursor`) defined in global CSS files.
 
+### 6.1 Font sizes — 8-token scale (MANDATORY)
+All font sizes go through the `--text-*` token scale defined in `src/styles/index.css`
+(`@theme` block). Each token binds font-size + line-height + font-weight (TRAE-style).
+**Never** hand-roll a size with `text-[Npx]`, and **do not** use Tailwind's default named
+sizes (`text-xs/sm/base/lg/xl/2xl/3xl`) — both are banned by ESLint (`no-restricted-syntax`).
+
+| Token | px / line-height / weight | Use |
+|---|---|---|
+| `text-caption` | 11 / 16 / 400 | badges, timestamps, minimal captions |
+| `text-minor` | 12 / 18 / 400 | secondary labels, helper text |
+| `text-body` | 14 / 22 / 400 | **reading default** — body, lists, most text (emphasis = add `font-medium`) |
+| `text-h-xs` | 14 / 22 / 600 | inline small headings, group headers |
+| `text-h-sm` | 16 / 24 / 600 | card / small modal titles |
+| `text-h-md` | 20 / 28 / 600 | page / modal titles |
+| `text-h-lg` | 22 / 30 / 600 | empty-state big titles |
+| `text-h-xl` | 24 / 32 / 600 | welcome / hero |
+
+Heading weight caps at **600** (`font-semibold`) — never `font-bold`/`font-[700]` on a
+heading. Neutral text uses `text-[var(--abu-text-*)]` (`--abu-text-muted` is AA-compliant
+as of 2026-07). Semantic/link colors are tokenized too — see §6.2.
+
+### 6.2 Semantic + link colors — token scale (MANDATORY)
+Link and status colors go through the `--abu-*` semantic tokens in `src/styles/index.css`
+(both themes). **Never** use raw Tailwind status/link hues (`text/bg/border/ring/fill-`
+`red/green/emerald/lime/amber/yellow/blue/sky/indigo/orange-*`) — banned by ESLint
+(`no-restricted-syntax`). Each status has **3 roles**; pick by use:
+
+| Use | Token |
+|---|---|
+| text / icon / border (AA-safe) | `text-[var(--abu-{role})]`, `border-[var(--abu-{role})]` |
+| solid fill (dots, filled buttons, solid badges) | `bg-[var(--abu-{role}-solid)]` |
+| soft callout/badge background | `bg-[var(--abu-{role}-bg)]` |
+
+`{role}` ∈ `danger` (error/destructive, red) · `warning` (amber) · `success` (green) ·
+`info` (blue status/indicator). **Links** use `text-[var(--abu-link)]` +
+`hover:text-[var(--abu-link-hover)]` (Abu's brand is clay/orange, so links have their own
+blue token — do NOT reuse the accent). Brand orange stays `--abu-clay*`.
+
+Notes: tokens are theme-aware — do **not** add `dark:` color variants. Solid-fill hover =
+`hover:opacity-90` (no per-role hover-fill token). There is no per-role hover *foreground*
+token except link, so `hover:text-[var(--abu-{role})]` on an element already in that role is
+a no-op (fine). Categorical tag palettes (e.g. memory-type tags: purple/teal + orange/blue)
+are a different concern from semantic status — keep those raw with a scoped
+`eslint-disable no-restricted-syntax` + comment.
+
 ### 7. Core Module Patterns
 - **Interface-first design**: Define interfaces before implementations (e.g. `LLMAdapter` interface → `ClaudeAdapter` / `OpenAICompatibleAdapter`).
 - **Custom error classes** with classification (`LLMError` with `code`, `retryable`, `retryAfterMs`).

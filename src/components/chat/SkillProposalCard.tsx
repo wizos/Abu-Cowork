@@ -82,7 +82,7 @@ export default function SkillProposalCard({
   if (card.type === 'skill-patched' && card.skillPatched) {
     const p = card.skillPatched;
     return (
-      <div className="my-2 px-3 py-2 rounded-lg border border-[var(--abu-border-subtle)] bg-[var(--abu-bg-muted)] text-xs text-[var(--abu-text-tertiary)] flex items-start gap-2">
+      <div className="my-2 px-3 py-2 rounded-lg border border-[var(--abu-border-subtle)] bg-[var(--abu-bg-muted)] text-minor text-[var(--abu-text-tertiary)] flex items-start gap-2">
         <Sparkles className="h-3.5 w-3.5 text-[var(--abu-clay)] flex-shrink-0 mt-0.5" />
         <div className="min-w-0">
           <span>{t.toolbox.skillPatchedCardLabel} </span>
@@ -104,7 +104,7 @@ export default function SkillProposalCard({
   if (card.type === 'skill-deleted' && card.skillDeleted) {
     const d = card.skillDeleted;
     return (
-      <div className="my-2 px-3 py-2 rounded-lg border border-[var(--abu-border-subtle)] bg-[var(--abu-bg-muted)] text-xs text-[var(--abu-text-tertiary)] flex items-start gap-2">
+      <div className="my-2 px-3 py-2 rounded-lg border border-[var(--abu-border-subtle)] bg-[var(--abu-bg-muted)] text-minor text-[var(--abu-text-tertiary)] flex items-start gap-2">
         <Trash2 className="h-3.5 w-3.5 text-[var(--abu-text-muted)] flex-shrink-0 mt-0.5" />
         <div className="min-w-0">
           <span>{t.toolbox.skillDeletedCardLabel} </span>
@@ -226,7 +226,7 @@ export default function SkillProposalCard({
       setToolboxSearchQuery(proposal.skillName);
     };
 
-    const baseClass = 'my-2 px-3 py-2 rounded-lg border border-[var(--abu-border-subtle)] bg-[var(--abu-bg-muted)] text-xs text-[var(--abu-text-tertiary)]';
+    const baseClass = 'my-2 px-3 py-2 rounded-lg border border-[var(--abu-border-subtle)] bg-[var(--abu-bg-muted)] text-minor text-[var(--abu-text-tertiary)]';
     const content = (
       <>
         <span className="font-medium">{proposal.skillName}</span> — {label}
@@ -260,7 +260,7 @@ export default function SkillProposalCard({
   //    has populated) doesn't flash a false "missing" state. ──────────
   if (draftsInitialized && !draftsLoading && !draftExists) {
     return (
-      <div className="my-2 px-3 py-2 rounded-lg border border-[var(--abu-border-subtle)] bg-[var(--abu-bg-muted)] text-xs text-[var(--abu-text-tertiary)]">
+      <div className="my-2 px-3 py-2 rounded-lg border border-[var(--abu-border-subtle)] bg-[var(--abu-bg-muted)] text-minor text-[var(--abu-text-tertiary)]">
         <span className="font-medium">{proposal.skillName}</span> — {t.toolbox.skillProposalCardMissing}
       </div>
     );
@@ -279,21 +279,21 @@ export default function SkillProposalCard({
     return (
       <div className="my-2 rounded-xl border border-[var(--abu-border-subtle)] bg-[var(--abu-bg-muted)] overflow-hidden">
         <div className="px-3 py-2.5">
-          <div className="text-xs font-semibold text-[var(--abu-text-primary)] flex items-center gap-1.5">
+          <div className="text-minor font-semibold text-[var(--abu-text-primary)] flex items-center gap-1.5">
             <Sparkles className="h-3.5 w-3.5 text-[var(--abu-clay)]" />
             {proposal.skillName}
           </div>
           {proposal.description && (
-            <div className="text-[11px] text-[var(--abu-text-muted)] mt-0.5 leading-relaxed line-clamp-2">
+            <div className="text-caption text-[var(--abu-text-muted)] mt-0.5 leading-relaxed line-clamp-2">
               {proposal.description}
             </div>
           )}
-          <div className="text-[11px] text-[var(--abu-text-tertiary)] mt-2 leading-relaxed">
+          <div className="text-caption text-[var(--abu-text-tertiary)] mt-2 leading-relaxed">
             {t.toolbox.skillProposalCardOnboardGate}
           </div>
           <button
             onClick={handleOpenToolbox}
-            className="mt-2 px-2.5 py-1 rounded-md text-[11px] font-medium text-white bg-[var(--abu-clay)] hover:bg-[var(--abu-clay-hover)] transition-colors"
+            className="mt-2 px-2.5 py-1 rounded-md text-caption font-medium text-white bg-[var(--abu-clay)] hover:bg-[var(--abu-clay-hover)] transition-colors"
           >
             {t.toolbox.skillProposalCardOnboardGateAction}
           </button>
@@ -307,22 +307,22 @@ export default function SkillProposalCard({
     <div className="my-2 rounded-xl border border-[var(--abu-border)] bg-[var(--abu-bg-elevated)] overflow-hidden">
       <div className="px-3 py-2 border-b border-[var(--abu-border-subtle)] flex items-center gap-2">
         <Sparkles className="h-3.5 w-3.5 text-[var(--abu-clay)]" />
-        <span className="text-xs font-semibold text-[var(--abu-text-primary)]">
+        <span className="text-minor font-semibold text-[var(--abu-text-primary)]">
           {t.toolbox.skillProposalCardTitle}
         </span>
       </div>
 
       <div className="px-3 py-2.5">
-        <div className="text-sm font-semibold text-[var(--abu-text-primary)]">
+        <div className="text-body font-semibold text-[var(--abu-text-primary)]">
           {proposal.skillName}
         </div>
         {proposal.description && (
-          <div className="text-xs text-[var(--abu-text-tertiary)] mt-0.5 leading-relaxed">
+          <div className="text-minor text-[var(--abu-text-tertiary)] mt-0.5 leading-relaxed">
             {proposal.description}
           </div>
         )}
         {proposal.triggerReason && (
-          <div className="text-[11px] text-[var(--abu-text-muted)] mt-1.5">
+          <div className="text-caption text-[var(--abu-text-muted)] mt-1.5">
             <span className="text-[var(--abu-text-tertiary)]">
               {t.toolbox.skillProposalCardWhy}：
             </span>
@@ -333,7 +333,7 @@ export default function SkillProposalCard({
         {/* Expand / collapse trigger */}
         <button
           onClick={() => setExpanded(!expanded)}
-          className="mt-2 flex items-center gap-1 text-[11px] text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] transition-colors"
+          className="mt-2 flex items-center gap-1 text-caption text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] transition-colors"
         >
           {expanded ? (
             <ChevronDown className="h-3 w-3" />
@@ -348,7 +348,7 @@ export default function SkillProposalCard({
         </button>
 
         {expanded && (
-          <div className="mt-2 max-h-72 overflow-y-auto overlay-scroll rounded-md border border-[var(--abu-border-subtle)] bg-[var(--abu-bg-base)] px-3 py-2 text-[12px] leading-relaxed">
+          <div className="mt-2 max-h-72 overflow-y-auto overlay-scroll rounded-md border border-[var(--abu-border-subtle)] bg-[var(--abu-bg-base)] px-3 py-2 text-minor leading-relaxed">
             <MarkdownRenderer content={proposal.fullContent} />
           </div>
         )}
@@ -359,7 +359,7 @@ export default function SkillProposalCard({
           onClick={handleAccept}
           disabled={processing}
           className={cn(
-            'px-3 py-1 rounded-md text-xs font-medium text-white transition-colors flex items-center gap-1',
+            'px-3 py-1 rounded-md text-minor font-medium text-white transition-colors flex items-center gap-1',
             'bg-[var(--abu-clay)] hover:bg-[var(--abu-clay-hover)] disabled:opacity-60',
           )}
         >
@@ -373,7 +373,7 @@ export default function SkillProposalCard({
         <button
           onClick={handleReject}
           disabled={processing}
-          className="px-3 py-1 rounded-md text-xs text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)] transition-colors flex items-center gap-1 disabled:opacity-60"
+          className="px-3 py-1 rounded-md text-minor text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-muted)] transition-colors flex items-center gap-1 disabled:opacity-60"
         >
           <X className="h-3 w-3" />
           {t.toolbox.skillProposalCardReject}
@@ -381,7 +381,7 @@ export default function SkillProposalCard({
         <button
           onClick={handleRejectCategory}
           disabled={processing}
-          className="px-3 py-1 rounded-md text-xs text-[var(--abu-text-muted)] hover:text-red-500 hover:bg-red-50 transition-colors flex items-center gap-1 disabled:opacity-60"
+          className="px-3 py-1 rounded-md text-minor text-[var(--abu-text-muted)] hover:text-[var(--abu-danger)] hover:bg-[var(--abu-danger-bg)] transition-colors flex items-center gap-1 disabled:opacity-60"
           title={t.toolbox.skillProposalCardRejectCategory}
         >
           <Ban className="h-3 w-3" />
@@ -393,7 +393,7 @@ export default function SkillProposalCard({
         <button
           onClick={handleDefer}
           disabled={processing}
-          className="ml-auto px-3 py-1 rounded-md text-xs text-[var(--abu-text-muted)] hover:text-[var(--abu-text-tertiary)] hover:bg-[var(--abu-bg-muted)] transition-colors flex items-center gap-1 disabled:opacity-60"
+          className="ml-auto px-3 py-1 rounded-md text-minor text-[var(--abu-text-muted)] hover:text-[var(--abu-text-tertiary)] hover:bg-[var(--abu-bg-muted)] transition-colors flex items-center gap-1 disabled:opacity-60"
           title={t.toolbox.skillProposalCardDefer}
         >
           <Clock className="h-3 w-3" />

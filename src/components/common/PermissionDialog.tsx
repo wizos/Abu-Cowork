@@ -31,10 +31,10 @@ const iconMap = {
 };
 
 const colorMap = {
-  workspace: { color: 'text-amber-500', bgColor: 'bg-amber-500/10' },
-  shell: { color: 'text-orange-500', bgColor: 'bg-orange-500/10' },
-  'file-write': { color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
-  'file-read': { color: 'text-emerald-500', bgColor: 'bg-emerald-500/10' },
+  workspace: { color: 'text-[var(--abu-warning)]', bgColor: 'bg-[var(--abu-warning-bg)]' },
+  shell: { color: 'text-[var(--abu-warning)]', bgColor: 'bg-[var(--abu-warning-bg)]' },
+  'file-write': { color: 'text-[var(--abu-info)]', bgColor: 'bg-[var(--abu-info-bg)]' },
+  'file-read': { color: 'text-[var(--abu-success)]', bgColor: 'bg-[var(--abu-success-bg)]' },
   'folder-select': { color: 'text-[var(--abu-clay)]', bgColor: 'bg-[var(--abu-clay-bg)]' },
 };
 
@@ -84,24 +84,24 @@ export default function PermissionDialog({ request, onAllow, onDeny, onChooseFol
                   <Icon className={`h-6 w-6 ${colors.color}`} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-lg font-semibold text-[var(--abu-text-primary)]">{folderSelectT?.authorizeTitle ?? ''}</h2>
-                  <p className="text-[14px] text-[var(--abu-text-tertiary)] mt-0.5">{folderSelectT?.authorizeDescription ?? ''}</p>
+                  <h2 className="text-h-md font-semibold text-[var(--abu-text-primary)]">{folderSelectT?.authorizeTitle ?? ''}</h2>
+                  <p className="text-body text-[var(--abu-text-tertiary)] mt-0.5">{folderSelectT?.authorizeDescription ?? ''}</p>
                 </div>
               </div>
             </div>
 
             {/* Path display */}
             <div className="mx-6 px-3 py-2 bg-[var(--abu-bg-muted)] rounded-lg border border-[var(--abu-border)]">
-              <p className="text-[13px] text-[var(--abu-text-tertiary)] truncate font-mono">{request.path}</p>
+              <p className="text-body text-[var(--abu-text-tertiary)] truncate font-mono">{request.path}</p>
             </div>
 
             {/* Capabilities */}
             <div className="px-6 py-4">
-              <p className="text-[13px] font-medium text-[var(--abu-text-primary)] mb-2">{t.permission.abuCanDo}</p>
+              <p className="text-body font-medium text-[var(--abu-text-primary)] mb-2">{t.permission.abuCanDo}</p>
               <ul className="space-y-1.5">
                 {(folderSelectT?.authorizeCapabilities ?? []).map((cap, i) => (
-                  <li key={i} className="flex items-center gap-2 text-[13px] text-[var(--abu-text-secondary)]">
-                    <Shield className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                  <li key={i} className="flex items-center gap-2 text-body text-[var(--abu-text-secondary)]">
+                    <Shield className="h-3.5 w-3.5 text-[var(--abu-success)] shrink-0" />
                     {cap}
                   </li>
                 ))}
@@ -109,10 +109,10 @@ export default function PermissionDialog({ request, onAllow, onDeny, onChooseFol
             </div>
 
             {/* Warning */}
-            <div className="mx-6 mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="mx-6 mb-4 p-3 bg-[var(--abu-warning-bg)] border border-[var(--abu-warning)] rounded-lg">
               <div className="flex gap-2">
-                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                <p className="text-[12px] text-amber-700 leading-relaxed">{folderSelectT?.authorizeWarning ?? ''}</p>
+                <AlertTriangle className="h-4 w-4 text-[var(--abu-warning)] shrink-0 mt-0.5" />
+                <p className="text-minor text-[var(--abu-warning)] leading-relaxed">{folderSelectT?.authorizeWarning ?? ''}</p>
               </div>
             </div>
 
@@ -121,13 +121,13 @@ export default function PermissionDialog({ request, onAllow, onDeny, onChooseFol
               <Button
                 variant="outline"
                 onClick={onDeny}
-                className="flex-1 h-10 text-[14px] border-[var(--abu-border-hover)] hover:bg-[var(--abu-bg-muted)]"
+                className="flex-1 h-10 text-body border-[var(--abu-border-hover)] hover:bg-[var(--abu-bg-muted)]"
               >
                 {t.permission.deny}
               </Button>
               <Button
                 onClick={onAuthorize}
-                className="flex-1 h-10 text-[14px] text-white bg-[var(--abu-text-primary)] hover:bg-[var(--abu-text-secondary)]"
+                className="flex-1 h-10 text-body text-white bg-[var(--abu-text-primary)] hover:bg-[var(--abu-text-secondary)]"
               >
                 {folderSelectT?.authorizeButton ?? ''}
               </Button>
@@ -137,7 +137,7 @@ export default function PermissionDialog({ request, onAllow, onDeny, onChooseFol
             <div className="px-6 pb-6">
               <button
                 onClick={onChooseFolder}
-                className="w-full text-center text-[12px] text-[var(--abu-text-muted)] hover:text-[var(--abu-text-tertiary)] transition-colors underline underline-offset-2"
+                className="w-full text-center text-minor text-[var(--abu-text-muted)] hover:text-[var(--abu-text-tertiary)] transition-colors underline underline-offset-2"
               >
                 {folderSelectT?.chooseDifferent ?? ''}
               </button>
@@ -165,18 +165,18 @@ export default function PermissionDialog({ request, onAllow, onDeny, onChooseFol
               <FolderOpen className={`h-12 w-12 ${colors.color}`} />
             </div>
 
-            <h3 className="text-lg font-semibold text-[var(--abu-text-primary)] mb-2">
+            <h3 className="text-h-md font-semibold text-[var(--abu-text-primary)] mb-2">
               {folderSelectT?.title ?? ''}
             </h3>
 
-            <p className="text-[14px] text-[var(--abu-text-tertiary)] mb-4">
+            <p className="text-body text-[var(--abu-text-tertiary)] mb-4">
               {folderSelectT?.description ?? ''}
             </p>
 
             <Button
               size="lg"
               onClick={onChooseFolder}
-              className="px-8 h-11 text-[15px] bg-[var(--abu-clay)] hover:bg-[var(--abu-clay-hover)] text-white"
+              className="px-8 h-11 text-body bg-[var(--abu-clay)] hover:bg-[var(--abu-clay-hover)] text-white"
             >
               {folderSelectT?.selectButton ?? ''}
             </Button>
@@ -184,7 +184,7 @@ export default function PermissionDialog({ request, onAllow, onDeny, onChooseFol
 
           {/* Footer hint */}
           <div className="px-6 pb-6">
-            <p className="text-[12px] text-[var(--abu-text-muted)] text-center">
+            <p className="text-minor text-[var(--abu-text-muted)] text-center">
               {folderSelectT?.hint ?? ''}
             </p>
           </div>
@@ -253,8 +253,8 @@ export default function PermissionDialog({ request, onAllow, onDeny, onChooseFol
               <Icon className={`h-6 w-6 ${colors.color}`} />
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-semibold text-[var(--abu-text-primary)]">{config.title}</h2>
-              <p className="text-[14px] text-[var(--abu-text-tertiary)] mt-0.5">{config.description}</p>
+              <h2 className="text-h-md font-semibold text-[var(--abu-text-primary)]">{config.title}</h2>
+              <p className="text-body text-[var(--abu-text-tertiary)] mt-0.5">{config.description}</p>
             </div>
           </div>
         </div>
@@ -262,17 +262,17 @@ export default function PermissionDialog({ request, onAllow, onDeny, onChooseFol
         {/* Path display */}
         {request.path && (
           <div className="mx-6 px-3 py-2 bg-[var(--abu-bg-muted)] rounded-lg border border-[var(--abu-border)]">
-            <p className="text-[13px] text-[var(--abu-text-tertiary)] truncate font-mono">{request.path}</p>
+            <p className="text-body text-[var(--abu-text-tertiary)] truncate font-mono">{request.path}</p>
           </div>
         )}
 
         {/* Capabilities */}
         <div className="px-6 py-4">
-          <p className="text-[13px] font-medium text-[var(--abu-text-primary)] mb-2">{t.permission.abuCanDo}</p>
+          <p className="text-body font-medium text-[var(--abu-text-primary)] mb-2">{t.permission.abuCanDo}</p>
           <ul className="space-y-1.5">
             {config.capabilities.map((cap, i) => (
-              <li key={i} className="flex items-center gap-2 text-[13px] text-[var(--abu-text-secondary)]">
-                <Shield className="h-3.5 w-3.5 text-green-500 shrink-0" />
+              <li key={i} className="flex items-center gap-2 text-body text-[var(--abu-text-secondary)]">
+                <Shield className="h-3.5 w-3.5 text-[var(--abu-success)] shrink-0" />
                 {cap}
               </li>
             ))}
@@ -280,23 +280,23 @@ export default function PermissionDialog({ request, onAllow, onDeny, onChooseFol
         </div>
 
         {/* Warning */}
-        <div className="mx-6 mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+        <div className="mx-6 mb-4 p-3 bg-[var(--abu-warning-bg)] border border-[var(--abu-warning)] rounded-lg">
           <div className="flex gap-2">
-            <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-            <p className="text-[12px] text-amber-700 leading-relaxed">{config.warning}</p>
+            <AlertTriangle className="h-4 w-4 text-[var(--abu-warning)] shrink-0 mt-0.5" />
+            <p className="text-minor text-[var(--abu-warning)] leading-relaxed">{config.warning}</p>
           </div>
         </div>
 
         {/* Duration selector - segmented control */}
         <div className="mx-6 mb-4">
-          <p className="text-[12px] text-[var(--abu-text-tertiary)] mb-2">{t.permission.durationLabel}</p>
+          <p className="text-minor text-[var(--abu-text-tertiary)] mb-2">{t.permission.durationLabel}</p>
           <div className="flex items-center gap-1 p-1 bg-[var(--abu-bg-active)] rounded-lg">
             {durationOptions.map((option) => (
               <button
                 key={option.value}
                 onClick={() => setSelectedDuration(option.value)}
                 className={cn(
-                  'flex-1 px-2 py-1.5 rounded-md text-[12px] font-medium transition-colors text-center',
+                  'flex-1 px-2 py-1.5 rounded-md text-minor font-medium transition-colors text-center',
                   option.value === selectedDuration
                     ? 'bg-[var(--abu-bg-base)] text-[var(--abu-text-primary)]'
                     : 'text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-white/50'
@@ -310,10 +310,10 @@ export default function PermissionDialog({ request, onAllow, onDeny, onChooseFol
 
         {/* Always-confirm inline warning */}
         {showAlwaysConfirm && (
-          <div className="mx-6 mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="mx-6 mb-4 p-3 bg-[var(--abu-danger-bg)] border border-[var(--abu-danger)] rounded-lg">
             <div className="flex gap-2">
-              <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-              <p className="text-[12px] text-red-700 leading-relaxed">{t.permission.durationAlwaysConfirm}</p>
+              <AlertTriangle className="h-4 w-4 text-[var(--abu-danger)] shrink-0 mt-0.5" />
+              <p className="text-minor text-[var(--abu-danger)] leading-relaxed">{t.permission.durationAlwaysConfirm}</p>
             </div>
           </div>
         )}
@@ -329,16 +329,16 @@ export default function PermissionDialog({ request, onAllow, onDeny, onChooseFol
                 onDeny();
               }
             }}
-            className="flex-1 h-10 text-[14px] border-[var(--abu-border-hover)] hover:bg-[var(--abu-bg-muted)]"
+            className="flex-1 h-10 text-body border-[var(--abu-border-hover)] hover:bg-[var(--abu-bg-muted)]"
           >
             {showAlwaysConfirm ? t.common.cancel : t.permission.deny}
           </Button>
           <Button
             onClick={handleAllow}
             className={cn(
-              'flex-1 h-10 text-[14px] text-white',
+              'flex-1 h-10 text-body text-white',
               showAlwaysConfirm
-                ? 'bg-red-500 hover:bg-red-600'
+                ? 'bg-[var(--abu-danger-solid)] hover:opacity-90'
                 : 'bg-[var(--abu-text-primary)] hover:bg-[var(--abu-text-secondary)]'
             )}
           >

@@ -42,7 +42,7 @@ export function PetContextMenu({
           className="w-2 h-2 rounded-full flex-shrink-0"
           style={{ backgroundColor: STATUS_COLOR[status] }}
         />
-        <span className="flex-1 text-[11px] text-[var(--abu-text-tertiary)]">{t.pet.status[status]}</span>
+        <span className="flex-1 text-caption text-[var(--abu-text-tertiary)]">{t.pet.status[status]}</span>
         <button
           className="w-4 h-4 flex items-center justify-center flex-shrink-0 text-[var(--abu-text-muted)] hover:text-[var(--abu-text-primary)]"
           onClick={onDismiss}
@@ -53,14 +53,14 @@ export function PetContextMenu({
       </div>
 
       <button
-        className="w-full px-3.5 py-2 text-[12px] text-[var(--abu-text-secondary)] text-left hover:bg-[var(--abu-bg-hover)]"
+        className="w-full px-3.5 py-2 text-minor text-[var(--abu-text-secondary)] text-left hover:bg-[var(--abu-bg-hover)]"
         onClick={onOpenMain}
       >
         {t.pet.openMain}
       </button>
 
       <button
-        className="w-full px-3.5 py-2 text-[12px] text-[var(--abu-text-tertiary)] text-left hover:bg-[var(--abu-bg-hover)]"
+        className="w-full px-3.5 py-2 text-minor text-[var(--abu-text-tertiary)] text-left hover:bg-[var(--abu-bg-hover)]"
         onClick={onClosePet}
       >
         {t.pet.closePet}

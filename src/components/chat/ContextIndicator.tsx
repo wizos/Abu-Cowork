@@ -29,9 +29,9 @@ function formatK(n: number): string {
 function levelColorClass(level: 0 | 1 | 2 | 3): string {
   switch (level) {
     case 0: return 'text-[var(--abu-text-muted)]';
-    case 1: return 'text-yellow-500';
-    case 2: return 'text-orange-500';
-    case 3: return 'text-red-500 animate-pulse';
+    case 1: return 'text-[var(--abu-warning)]';
+    case 2: return 'text-[var(--abu-warning)]';
+    case 3: return 'text-[var(--abu-danger)] animate-pulse';
   }
 }
 
@@ -120,7 +120,7 @@ export default function ContextIndicator({ conversationId }: { conversationId: s
         </TooltipTrigger>
         <TooltipContent side="top" className="flex flex-col items-start gap-0.5">
           {!isCompressing && (
-            <span className="text-[10px] opacity-60 leading-tight">
+            <span className="text-caption opacity-60 leading-tight">
               {t.chat.contextTooltipSubtitle}
             </span>
           )}

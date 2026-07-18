@@ -213,7 +213,7 @@ export default function SkillUploadModal({ onClose, onInstalled }: SkillUploadMo
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--abu-border)]">
             <div className="flex items-center gap-2">
               <Upload className="h-4 w-4 text-[var(--abu-clay)]" />
-              <h2 className="text-sm font-semibold text-[var(--abu-text-primary)]">{t.toolbox.importEntry}</h2>
+              <h2 className="text-body font-semibold text-[var(--abu-text-primary)]">{t.toolbox.importEntry}</h2>
             </div>
             <button
               onClick={onClose}
@@ -244,7 +244,7 @@ export default function SkillUploadModal({ onClose, onInstalled }: SkillUploadMo
               ) : (
                 <Upload className="h-6 w-6 text-[var(--abu-text-muted)]" />
               )}
-              <span className="text-xs text-[var(--abu-text-muted)] text-center">{t.toolbox.dropZoneHint}</span>
+              <span className="text-minor text-[var(--abu-text-muted)] text-center">{t.toolbox.dropZoneHint}</span>
             </button>
 
             {/* Secondary: import a packaged skill (.askill / .zip). */}
@@ -253,7 +253,7 @@ export default function SkillUploadModal({ onClose, onInstalled }: SkillUploadMo
                 type="button"
                 onClick={pickFile}
                 disabled={importInProgress}
-                className="inline-flex items-center gap-1 text-xs text-[var(--abu-text-tertiary)] hover:text-[var(--abu-clay)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center gap-1 text-minor text-[var(--abu-text-tertiary)] hover:text-[var(--abu-clay)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <FileArchive className="h-3 w-3" />
                 {t.toolbox.pickFile}

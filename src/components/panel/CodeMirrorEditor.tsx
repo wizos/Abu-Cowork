@@ -79,7 +79,7 @@ export default function CodeMirrorEditor({
       readOnly={readOnly}
       height="100%"
       basicSetup={{ lineNumbers: true, foldGutter: true, highlightActiveLine: !readOnly }}
-      className="h-full text-[12px]"
+      className="h-full text-minor"
     />
   );
 }

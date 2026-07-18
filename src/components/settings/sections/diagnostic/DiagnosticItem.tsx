@@ -16,9 +16,9 @@ const STATUS_ICON = {
 } as const;
 
 const STATUS_COLOR = {
-  passed: 'text-emerald-500',
-  failed: 'text-red-500',
-  warning: 'text-amber-500',
+  passed: 'text-[var(--abu-success)]',
+  failed: 'text-[var(--abu-danger)]',
+  warning: 'text-[var(--abu-warning)]',
   skipped: 'text-[var(--abu-text-muted)]',
   checking: 'text-[var(--abu-clay)]',
 } as const;
@@ -53,7 +53,7 @@ function ItemActions({ result }: { result: CheckResult }) {
       {result.suggestedAction && (
         <button
           onClick={() => onAction(result.suggestedAction!)}
-          className="text-[11px] px-2 py-1 rounded-md text-[var(--abu-clay)] hover:bg-[var(--abu-clay-bg)] transition-colors flex items-center gap-1"
+          className="text-caption px-2 py-1 rounded-md text-[var(--abu-clay)] hover:bg-[var(--abu-clay-bg)] transition-colors flex items-center gap-1"
           title={result.suggestedAction.label}
         >
           <ExternalLink className="h-3 w-3" />
@@ -73,7 +73,7 @@ function ItemActions({ result }: { result: CheckResult }) {
         className="p-1 rounded-md text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)] transition-colors"
         title={t.diagnostic.actionCopyError}
       >
-        {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+        {copied ? <Check className="h-3 w-3 text-[var(--abu-success)]" /> : <Copy className="h-3 w-3" />}
       </button>
     </div>
   );
@@ -98,17 +98,17 @@ export default function DiagnosticItem({ result }: { result: CheckResult }) {
       />
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-[13px] text-[var(--abu-text-primary)]">{result.name}</span>
+          <span className="text-body text-[var(--abu-text-primary)]">{result.name}</span>
           {result.metric && (
-            <span className="text-[11px] text-[var(--abu-text-muted)] tabular-nums">{result.metric}</span>
+            <span className="text-caption text-[var(--abu-text-muted)] tabular-nums">{result.metric}</span>
           )}
           {/* Inline friendly error — same row as title to mirror the passed-state
               "name + metric" rhythm. Color shift (primary → red/amber) carries
               the visual segmentation; no explicit separator needed. */}
           {(status === 'failed' || status === 'warning') && result.errorMessage && (
             <span className={cn(
-              'text-[12px] break-words',
-              status === 'failed' ? 'text-red-600/90' : 'text-amber-600/90'
+              'text-minor break-words',
+              status === 'failed' ? 'text-[var(--abu-danger)]' : 'text-[var(--abu-warning)]'
             )}>
               {result.errorMessage}
             </span>
@@ -120,7 +120,7 @@ export default function DiagnosticItem({ result }: { result: CheckResult }) {
             <button
               type="button"
               onClick={() => setDetailExpanded((v) => !v)}
-              className="mt-1 inline-flex items-center gap-1 text-[11px] text-[var(--abu-text-muted)] hover:text-[var(--abu-text-tertiary)] transition-colors"
+              className="mt-1 inline-flex items-center gap-1 text-caption text-[var(--abu-text-muted)] hover:text-[var(--abu-text-tertiary)] transition-colors"
             >
               {detailExpanded
                 ? <ChevronDown className="h-3 w-3" />
@@ -129,7 +129,7 @@ export default function DiagnosticItem({ result }: { result: CheckResult }) {
               {detailExpanded ? t.diagnostic.detailHide : t.diagnostic.detailShow}
             </button>
             {detailExpanded && (
-              <pre className="mt-1 px-2 py-1.5 rounded text-[11px] font-mono text-[var(--abu-text-tertiary)] bg-[var(--abu-bg-muted)] whitespace-pre-wrap break-all max-h-48 overflow-auto">
+              <pre className="mt-1 px-2 py-1.5 rounded text-caption font-mono text-[var(--abu-text-tertiary)] bg-[var(--abu-bg-muted)] whitespace-pre-wrap break-all max-h-48 overflow-auto">
                 {result.errorDetail}
               </pre>
             )}

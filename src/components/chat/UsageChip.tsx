@@ -28,13 +28,13 @@ export default function UsageChip({ conversationId }: { conversationId: string }
       <Tooltip>
         <TooltipTrigger asChild>
           <span
-            className="inline-flex items-center gap-1 text-[11px] text-[var(--abu-text-muted)] tabular-nums select-none cursor-default"
+            className="inline-flex items-center gap-1 text-caption text-[var(--abu-text-muted)] tabular-nums select-none cursor-default"
           >
             <span>{formatTokens(total)}</span>
           </span>
         </TooltipTrigger>
         <TooltipContent side="top" className="flex flex-col items-start gap-0.5 max-w-xs">
-          <span className="text-[10px] opacity-60 leading-tight">
+          <span className="text-caption opacity-60 leading-tight">
             {t.chat.usageChipSubtitle}
           </span>
           <span className="leading-tight">{bodyLine}</span>

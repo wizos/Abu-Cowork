@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { readFile } from '@tauri-apps/plugin-fs';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { useI18n } from '@/i18n';
@@ -10,13 +10,20 @@ import { Button } from '@/components/ui/button';
 import 'react-pdf/dist/Page/TextLayer.css';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 
-pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+// Resolve the pdf.js worker through the bundler (Vite `?url`) rather than a
+// bare `/public` path: a `/public` .mjs can't be loaded as an ESM module worker
+// in Vite dev (pdf.js then falls back to `import()`-ing it, which Vite blocks),
+// so PDF preview errored in dev. `?url` makes Vite serve/bundle it correctly in
+// both dev and production.
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 function LoadingIndicator({ label }: { label?: string }) {
   return (
     <div className="flex items-center justify-center gap-2 h-full">
       <Loader2 className="w-5 h-5 text-[var(--abu-clay)] animate-spin" />
-      {label && <span className="text-[13px] text-[var(--abu-text-tertiary)]">{label}</span>}
+      {label && <span className="text-body text-[var(--abu-text-tertiary)]">{label}</span>}
     </div>
   );
 }
@@ -54,6 +61,12 @@ export default function PdfPreview({ filePath }: { filePath: string }) {
 
   const loading = !pdfData && !error;
 
+  // Memoize the file object so react-pdf loads the document ONCE. A fresh
+  // `{ data }` object each render makes react-pdf reload, and pdf.js transfers
+  // the buffer to the worker on load (detaching `pdfData`) — the reload then
+  // tries to post the detached array and throws "The object can not be cloned".
+  const fileProp = useMemo(() => (pdfData ? { data: pdfData } : null), [pdfData]);
+
   const onDocumentLoadSuccess = ({ numPages: n }: { numPages: number }) => {
     setNumPages(n);
   };
@@ -66,7 +79,7 @@ export default function PdfPreview({ filePath }: { filePath: string }) {
   if (error) {
     return (
       <div className="flex items-center justify-center h-full p-4">
-        <p className="text-[13px] text-red-500">{error}</p>
+        <p className="text-body text-[var(--abu-danger)]">{error}</p>
       </div>
     );
   }
@@ -87,7 +100,7 @@ export default function PdfPreview({ filePath }: { filePath: string }) {
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
-            <span className="text-[11px] text-[var(--abu-text-tertiary)] min-w-[80px] text-center">
+            <span className="text-caption text-[var(--abu-text-tertiary)] min-w-[80px] text-center">
               {format(t.panel.pdfPage, { current: String(currentPage), total: String(numPages) })}
             </span>
             <Button
@@ -112,7 +125,7 @@ export default function PdfPreview({ filePath }: { filePath: string }) {
             >
               <ZoomOut className="h-3.5 w-3.5" />
             </Button>
-            <span className="text-[11px] text-[var(--abu-text-tertiary)] min-w-[40px] text-center">
+            <span className="text-caption text-[var(--abu-text-tertiary)] min-w-[40px] text-center">
               {Math.round(scale * 100)}%
             </span>
             <Button
@@ -135,9 +148,9 @@ export default function PdfPreview({ filePath }: { filePath: string }) {
           {loading && (
             <LoadingIndicator label={t.panel.loadingDocument} />
           )}
-          {pdfData && (
+          {fileProp && (
             <Document
-              file={{ data: pdfData }}
+              file={fileProp}
               onLoadSuccess={onDocumentLoadSuccess}
               onLoadError={onDocumentLoadError}
               loading={<LoadingIndicator label={t.panel.loadingDocument} />}

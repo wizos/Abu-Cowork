@@ -98,7 +98,7 @@ export default function FolderSelector({
             }
           }}
           className={cn(
-            'flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] rounded-lg transition-colors',
+            'flex items-center gap-1.5 px-2.5 py-1.5 text-minor rounded-lg transition-colors',
             currentPath
               ? 'text-[var(--abu-text-primary)] bg-[var(--abu-clay-bg)] hover:bg-[var(--abu-clay-20)]'
               : 'text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]'
@@ -138,7 +138,7 @@ export default function FolderSelector({
           {/* Recent folders section */}
           {(recentPaths.length > 0) && (
             <>
-              <div className="px-3 py-2 text-[11px] font-medium text-[var(--abu-text-muted)] uppercase tracking-wider border-b border-[var(--abu-bg-active)]">
+              <div className="px-3 py-2 text-caption font-medium text-[var(--abu-text-muted)] uppercase tracking-wider border-b border-[var(--abu-bg-active)]">
                 {t.folder.recentFolders}
               </div>
               <div className="py-1 max-h-[200px] overflow-y-auto">
@@ -165,7 +165,7 @@ export default function FolderSelector({
                     <div className="flex-1 min-w-0">
                       <div
                         className={cn(
-                          'text-[13px] truncate',
+                          'text-body truncate',
                           path === currentPath
                             ? 'text-[var(--abu-text-primary)] font-medium'
                             : 'text-[var(--abu-text-secondary)]'
@@ -173,7 +173,7 @@ export default function FolderSelector({
                       >
                         {getFolderName(path)}
                       </div>
-                      <div className="text-[11px] text-[var(--abu-text-muted)] truncate">
+                      <div className="text-caption text-[var(--abu-text-muted)] truncate">
                         {path}
                       </div>
                     </div>
@@ -196,7 +196,7 @@ export default function FolderSelector({
             >
               <div className="w-4 h-4" /> {/* Spacer for alignment */}
               <Folder className="h-4 w-4 text-[var(--abu-text-tertiary)] shrink-0" />
-              <span className="text-[13px] text-[var(--abu-text-tertiary)]">
+              <span className="text-body text-[var(--abu-text-tertiary)]">
                 {recentPaths.length > 0 ? t.folder.selectOtherFolder : `${t.folder.selectFolder}...`}
               </span>
             </button>

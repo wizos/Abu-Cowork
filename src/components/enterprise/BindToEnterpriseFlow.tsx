@@ -43,7 +43,7 @@ export default function BindToEnterpriseFlow({
       <div className="bg-neutral-900 border border-neutral-700 rounded-lg p-6 w-[420px]">
         {bootstrap ? (
           <>
-            <h2 className="text-base font-semibold mb-2">{bootstrap.instanceName || bootstrap.branding.name}</h2>
+            <h2 className="text-h-sm font-semibold mb-2">{bootstrap.instanceName || bootstrap.branding.name}</h2>
             <EnterpriseLoginPage
               serverUrl={serverUrl}
               bootstrap={bootstrap}
@@ -53,17 +53,17 @@ export default function BindToEnterpriseFlow({
           </>
         ) : (
           <>
-            <h2 className="text-base font-semibold mb-2">{tl.bindTitle}</h2>
-            <p className="text-xs text-neutral-400 mb-4">{tl.bindDescription}</p>
+            <h2 className="text-h-sm font-semibold mb-2">{tl.bindTitle}</h2>
+            <p className="text-minor text-neutral-400 mb-4">{tl.bindDescription}</p>
             <form onSubmit={handleUrlSubmit}>
-              <label className="block text-xs text-neutral-300 mb-1">{tl.serverUrlLabel}</label>
+              <label className="block text-minor text-neutral-300 mb-1">{tl.serverUrlLabel}</label>
               <Input
                 value={serverUrl}
                 onChange={e => setServerUrl(e.target.value)}
                 placeholder={tl.serverUrlPlaceholder}
                 required
               />
-              {err && <div className="text-xs text-rose-400 mt-2">{err}</div>}
+              {err && <div className="text-minor text-rose-400 mt-2">{err}</div>}
               <div className="mt-4 flex justify-end gap-2">
                 <Button type="button" variant="ghost" size="sm" onClick={onCancel}>{tl.cancelButton}</Button>
                 <Button type="submit" size="sm" disabled={busy}>

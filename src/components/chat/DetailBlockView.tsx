@@ -40,10 +40,10 @@ export default function DetailBlockView({ block, onToggle, onLoadMore }: DetailB
     switch (block.type) {
       case 'error':
         return {
-          labelBg: 'bg-red-100',
-          labelText: 'text-red-600',
-          contentBg: 'bg-red-50',
-          borderColor: 'border-red-200',
+          labelBg: 'bg-[var(--abu-danger-bg)]',
+          labelText: 'text-[var(--abu-danger)]',
+          contentBg: 'bg-[var(--abu-danger-bg)]',
+          borderColor: 'border-[var(--abu-danger)]',
         };
       case 'script':
         return {
@@ -54,10 +54,10 @@ export default function DetailBlockView({ block, onToggle, onLoadMore }: DetailB
         };
       case 'list':
         return {
-          labelBg: 'bg-blue-50',
-          labelText: 'text-blue-600',
-          contentBg: 'bg-blue-50/50',
-          borderColor: 'border-blue-100',
+          labelBg: 'bg-[var(--abu-info-bg)]',
+          labelText: 'text-[var(--abu-info)]',
+          contentBg: 'bg-[var(--abu-info-bg)]',
+          borderColor: 'border-[var(--abu-info)]',
         };
       case 'json':
         return {
@@ -68,10 +68,10 @@ export default function DetailBlockView({ block, onToggle, onLoadMore }: DetailB
         };
       case 'image':
         return {
-          labelBg: 'bg-emerald-50',
-          labelText: 'text-emerald-600',
+          labelBg: 'bg-[var(--abu-success-bg)]',
+          labelText: 'text-[var(--abu-success)]',
           contentBg: 'bg-[var(--abu-bg-base)]',
-          borderColor: 'border-emerald-100',
+          borderColor: 'border-[var(--abu-success)]',
         };
       default:
         return {
@@ -104,15 +104,15 @@ export default function DetailBlockView({ block, onToggle, onLoadMore }: DetailB
     <>
       {/* Language tag */}
       {block.language && (
-        <div className="px-3 py-1.5 text-[11px] text-[var(--abu-text-muted)] bg-[var(--abu-bg-hover)] border-b border-[var(--abu-bg-hover)]">
+        <div className="px-3 py-1.5 text-caption text-[var(--abu-text-muted)] bg-[var(--abu-bg-hover)] border-b border-[var(--abu-bg-hover)]">
           {block.language}
         </div>
       )}
 
       {/* Content area */}
       <pre className={cn(
-        'px-3 py-2 text-[12px] font-mono whitespace-pre-wrap break-all overflow-x-auto max-h-[300px] overflow-y-auto',
-        block.type === 'error' ? 'text-red-600' : 'text-[var(--abu-text-tertiary)]'
+        'px-3 py-2 text-minor font-mono whitespace-pre-wrap break-all overflow-x-auto max-h-[300px] overflow-y-auto',
+        block.type === 'error' ? 'text-[var(--abu-danger)]' : 'text-[var(--abu-text-tertiary)]'
       )}>
         {block.content}
       </pre>
@@ -122,7 +122,7 @@ export default function DetailBlockView({ block, onToggle, onLoadMore }: DetailB
         <div className="px-3 py-2 border-t border-[var(--abu-bg-hover)]">
           <button
             onClick={onLoadMore}
-            className="text-[11px] text-[var(--abu-clay)] hover:underline"
+            className="text-caption text-[var(--abu-clay)] hover:underline"
           >
             {t.chat.viewMore} ({(block.fullContentLength || 0) - block.content.length} {t.chat.characters})
           </button>
@@ -151,7 +151,7 @@ export default function DetailBlockView({ block, onToggle, onLoadMore }: DetailB
               <Maximize2 className="h-5 w-5 text-white opacity-0 group-hover:opacity-80 transition-opacity" />
             </div>
           </div>
-          <div className="mt-1 text-[11px] text-[var(--abu-text-muted)]">{block.content}</div>
+          <div className="mt-1 text-caption text-[var(--abu-text-muted)]">{block.content}</div>
         </div>
         {imageFullscreen && (
           <div
@@ -180,23 +180,23 @@ export default function DetailBlockView({ block, onToggle, onLoadMore }: DetailB
         {block.parsedItems.slice(0, 5).map((item, index) => (
           <div key={index} className="px-3 py-2 hover:bg-[var(--abu-bg-hover)] transition-colors">
             <div className="flex items-start gap-2">
-              {item.icon && <span className="text-sm">{item.icon}</span>}
+              {item.icon && <span className="text-minor">{item.icon}</span>}
               <div className="flex-1 min-w-0">
                 {item.url ? (
                   <a
                     href={item.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[13px] text-[var(--abu-text-tertiary)] hover:text-[var(--abu-clay)] font-medium flex items-center gap-1"
+                    className="text-minor text-[var(--abu-text-tertiary)] hover:text-[var(--abu-clay)] font-medium flex items-center gap-1"
                   >
                     {item.title}
                     <ExternalLink className="h-3 w-3 opacity-50" />
                   </a>
                 ) : (
-                  <div className="text-[13px] text-[var(--abu-text-tertiary)] font-medium">{item.title}</div>
+                  <div className="text-minor text-[var(--abu-text-tertiary)] font-medium">{item.title}</div>
                 )}
                 {item.description && (
-                  <div className="text-[11px] text-[var(--abu-text-muted)] mt-0.5 line-clamp-2">
+                  <div className="text-caption text-[var(--abu-text-muted)] mt-0.5 line-clamp-2">
                     {item.description}
                   </div>
                 )}
@@ -205,7 +205,7 @@ export default function DetailBlockView({ block, onToggle, onLoadMore }: DetailB
           </div>
         ))}
         {block.parsedItems.length > 5 && (
-          <div className="px-3 py-2 text-[11px] text-[var(--abu-text-muted)]">
+          <div className="px-3 py-2 text-caption text-[var(--abu-text-muted)]">
             {format(t.chat.moreItems, { count: block.parsedItems.length - 5 })}
           </div>
         )}
@@ -224,7 +224,7 @@ export default function DetailBlockView({ block, onToggle, onLoadMore }: DetailB
     }
 
     return (
-      <pre className="px-3 py-2 text-[12px] text-[var(--abu-text-tertiary)] font-mono whitespace-pre-wrap break-all overflow-x-auto max-h-[300px] overflow-y-auto">
+      <pre className="px-3 py-2 text-minor text-[var(--abu-text-tertiary)] font-mono whitespace-pre-wrap break-all overflow-x-auto max-h-[300px] overflow-y-auto">
         {formattedJson}
       </pre>
     );
@@ -240,7 +240,7 @@ export default function DetailBlockView({ block, onToggle, onLoadMore }: DetailB
 
     return (
       <div className="overflow-x-auto">
-        <table className="w-full text-[12px]">
+        <table className="w-full text-minor">
           <thead>
             <tr className="bg-[var(--abu-bg-hover)]">
               {headers.map((header, i) => (
@@ -263,7 +263,7 @@ export default function DetailBlockView({ block, onToggle, onLoadMore }: DetailB
           </tbody>
         </table>
         {rows.length > 10 && (
-          <div className="px-3 py-2 text-[11px] text-[var(--abu-text-muted)] border-t border-[var(--abu-bg-hover)]">
+          <div className="px-3 py-2 text-caption text-[var(--abu-text-muted)] border-t border-[var(--abu-bg-hover)]">
             {format(t.chat.moreRows, { count: rows.length - 10 })}
           </div>
         )}
@@ -277,7 +277,7 @@ export default function DetailBlockView({ block, onToggle, onLoadMore }: DetailB
       <button
         onClick={handleToggle}
         className={cn(
-          'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px]',
+          'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-caption',
           'transition-colors',
           styles.labelBg,
           styles.labelText,
@@ -291,12 +291,12 @@ export default function DetailBlockView({ block, onToggle, onLoadMore }: DetailB
         )}
         {headerLabel}
         {block.isTruncated && !localExpanded && (
-          <span className="text-[10px] opacity-70">
+          <span className="text-caption opacity-70">
             ({block.fullContentLength} {t.chat.characters})
           </span>
         )}
         {block.type === 'list' && block.parsedItems && (
-          <span className="text-[10px] opacity-70">
+          <span className="text-caption opacity-70">
             ({block.parsedItems.length})
           </span>
         )}

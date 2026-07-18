@@ -56,7 +56,7 @@ function BackendForm({
   return (
     <div className="space-y-3">
       <div className="space-y-1">
-        <label className="text-xs font-medium text-[var(--abu-text-primary)]">{t.settings.imageGenBackendName}</label>
+        <label className="text-minor font-medium text-[var(--abu-text-primary)]">{t.settings.imageGenBackendName}</label>
         <Input
           value={draft.name}
           onChange={(e) => onChange({ name: e.target.value })}
@@ -64,7 +64,7 @@ function BackendForm({
         />
       </div>
       <div className="space-y-1">
-        <label className="text-xs font-medium text-[var(--abu-text-primary)]">{t.settings.imageGenVendor}</label>
+        <label className="text-minor font-medium text-[var(--abu-text-primary)]">{t.settings.imageGenVendor}</label>
         <Select
           value={draft.vendor}
           options={vendorOptions}
@@ -72,7 +72,7 @@ function BackendForm({
         />
       </div>
       <div className="space-y-1">
-        <label className="text-xs font-medium text-[var(--abu-text-primary)]">{t.settings.imageGenBaseUrl}</label>
+        <label className="text-minor font-medium text-[var(--abu-text-primary)]">{t.settings.imageGenBaseUrl}</label>
         <Input
           value={draft.baseUrl}
           onChange={(e) => onChange({ baseUrl: e.target.value })}
@@ -80,7 +80,7 @@ function BackendForm({
         />
       </div>
       <div className="space-y-1">
-        <label className="text-xs font-medium text-[var(--abu-text-primary)]">{t.settings.imageGenApiKey}</label>
+        <label className="text-minor font-medium text-[var(--abu-text-primary)]">{t.settings.imageGenApiKey}</label>
         <div className="relative">
           <Input
             type={showKey ? 'text' : 'password'}
@@ -99,7 +99,7 @@ function BackendForm({
         </div>
       </div>
       <div className="space-y-1">
-        <label className="text-xs font-medium text-[var(--abu-text-primary)]">{t.settings.imageGenModel}</label>
+        <label className="text-minor font-medium text-[var(--abu-text-primary)]">{t.settings.imageGenModel}</label>
         <Input
           value={draft.model}
           onChange={(e) => onChange({ model: e.target.value })}
@@ -173,7 +173,7 @@ export function ImageGenBackendModal({
       >
         {/* Header */}
         <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-[var(--abu-border)]">
-          <h2 className="text-lg font-semibold text-[var(--abu-text-primary)]">
+          <h2 className="text-h-md font-semibold text-[var(--abu-text-primary)]">
             {editBackend ? t.settings.imageGenEditBackend : t.settings.imageGenAddBackend}
           </h2>
           <Button variant="ghost" size="icon-sm" onClick={onClose}>
@@ -216,8 +216,8 @@ export function ImageGenBackendsPanel({ onEdit }: { onEdit: (backend: ImageGenBa
     <div className="space-y-3">
       {backends.length === 0 && (
         <div className="text-center py-4">
-          <p className="text-sm text-[var(--abu-text-muted)]">{t.settings.imageGenNoBackends}</p>
-          <p className="text-xs text-[var(--abu-text-muted)] mt-1">{t.settings.imageGenNoBackendsHint}</p>
+          <p className="text-body text-[var(--abu-text-muted)]">{t.settings.imageGenNoBackends}</p>
+          <p className="text-minor text-[var(--abu-text-muted)] mt-1">{t.settings.imageGenNoBackendsHint}</p>
         </div>
       )}
 
@@ -236,21 +236,21 @@ export function ImageGenBackendsPanel({ onEdit }: { onEdit: (backend: ImageGenBa
                   title={t.settings.imageGenSetDefault}
                   className={cn(
                     'shrink-0 p-0.5 rounded transition-colors',
-                    isDefault ? 'text-amber-500' : 'text-[var(--abu-text-muted)] hover:text-amber-500',
+                    isDefault ? 'text-[var(--abu-warning)]' : 'text-[var(--abu-text-muted)] hover:text-[var(--abu-warning)]',
                   )}
                 >
                   <Star className={cn('h-4 w-4', isDefault && 'fill-current')} />
                 </button>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-[var(--abu-text-primary)] truncate">{backend.name}</span>
+                    <span className="text-body text-[var(--abu-text-primary)] truncate">{backend.name}</span>
                     {isDefault && (
-                      <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400">
+                      <span className="shrink-0 text-caption px-1.5 py-0.5 rounded bg-[var(--abu-warning-bg)] text-[var(--abu-warning)]">
                         {t.settings.imageGenDefaultBadge}
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-[var(--abu-text-muted)] truncate">
+                  <div className="text-minor text-[var(--abu-text-muted)] truncate">
                     {backend.model || backend.name}
                   </div>
                 </div>
@@ -261,7 +261,7 @@ export function ImageGenBackendsPanel({ onEdit }: { onEdit: (backend: ImageGenBa
                   variant="ghost"
                   size="icon-xs"
                   onClick={() => setDeleteTarget(backend)}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  className="text-[var(--abu-danger)] hover:text-[var(--abu-danger)] hover:bg-[var(--abu-danger-bg)]"
                   title={t.common.delete}
                 >
                   <Trash2 className="h-3.5 w-3.5" />

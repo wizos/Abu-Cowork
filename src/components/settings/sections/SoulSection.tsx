@@ -104,10 +104,10 @@ export default function SoulSection() {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-[15px] font-semibold text-[var(--abu-text-primary)]">
+        <h3 className="text-h-sm font-semibold text-[var(--abu-text-primary)]">
           {t.soul.title}
         </h3>
-        <p className="text-[13px] text-[var(--abu-text-muted)] mt-1">
+        <p className="text-body text-[var(--abu-text-muted)] mt-1">
           {t.soul.subtitle}
         </p>
       </div>
@@ -122,29 +122,29 @@ export default function SoulSection() {
           <Textarea
             value={content}
             onChange={(e) => handleChange(e.target.value)}
-            className="font-mono text-[13px] leading-relaxed min-h-[300px] resize-y"
+            className="font-mono text-body leading-relaxed min-h-[300px] resize-y"
             placeholder={t.soul.placeholder}
           />
-          <div className="absolute bottom-2 right-3 flex items-center gap-2 text-[11px]">
+          <div className="absolute bottom-2 right-3 flex items-center gap-2 text-caption">
             {statusLabel && (
               <span className="text-[var(--abu-text-placeholder)] transition-opacity duration-200">
                 {statusLabel}
               </span>
             )}
-            <span className={content.length > 2000 ? 'text-red-500' : 'text-[var(--abu-text-placeholder)]'}>
+            <span className={content.length > 2000 ? 'text-[var(--abu-danger)]' : 'text-[var(--abu-text-placeholder)]'}>
               {content.length} / 2000
             </span>
           </div>
         </div>
 
         <div className="flex items-center justify-between">
-          <p className="text-[11px] text-[var(--abu-text-placeholder)]">
+          <p className="text-caption text-[var(--abu-text-placeholder)]">
             {t.soul.filePath}
           </p>
           {isModified && (
             <button
               onClick={() => setShowRestoreConfirm(true)}
-              className="text-[12px] text-[var(--abu-text-placeholder)] hover:text-[var(--abu-text-tertiary)] underline underline-offset-2 transition-colors"
+              className="text-minor text-[var(--abu-text-placeholder)] hover:text-[var(--abu-text-tertiary)] underline underline-offset-2 transition-colors"
             >
               {t.soul.restore}
             </button>

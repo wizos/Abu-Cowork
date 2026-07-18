@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useIMChannelStore } from '@/stores/imChannelStore';
 import { useI18n } from '@/i18n';
+import { Button } from '@/components/ui/button';
+import SettingsSectionHeader from '@/components/settings/SettingsSectionHeader';
 import { triggerEngine } from '@/core/trigger/triggerEngine';
 import { Plus, Trash2, ChevronDown, ChevronUp, Copy, Check, HelpCircle, RefreshCw } from 'lucide-react';
 import { Toggle } from '@/components/ui/toggle';
@@ -47,7 +49,7 @@ function FormRow({ label, children, hint }: { label: string; children: React.Rea
   return (
     <div className="flex items-start justify-between gap-4">
       <div className="shrink-0 pt-1.5">
-        <span className="inline-flex items-center gap-1 text-[13px] text-[var(--abu-text-tertiary)]">
+        <span className="inline-flex items-center gap-1 text-body text-[var(--abu-text-tertiary)]">
           {label}
           {hint && (
             <div className="relative" ref={hintRef}>
@@ -58,7 +60,7 @@ function FormRow({ label, children, hint }: { label: string; children: React.Rea
                 <HelpCircle className="h-3.5 w-3.5" />
               </button>
               {showHint && (
-                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-52 px-3 py-2 rounded-lg bg-[var(--abu-text-primary)] text-white text-[11px] leading-relaxed shadow-lg z-[9999]">
+                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-52 px-3 py-2 rounded-lg bg-[var(--abu-text-primary)] text-white text-caption leading-relaxed shadow-lg z-[9999]">
                   {hint}
                   <div className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[5px] border-r-[var(--abu-text-primary)]" />
                 </div>
@@ -77,7 +79,7 @@ function FormGroup({ title, children }: { title?: string; children: React.ReactN
   return (
     <div className="space-y-3">
       {title && (
-        <div className="text-[11px] font-medium text-[var(--abu-text-muted)] uppercase tracking-wider">{title}</div>
+        <div className="text-caption font-medium text-[var(--abu-text-muted)] uppercase tracking-wider">{title}</div>
       )}
       {children}
     </div>
@@ -104,7 +106,7 @@ function FormInput({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className={`w-full px-3 py-1.5 text-[13px] rounded-lg border border-[var(--abu-border)] bg-[var(--abu-bg-base)] focus:border-[var(--abu-clay-50)] focus:outline-none transition-colors ${mono ? 'font-mono' : ''}`}
+      className={`w-full px-3 py-1.5 text-body rounded-lg border border-[var(--abu-border)] bg-[var(--abu-bg-base)] focus:border-[var(--abu-clay-50)] focus:outline-none transition-colors ${mono ? 'font-mono' : ''}`}
     />
   );
 }
@@ -128,7 +130,7 @@ function FormNumber({
       max={max}
       value={value}
       onChange={(e) => onChange(Number(e.target.value) || min)}
-      className="w-full px-3 py-1.5 text-[13px] rounded-lg border border-[var(--abu-border)] bg-[var(--abu-bg-base)] focus:border-[var(--abu-clay-50)] focus:outline-none transition-colors"
+      className="w-full px-3 py-1.5 text-body rounded-lg border border-[var(--abu-border)] bg-[var(--abu-bg-base)] focus:border-[var(--abu-clay-50)] focus:outline-none transition-colors"
     />
   );
 }
@@ -204,17 +206,23 @@ export default function IMChannelSection() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h3 className="text-base font-semibold text-[var(--abu-text-primary)]">{t.imChannel.title}</h3>
-        <p className="text-xs text-[var(--abu-text-muted)] mt-1">{t.imChannel.description}</p>
-      </div>
+      {/* Header — shared component; add button in the action slot (matches Models). */}
+      <SettingsSectionHeader
+        title={t.imChannel.title}
+        description={t.imChannel.description}
+        action={!showAddForm ? (
+          <Button variant="default" size="sm" onClick={() => setShowAddForm(true)} className="gap-1.5">
+            <Plus className="h-3.5 w-3.5" />
+            {t.settings.add}
+          </Button>
+        ) : undefined}
+      />
 
       {/* Channel List */}
       {channelList.length === 0 && !showAddForm && (
         <div className="p-8 rounded-xl border border-dashed border-[var(--abu-border-hover)] bg-[var(--abu-bg-muted)] text-center">
-          <p className="text-sm text-[var(--abu-text-muted)]">{t.imChannel.noChannels}</p>
-          <p className="text-xs text-[var(--abu-text-muted)] mt-1">{t.imChannel.noChannelsHint}</p>
+          <p className="text-body text-[var(--abu-text-muted)]">{t.imChannel.noChannels}</p>
+          <p className="text-minor text-[var(--abu-text-muted)] mt-1">{t.imChannel.noChannelsHint}</p>
         </div>
       )}
 
@@ -233,10 +241,10 @@ export default function IMChannelSection() {
               <PlatformBadge platform={channel.platform} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-[var(--abu-text-primary)] truncate">{channel.name}</span>
+                  <span className="text-body font-medium text-[var(--abu-text-primary)] truncate">{channel.name}</span>
                   <StatusDot status={channel.status} />
                 </div>
-                <div className="flex items-center gap-3 text-xs text-[var(--abu-text-muted)] mt-0.5">
+                <div className="flex items-center gap-3 text-minor text-[var(--abu-text-muted)] mt-0.5">
                   <span>{capLabels[channel.capability]}</span>
                   {sessionCount > 0 && (
                     <span>{t.imChannel.activeSessions}: {sessionCount}</span>
@@ -344,7 +352,7 @@ export default function IMChannelSection() {
 
                 {/* Error display */}
                 {channel.lastError && (
-                  <div className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">
+                  <div className="text-minor text-[var(--abu-danger)] bg-[var(--abu-danger-bg)] rounded-lg px-3 py-2">
                     {channel.lastError}
                   </div>
                 )}
@@ -353,7 +361,7 @@ export default function IMChannelSection() {
                 <div className="pt-1 border-t border-[var(--abu-bg-active)]">
                   <button
                     onClick={() => handleDelete(channel.id)}
-                    className="flex items-center gap-2 text-xs text-red-400 hover:text-red-500 hover:bg-red-50 px-3 py-2 rounded-lg transition-colors"
+                    className="flex items-center gap-2 text-minor text-[var(--abu-danger)] hover:text-[var(--abu-danger)] hover:bg-[var(--abu-danger-bg)] px-3 py-2 rounded-lg transition-colors"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     {t.common.delete}
@@ -368,7 +376,7 @@ export default function IMChannelSection() {
       {/* Add Channel Form */}
       {showAddForm && (
         <div className="rounded-xl border border-[var(--abu-clay-ring)] bg-[var(--abu-bg-muted)] p-5 space-y-5">
-          <h4 className="text-sm font-medium text-[var(--abu-text-primary)]">{t.imChannel.addChannel}</h4>
+          <h4 className="text-body font-medium text-[var(--abu-text-primary)]">{t.imChannel.addChannel}</h4>
 
           {/* Name */}
           <FormRow label={t.imChannel.channelName}>
@@ -386,7 +394,7 @@ export default function IMChannelSection() {
                 <button
                   key={p.value}
                   onClick={() => handlePlatformChange(p.value as IMPlatform)}
-                  className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
+                  className={`px-3 py-1.5 text-minor rounded-lg border transition-colors ${
                     newPlatform === p.value
                       ? 'border-[var(--abu-clay)] bg-[var(--abu-clay-bg)] text-[var(--abu-clay)] font-medium'
                       : 'border-[var(--abu-border)] text-[var(--abu-text-tertiary)] hover:border-[var(--abu-clay-50)]'
@@ -427,7 +435,7 @@ export default function IMChannelSection() {
           <div className="flex items-center gap-2 justify-end pt-2">
             <button
               onClick={() => setShowAddForm(false)}
-              className="px-4 py-2 text-sm text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] rounded-lg transition-colors"
+              className="px-4 py-2 text-body text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] rounded-lg transition-colors"
             >
               {t.common.cancel}
             </button>
@@ -437,7 +445,7 @@ export default function IMChannelSection() {
                 !newName.trim() ||
                 (newPlatform === 'wechat' ? !wechatCreds : !newAppId.trim() || !newAppSecret.trim())
               }
-              className="px-4 py-2 text-sm text-white bg-[var(--abu-clay)] hover:bg-[var(--abu-clay-hover)] rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-body text-white bg-[var(--abu-clay)] hover:bg-[var(--abu-clay-hover)] rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {t.common.save}
             </button>
@@ -445,16 +453,6 @@ export default function IMChannelSection() {
         </div>
       )}
 
-      {/* Add button */}
-      {!showAddForm && (
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm text-[var(--abu-clay)] border border-dashed border-[var(--abu-clay-40)] rounded-xl hover:bg-[var(--abu-clay-5)] transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          {t.imChannel.addChannel}
-        </button>
-      )}
     </div>
   );
 }
@@ -463,14 +461,14 @@ export default function IMChannelSection() {
 
 function PlatformBadge({ platform }: { platform: IMPlatform }) {
   return (
-    <div className="h-8 w-8 rounded-lg bg-[var(--abu-clay-bg)] flex items-center justify-center text-xs font-medium text-[var(--abu-clay)] shrink-0">
+    <div className="h-8 w-8 rounded-lg bg-[var(--abu-clay-bg)] flex items-center justify-center text-minor font-medium text-[var(--abu-clay)] shrink-0">
       {getPlatformDisplayName(platform).slice(0, 2)}
     </div>
   );
 }
 
 function StatusDot({ status }: { status: string }) {
-  const color = status === 'connected' ? 'bg-green-400' : status === 'error' ? 'bg-red-400' : 'bg-[var(--abu-text-placeholder)]';
+  const color = status === 'connected' ? 'bg-[var(--abu-success-solid)]' : status === 'error' ? 'bg-[var(--abu-danger-solid)]' : 'bg-[var(--abu-text-placeholder)]';
   return <span className={`inline-block h-1.5 w-1.5 rounded-full ${color}`} />;
 }
 
@@ -484,7 +482,7 @@ function WebhookUrlField({ url, hint, label }: { url: string; hint: string; labe
   return (
     <FormRow label={label} hint={hint}>
       <div className="relative">
-        <code className="block w-full px-3 py-1.5 pr-9 text-[12px] bg-[var(--abu-bg-muted)] border border-[var(--abu-border)] rounded-lg text-[var(--abu-text-tertiary)] truncate select-all font-mono">
+        <code className="block w-full px-3 py-1.5 pr-9 text-minor bg-[var(--abu-bg-muted)] border border-[var(--abu-border)] rounded-lg text-[var(--abu-text-tertiary)] truncate select-all font-mono">
           {url}
         </code>
         <button
@@ -492,7 +490,7 @@ function WebhookUrlField({ url, hint, label }: { url: string; hint: string; labe
           className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-[var(--abu-bg-hover)] transition-colors"
           title="Copy"
         >
-          {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5 text-[var(--abu-text-muted)]" />}
+          {copied ? <Check className="h-3.5 w-3.5 text-[var(--abu-success)]" /> : <Copy className="h-3.5 w-3.5 text-[var(--abu-text-muted)]" />}
         </button>
       </div>
     </FormRow>
@@ -530,10 +528,10 @@ function TagInput({
         {values.map((v) => (
           <span
             key={v}
-            className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-[var(--abu-clay-bg)] text-[var(--abu-clay)] rounded-md"
+            className="inline-flex items-center gap-1 px-2 py-0.5 text-minor bg-[var(--abu-clay-bg)] text-[var(--abu-clay)] rounded-md"
           >
             {v}
-            <button onClick={() => removeTag(v)} className="hover:text-red-500">×</button>
+            <button onClick={() => removeTag(v)} className="hover:text-[var(--abu-danger)]">×</button>
           </span>
         ))}
         <input
@@ -542,7 +540,7 @@ function TagInput({
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={values.length === 0 ? placeholder : ''}
-          className="flex-1 min-w-[80px] text-xs bg-transparent outline-none placeholder:text-[var(--abu-text-muted)]"
+          className="flex-1 min-w-[80px] text-minor bg-transparent outline-none placeholder:text-[var(--abu-text-muted)]"
         />
       </div>
     </FormRow>
@@ -571,18 +569,18 @@ function WeChatConnectionRows({
     <>
       {/* Bound account ID (read-only) */}
       <FormRow label={t.imChannel.wechatAccount}>
-        <code className="block w-full px-3 py-1.5 text-[12px] bg-[var(--abu-bg-muted)] border border-[var(--abu-border)] rounded-lg text-[var(--abu-text-tertiary)] truncate font-mono">
+        <code className="block w-full px-3 py-1.5 text-minor bg-[var(--abu-bg-muted)] border border-[var(--abu-border)] rounded-lg text-[var(--abu-text-tertiary)] truncate font-mono">
           {channel.appId || '—'}
         </code>
       </FormRow>
 
       {/* Re-bind trigger — shown when session expired */}
       {isExpired && !showRebind && (
-        <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-3 py-2.5">
-          <p className="text-[12px] text-red-600">{t.imChannel.wechatSessionExpired}</p>
+        <div className="flex items-center justify-between rounded-lg border border-[var(--abu-danger)] bg-[var(--abu-danger-bg)] px-3 py-2.5">
+          <p className="text-minor text-[var(--abu-danger)]">{t.imChannel.wechatSessionExpired}</p>
           <button
             onClick={() => setShowRebind(true)}
-            className="inline-flex items-center gap-1 text-[12px] font-medium text-[var(--abu-clay)] hover:text-[var(--abu-clay-hover)] transition-colors shrink-0 ml-3"
+            className="inline-flex items-center gap-1 text-minor font-medium text-[var(--abu-clay)] hover:text-[var(--abu-clay-hover)] transition-colors shrink-0 ml-3"
           >
             <RefreshCw className="h-3 w-3" />
             {t.imChannel.wechatRebind}

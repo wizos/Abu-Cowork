@@ -14,10 +14,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import MarkdownRenderer from '@/components/chat/MarkdownRenderer';
 import CodeMirrorEditor from './CodeMirrorEditor';
 import { VersionHistoryMenu } from './VersionHistoryMenu';
-import { Loader2, X, FolderOpen, Code, Eye, SquareArrowOutUpRight, History, FileCode, FileText, FileImage, FileSpreadsheet, FileType, File, Maximize2, Minimize2 } from 'lucide-react';
+import { Loader2, X, FolderOpen, Code, Eye, SquareArrowOutUpRight, History, FileCode, FileText, FileImage, FileSpreadsheet, FileType, File, Maximize2, Minimize2, RotateCw, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DocSelectionLayer } from '@/features/reference/DocSelectionLayer';
 import { cn } from '@/lib/utils';
+import { isMacOS } from '@/utils/platform';
 import { getToolbarButtons } from './previewToolbarConfig';
 import { openWithDefaultApp } from '@/utils/openWithDefaultApp';
 
@@ -86,9 +87,22 @@ function LazyFallback() {
   );
 }
 
-export default function PreviewPanel() {
-  const { previewFilePath, closePreview, reloadNonce } = usePreviewStore();
-  usePreviewFileWatch(previewFilePath);
+export default function PreviewPanel({
+  filePath: filePathProp,
+  tabId,
+  embedded = false,
+}: { filePath?: string; tabId?: string; embedded?: boolean } = {}) {
+  // Back-compat: without a `filePath` prop (older call sites, before
+  // workspace tabs existed), fall back to the store's single previewFilePath.
+  const storePreviewFilePath = usePreviewStore((s) => s.previewFilePath);
+  const closePreview = usePreviewStore((s) => s.closePreview);
+  const closeTab = usePreviewStore((s) => s.closeTab);
+  const previewFilePath = filePathProp ?? storePreviewFilePath;
+  // Each instance owns its own reload nonce (keep-alive multi-tab preview —
+  // see docs/2026-07-17-workspace-tabs-design.md) instead of reading a
+  // single global one off the store.
+  const [reloadNonce, setReloadNonce] = useState(0);
+  usePreviewFileWatch(previewFilePath, () => setReloadNonce((n) => n + 1));
   const { t } = useI18n();
   const [content, setContent] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -433,24 +447,39 @@ export default function PreviewPanel() {
       'flex flex-col',
       isFullscreen ? 'fixed inset-0 z-50 bg-[var(--abu-bg-base)]' : 'h-full',
     )}>
-      {/* Header — mt-7 to clear the overlay title bar drag region */}
-      <div className="shrink-0 px-3 py-2.5 mt-7 border-b border-[var(--abu-bg-pressed)] flex items-center gap-2">
-        <Icon className="w-4 h-4 text-[var(--abu-text-tertiary)] shrink-0" />
-        <span className="text-[13px] font-medium text-[var(--abu-text-primary)] truncate flex-1">
-          {fileName}
-        </span>
+      {/* Header — flush at the top (the floating card + tab strip clear the title
+          bar). In fullscreen the overlay is inset-0, so pad left to clear the
+          macOS traffic lights. */}
+      <div className={cn(
+        'shrink-0 px-3 py-2.5 border-b border-[var(--abu-bg-pressed)] flex items-center gap-2',
+        isFullscreen && isMacOS() && 'pl-20',
+      )}>
+        {/* Filename shown only when NOT embedded in a tab (the tab strip already
+            shows it — avoid a duplicate title), except in fullscreen where the
+            tab strip is covered so the title is needed again. Otherwise an empty
+            spacer keeps the toolbar right-aligned. */}
+        {!embedded || isFullscreen ? (
+          <>
+            <Icon className="w-4 h-4 text-[var(--abu-text-tertiary)] shrink-0" />
+            <span className="text-body font-medium text-[var(--abu-text-primary)] truncate flex-1">
+              {fileName}
+            </span>
+          </>
+        ) : (
+          <div className="flex-1" />
+        )}
         {toolbarButtons.viewToggle && (
           <div className="flex items-center bg-[var(--abu-bg-hover)] rounded p-0.5 mr-1">
             <button
               onClick={() => setViewMode('source')}
-              className={`p-1 rounded text-[10px] ${viewMode === 'source' ? 'bg-white' : ''}`}
+              className={`p-1 rounded text-caption ${viewMode === 'source' ? 'bg-white' : ''}`}
               title={t.panel.sourceMode}
             >
               <Code className="w-3 h-3" strokeWidth={1.5} />
             </button>
             <button
               onClick={() => setViewMode('preview')}
-              className={`p-1 rounded text-[10px] ${viewMode === 'preview' ? 'bg-white' : ''}`}
+              className={`p-1 rounded text-caption ${viewMode === 'preview' ? 'bg-white' : ''}`}
               title={t.panel.previewMode}
             >
               <Eye className="w-3 h-3" strokeWidth={1.5} />
@@ -502,13 +531,36 @@ export default function PreviewPanel() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={closePreview}
+          onClick={() => (tabId ? closeTab(tabId) : closePreview())}
           className="h-6 w-6 text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)]"
           title={t.panel.closePreview}
         >
           <X className="h-3.5 w-3.5" strokeWidth={1.5} />
         </Button>
       </div>
+
+      {/* Browser-style address bar for HTML preview (TRAE-like): reload + the
+          file path, so an HTML file reads as "opened in a browser". Real
+          back/forward + a CDP console panel are Electron-only (the loopback
+          iframe is cross-origin, so its navigation history isn't observable) —
+          documented as out of scope; use the browser tab for free navigation. */}
+      {rendererType === 'html' && viewMode === 'preview' && (
+        <div className="shrink-0 flex items-center gap-1.5 px-2 py-1.5 border-b border-[var(--abu-bg-pressed)] bg-[var(--abu-bg-subtle)]">
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            onClick={() => setReloadNonce((n) => n + 1)}
+            className="text-[var(--abu-text-tertiary)] hover:text-[var(--abu-clay)]"
+            title={t.panel.reloadPreview}
+          >
+            <RotateCw className="w-3.5 h-3.5" strokeWidth={1.5} />
+          </Button>
+          <div className="flex-1 min-w-0 flex items-center gap-1.5 h-6 px-2 rounded-md bg-[var(--abu-bg-base)] border border-[var(--abu-bg-pressed)]">
+            <Globe className="w-3 h-3 text-[var(--abu-text-tertiary)] shrink-0" strokeWidth={1.5} />
+            <span className="truncate text-caption text-[var(--abu-text-secondary)]">{previewFilePath}</span>
+          </div>
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex-1 min-h-0 overflow-hidden">
@@ -518,7 +570,7 @@ export default function PreviewPanel() {
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-            <p className="text-[13px] text-red-500">{error}</p>
+            <p className="text-body text-[var(--abu-danger)]">{error}</p>
           </div>
         ) : rendererType === 'pdf' || rendererType === 'docx' || rendererType === 'pptx' || rendererType === 'xlsx' || (rendererType === 'csv' && content !== null) ? (
           <Suspense fallback={<LazyFallback />}>
@@ -578,7 +630,7 @@ export default function PreviewPanel() {
           <CodeMirrorEditor value={draft} language={getFileExtension(previewFilePath)} onChange={setDraft} />
         ) : (
           <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-            <p className="text-[13px] text-[var(--abu-text-tertiary)]">{t.panel.unsupportedFileType}</p>
+            <p className="text-body text-[var(--abu-text-tertiary)]">{t.panel.unsupportedFileType}</p>
             <Button variant="outline" size="sm" onClick={handleOpenInFinder} className="mt-3">
               <FolderOpen className="w-3.5 h-3.5 mr-1.5" />
               {t.panel.showInFinder}

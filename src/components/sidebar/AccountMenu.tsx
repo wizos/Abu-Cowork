@@ -5,9 +5,6 @@ import {
   Settings,
   Globe,
   Palette,
-  Sun,
-  Monitor,
-  Moon,
   HelpCircle,
   MessageCircle,
   RefreshCw,
@@ -113,9 +110,9 @@ export default function AccountMenu({ onEditProfile }: { onEditProfile: () => vo
   ];
 
   const themeOptions = [
-    { value: 'light', icon: Sun, label: t.settings.appearanceLight },
-    { value: 'system', icon: Monitor, label: t.settings.appearanceSystem },
-    { value: 'dark', icon: Moon, label: t.settings.appearanceDark },
+    { value: 'light', label: t.settings.appearanceLight },
+    { value: 'system', label: t.settings.appearanceSystem },
+    { value: 'dark', label: t.settings.appearanceDark },
   ] as const;
 
   const progressPercent =
@@ -143,7 +140,7 @@ export default function AccountMenu({ onEditProfile }: { onEditProfile: () => vo
             onClick: handleDownload,
             accent: true,
             trailing: (
-              <span className="text-[11px] font-semibold text-[var(--abu-clay)]">v{updateInfo.version}</span>
+              <span className="text-caption font-semibold text-[var(--abu-clay)]">v{updateInfo.version}</span>
             ),
           }
         : updateChecking
@@ -152,9 +149,9 @@ export default function AccountMenu({ onEditProfile }: { onEditProfile: () => vo
             ? { icon: RefreshCw, label: t.updates.upToDate, onClick: handleCheck }
             : {
                 icon: RefreshCw,
-                label: t.updates.checkForUpdates,
+                label: t.updates.update,
                 onClick: handleCheck,
-                trailing: <span className="text-[12px] text-[var(--abu-text-muted)]">v{APP_VERSION}</span>,
+                trailing: <span className="text-minor text-[var(--abu-text-muted)]">v{APP_VERSION}</span>,
               };
   const UpdateIcon = updateRow.icon;
 
@@ -181,13 +178,13 @@ export default function AccountMenu({ onEditProfile }: { onEditProfile: () => vo
         </span>
         <span
           className={cn(
-            'flex-1 min-w-0 text-[13px] font-semibold truncate',
+            'flex-1 min-w-0 text-h-xs font-semibold truncate',
             userNickname ? 'text-[var(--abu-text-primary)]' : 'text-[var(--abu-text-tertiary)]'
           )}
         >
           {userNickname || t.sidebar.defaultNickname}
         </span>
-        {updateInfo && !open && <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />}
+        {updateInfo && !open && <span className="w-2 h-2 rounded-full bg-[var(--abu-danger-solid)] shrink-0" />}
         <ChevronsUpDown className="h-4 w-4 shrink-0 text-[var(--abu-text-muted)]" strokeWidth={1.6} />
       </button>
 
@@ -207,10 +204,10 @@ export default function AccountMenu({ onEditProfile }: { onEditProfile: () => vo
               )}
             </span>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold truncate text-[var(--abu-text-primary)]">
+              <div className="text-body font-semibold truncate text-[var(--abu-text-primary)]">
                 {userNickname || t.sidebar.defaultNickname}
               </div>
-              <div className="text-[11px] text-[var(--abu-text-muted)] truncate">{t.sidebar.localMode}</div>
+              <div className="text-caption text-[var(--abu-text-muted)] truncate">{t.sidebar.localMode}</div>
             </div>
             <button
               onClick={() => run(onEditProfile)}
@@ -226,42 +223,28 @@ export default function AccountMenu({ onEditProfile }: { onEditProfile: () => vo
           {/* Settings */}
           <MenuRow icon={Settings} label={t.settings.title} onClick={() => run(() => openSystemSettings())} />
 
-          {/* Language — inline switch (keeps popover open). Override the shared
-              Select's trigger to match the appearance control: same height,
-              muted bg, and 13px text so both rows read as one family. */}
+          {/* Language — borderless ghost select (value + small chevron, iOS-style) */}
           <div className="flex items-center gap-3 px-2.5 py-1.5 rounded-xl">
             <Globe className="h-[17px] w-[17px] shrink-0 text-[var(--abu-text-tertiary)]" strokeWidth={1.6} />
-            <span className="flex-1 text-[13px] text-[var(--abu-text-secondary)]">{t.settings.language}</span>
+            <span className="flex-1 text-body text-[var(--abu-text-secondary)]">{t.settings.language}</span>
             <Select
-              variant="inline"
+              variant="ghost"
               value={language}
               options={languageOptions}
               onChange={(v) => setLanguage(v as LanguageSetting)}
-              className="[&>button]:h-8 [&>button]:text-[13px] [&>button]:bg-[var(--abu-bg-muted)]"
             />
           </div>
 
-          {/* Appearance — inline theme segmented (toggles in place) */}
+          {/* Appearance — borderless ghost select (matches the Language row) */}
           <div className="flex items-center gap-3 px-2.5 py-1.5 rounded-xl">
             <Palette className="h-[17px] w-[17px] shrink-0 text-[var(--abu-text-tertiary)]" strokeWidth={1.6} />
-            <span className="flex-1 text-[13px] text-[var(--abu-text-secondary)]">{t.settings.appearance}</span>
-            <div className="flex items-center h-8 gap-0.5 px-1 rounded-lg bg-[var(--abu-bg-muted)] border border-[var(--abu-border)]">
-              {themeOptions.map(({ value, icon: Icon, label }) => (
-                <button
-                  key={value}
-                  onClick={() => setTheme(value)}
-                  title={label}
-                  className={cn(
-                    'flex items-center justify-center w-7 h-6 rounded-md transition-colors',
-                    theme === value
-                      ? 'bg-[var(--abu-bg-base)] text-[var(--abu-clay)] shadow-sm'
-                      : 'text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)]'
-                  )}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                </button>
-              ))}
-            </div>
+            <span className="flex-1 text-body text-[var(--abu-text-secondary)]">{t.settings.appearance}</span>
+            <Select
+              variant="ghost"
+              value={theme}
+              options={themeOptions.map(({ value, label }) => ({ value, label }))}
+              onChange={(v) => setTheme(v as typeof theme)}
+            />
           </div>
 
           <div className="mx-1.5 my-1 h-px bg-[var(--abu-border)]" />
@@ -296,7 +279,7 @@ export default function AccountMenu({ onEditProfile }: { onEditProfile: () => vo
             />
             <span
               className={cn(
-                'flex-1 text-[13px]',
+                'flex-1 text-body',
                 updateRow.accent ? 'text-[var(--abu-clay)] font-medium' : 'text-[var(--abu-text-secondary)]'
               )}
             >
@@ -328,7 +311,7 @@ function MenuRow({
       className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-left transition-colors hover:bg-[var(--abu-bg-hover)]"
     >
       <Icon className="h-[17px] w-[17px] shrink-0 text-[var(--abu-text-tertiary)]" strokeWidth={1.6} />
-      <span className="flex-1 text-[13px] text-[var(--abu-text-secondary)]">{label}</span>
+      <span className="flex-1 text-body text-[var(--abu-text-secondary)]">{label}</span>
       {trailing}
     </button>
   );

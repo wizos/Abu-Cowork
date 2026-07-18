@@ -201,11 +201,11 @@ export default function WorkspaceSection() {
         >
           <div className="flex items-center gap-2 min-w-0">
             <FolderOpen className="h-4 w-4 text-[var(--abu-text-tertiary)] shrink-0" />
-            <h3 className="text-[13px] font-medium text-[var(--abu-text-primary)]">
+            <h3 className="text-body font-medium text-[var(--abu-text-primary)]">
               {t.panel.workspace}
             </h3>
             {activeProject && (
-              <span className="text-[11px] text-[var(--abu-clay)] bg-[var(--abu-clay-bg-15)] px-1.5 py-0.5 rounded truncate max-w-[120px]">
+              <span className="text-caption text-[var(--abu-clay)] bg-[var(--abu-clay-bg-15)] px-1.5 py-0.5 rounded truncate max-w-[120px]">
                 {activeProject.name}
               </span>
             )}
@@ -248,10 +248,10 @@ export default function WorkspaceSection() {
                   <FolderOpen className="w-4 h-4 text-[var(--abu-clay)]" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <span className="text-[13px] font-medium text-[var(--abu-text-primary)] truncate block">
+                  <span className="text-body font-medium text-[var(--abu-text-primary)] truncate block">
                     {folderName}
                   </span>
-                  <div className="text-[10px] text-[var(--abu-text-muted)] truncate">
+                  <div className="text-caption text-[var(--abu-text-muted)] truncate">
                     {currentPath}
                   </div>
                 </div>
@@ -264,7 +264,7 @@ export default function WorkspaceSection() {
                   {/* Recent folders */}
                   {recentPaths.length > 0 && (
                     <>
-                      <div className="px-3 py-2 text-[10px] font-medium text-[var(--abu-text-muted)] uppercase tracking-wider border-b border-[var(--abu-bg-active)]">
+                      <div className="px-3 py-2 text-caption font-medium text-[var(--abu-text-muted)] uppercase tracking-wider border-b border-[var(--abu-bg-active)]">
                         {t.panel.recentlyUsed}
                       </div>
                       <div className="py-1 max-h-[200px] overflow-y-auto">
@@ -280,7 +280,7 @@ export default function WorkspaceSection() {
                               )}
                             </div>
                             <Folder className={`h-3.5 w-3.5 shrink-0 ${path === currentPath ? 'text-[var(--abu-clay)]' : 'text-[var(--abu-text-muted)]'}`} />
-                            <span className={`text-[12px] truncate ${path === currentPath ? 'text-[var(--abu-text-primary)] font-medium' : 'text-[var(--abu-text-secondary)]'}`}>
+                            <span className={`text-minor truncate ${path === currentPath ? 'text-[var(--abu-text-primary)] font-medium' : 'text-[var(--abu-text-secondary)]'}`}>
                               {getFolderName(path)}
                             </span>
                           </button>
@@ -300,7 +300,7 @@ export default function WorkspaceSection() {
                     >
                       <div className="w-4 h-4" />
                       <Folder className="h-3.5 w-3.5 text-[var(--abu-text-tertiary)] shrink-0" />
-                      <span className="text-[12px] text-[var(--abu-text-tertiary)]">
+                      <span className="text-minor text-[var(--abu-text-tertiary)]">
                         {t.panel.selectOtherFolder}
                       </span>
                     </button>
@@ -320,7 +320,7 @@ export default function WorkspaceSection() {
               )}
             >
               <FileText className={cn('w-3.5 h-3.5', hasInstructions ? 'text-[var(--abu-clay)]' : 'text-[var(--abu-text-placeholder)]')} />
-              <span className={cn('text-[11px] font-medium', hasInstructions ? 'text-[var(--abu-text-secondary)]' : 'text-[var(--abu-text-muted)]')}>
+              <span className={cn('text-caption font-medium', hasInstructions ? 'text-[var(--abu-text-secondary)]' : 'text-[var(--abu-text-muted)]')}>
                 {hasInstructions ? `${t.panel.instructions} · ABU.md` : t.panel.instructionsAdd}
               </span>
             </button>
@@ -336,7 +336,7 @@ export default function WorkspaceSection() {
               )}
             >
               <Brain className={cn('w-3.5 h-3.5', hasMemory ? 'text-[#8b7ec8]' : 'text-[var(--abu-text-placeholder)]')} />
-              <span className={cn('text-[11px] font-medium', hasMemory ? 'text-[var(--abu-text-secondary)]' : 'text-[var(--abu-text-muted)]')}>
+              <span className={cn('text-caption font-medium', hasMemory ? 'text-[var(--abu-text-secondary)]' : 'text-[var(--abu-text-muted)]')}>
                 {hasMemory ? t.panel.memory : t.panel.memoryEmpty}
               </span>
             </button>
@@ -345,7 +345,7 @@ export default function WorkspaceSection() {
           // Empty state - clickable to select workspace
           <button
             onClick={handleSelectWorkspace}
-            className="text-[12px] text-[var(--abu-text-muted)] hover:text-[var(--abu-clay)] py-2 mt-3 cursor-pointer transition-colors text-left"
+            className="text-minor text-[var(--abu-text-muted)] hover:text-[var(--abu-clay)] py-2 mt-3 cursor-pointer transition-colors text-left"
           >
             {t.panel.selectWorkspace}
           </button>

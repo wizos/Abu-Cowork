@@ -62,7 +62,7 @@ export default function ToolCallsGroup({ toolCalls }: ToolCallsGroupProps) {
         {/* Collapsed header - single line */}
         <button
           onClick={() => setExpanded(!expanded)}
-          className="btn-ghost w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-[var(--abu-bg-muted)] transition-colors"
+          className="btn-ghost w-full flex items-center gap-2 px-3 py-2 text-body hover:bg-[var(--abu-bg-muted)] transition-colors"
         >
         {/* Expand/collapse chevron */}
         {expanded ? (
@@ -75,7 +75,7 @@ export default function ToolCallsGroup({ toolCalls }: ToolCallsGroupProps) {
         <div className="relative shrink-0">
           <Wrench className={cn(
             "h-3.5 w-3.5",
-            isAnyExecuting ? "text-[var(--abu-clay)]" : allCompleted ? "text-emerald-600" : "text-[var(--abu-text-tertiary)]"
+            isAnyExecuting ? "text-[var(--abu-clay)]" : allCompleted ? "text-[var(--abu-success)]" : "text-[var(--abu-text-tertiary)]"
           )} />
         </div>
 
@@ -88,19 +88,19 @@ export default function ToolCallsGroup({ toolCalls }: ToolCallsGroupProps) {
             {isAwaitingUserCurrent ? (
               <>
                 <MessageSquare className="h-3 w-3 text-[var(--abu-clay)] shrink-0" />
-                <span className="text-[12px] text-[var(--abu-clay)] truncate">
+                <span className="text-minor text-[var(--abu-clay)] truncate">
                   {t.userQuestion.waitingForAnswer}
                 </span>
               </>
             ) : isAnyExecuting ? (
               <>
                 <Loader2 className="h-3 w-3 animate-spin text-[var(--abu-clay)] shrink-0" />
-                <span className="font-mono text-[12px] text-[var(--abu-text-primary)] truncate">
+                <span className="font-mono text-minor text-[var(--abu-text-primary)] truncate">
                   {currentTool?.name}
                 </span>
               </>
             ) : allCompleted ? (
-              <span className="text-[12px] text-[var(--abu-text-tertiary)]">
+              <span className="text-minor text-[var(--abu-text-tertiary)]">
                 {totalCount === 1 ? (
                   <span className="font-mono">{currentTool?.name}</span>
                 ) : (
@@ -108,7 +108,7 @@ export default function ToolCallsGroup({ toolCalls }: ToolCallsGroupProps) {
                 )}
               </span>
             ) : (
-              <span className="font-mono text-[12px] text-[var(--abu-text-primary)] truncate">
+              <span className="font-mono text-minor text-[var(--abu-text-primary)] truncate">
                 {currentTool?.name}
               </span>
             )}
@@ -118,21 +118,21 @@ export default function ToolCallsGroup({ toolCalls }: ToolCallsGroupProps) {
         {/* Status badge */}
         <div className="shrink-0">
           {isAwaitingUserCurrent ? (
-            <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-[var(--abu-clay-bg)] text-[var(--abu-clay)] font-medium">
+            <span className="flex items-center gap-1 text-caption px-1.5 py-0.5 rounded bg-[var(--abu-clay-bg)] text-[var(--abu-clay)] font-medium">
               <MessageSquare className="h-3 w-3" />
               {t.userQuestion.waitingForAnswer}
             </span>
           ) : isAnyExecuting ? (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--abu-clay-bg)] text-[var(--abu-clay)] font-medium">
+            <span className="text-caption px-1.5 py-0.5 rounded bg-[var(--abu-clay-bg)] text-[var(--abu-clay)] font-medium">
               {completedCount}/{totalCount}
             </span>
           ) : allCompleted ? (
-            <span className="flex items-center gap-1 text-[10px] text-emerald-600">
+            <span className="flex items-center gap-1 text-caption text-[var(--abu-success)]">
               <CheckCircle2 className="h-3 w-3" />
               Done
             </span>
           ) : (
-            <span className="text-[10px] text-[var(--abu-text-tertiary)]">
+            <span className="text-caption text-[var(--abu-text-tertiary)]">
               {completedCount}/{totalCount}
             </span>
           )}
@@ -168,16 +168,16 @@ function ToolCallItem({ toolCall, isLast }: { toolCall: ToolCall; isLast: boolea
       {/* Tool header */}
       <button
         onClick={() => setShowDetails(!showDetails)}
-        className="btn-ghost w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-[var(--abu-bg-muted)]"
+        className="btn-ghost w-full flex items-center gap-2.5 px-3 py-2 text-body hover:bg-[var(--abu-bg-muted)]"
       >
         {/* Status indicator */}
         <div className={cn(
           "w-4 h-4 rounded-full flex items-center justify-center shrink-0",
-          isCompleted && "bg-emerald-500/15",
+          isCompleted && "bg-[var(--abu-success-bg)]",
           (isExecuting || awaitingUser) && "bg-[var(--abu-clay-bg-15)]",
           !isCompleted && !isExecuting && !awaitingUser && "bg-[var(--abu-bg-hover)]"
         )}>
-          {isCompleted && <CheckCircle2 className="h-2.5 w-2.5 text-emerald-600" />}
+          {isCompleted && <CheckCircle2 className="h-2.5 w-2.5 text-[var(--abu-success)]" />}
           {awaitingUser && <MessageSquare className="h-2.5 w-2.5 text-[var(--abu-clay)]" />}
           {isExecuting && <Loader2 className="h-2.5 w-2.5 text-[var(--abu-clay)] animate-spin" />}
           {!isCompleted && !isExecuting && !awaitingUser && <Circle className="h-1.5 w-1.5 text-[var(--abu-text-muted)] fill-current" />}
@@ -185,14 +185,14 @@ function ToolCallItem({ toolCall, isLast }: { toolCall: ToolCall; isLast: boolea
 
         {/* Tool name */}
         <span className={cn(
-          "font-mono text-[12px] truncate flex-1 text-left",
+          "font-mono text-minor truncate flex-1 text-left",
           isCompleted && "text-[var(--abu-text-primary)]",
           (isExecuting || awaitingUser) && "text-[var(--abu-clay)] font-medium",
           !isCompleted && !isExecuting && !awaitingUser && "text-[var(--abu-text-muted)]"
         )}>
           {toolCall.name}
           {awaitingUser && (
-            <span className="ml-1.5 font-sans text-[11px] text-[var(--abu-clay)]">
+            <span className="ml-1.5 font-sans text-caption text-[var(--abu-clay)]">
               · {t.userQuestion.waitingForAnswer}
             </span>
           )}
@@ -212,25 +212,25 @@ function ToolCallItem({ toolCall, isLast }: { toolCall: ToolCall; isLast: boolea
         <div className="bg-[#1c1c1e] px-3 py-2.5 space-y-2">
           {/* Input */}
           <div>
-            <div className="text-[9px] font-semibold text-white/30 uppercase tracking-wider mb-1">Input</div>
-            <pre className="text-[11px] font-mono text-[#a8c5da] whitespace-pre-wrap break-words leading-relaxed max-h-[240px] overflow-y-auto">
+            <div className="text-caption font-semibold text-white/30 uppercase tracking-wider mb-1">Input</div>
+            <pre className="text-caption font-mono text-[#a8c5da] whitespace-pre-wrap break-words leading-relaxed max-h-[240px] overflow-y-auto">
               {JSON.stringify(toolCall.input, null, 2)}
             </pre>
           </div>
           {/* Output */}
           {toolCall.result !== undefined && (
             <div className="border-t border-white/10 pt-2">
-              <div className="text-[9px] font-semibold text-white/30 uppercase tracking-wider mb-1">Output</div>
+              <div className="text-caption font-semibold text-white/30 uppercase tracking-wider mb-1">Output</div>
               {toolCall.name === TOOL_NAMES.RUN_AGENT_BATCH ? (
                 <div>
                   {/* Collapsed summary line with expand toggle */}
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[11px] text-[#b5c9a8]">
+                    <span className="text-caption text-[#b5c9a8]">
                       {toolCall.result.split('\n')[0]}
                     </span>
                     <button
                       onClick={() => setBatchResultExpanded((v) => !v)}
-                      className="inline-flex items-center gap-0.5 text-[10px] text-[var(--abu-clay)] hover:text-[var(--abu-clay-hover)]"
+                      className="inline-flex items-center gap-0.5 text-caption text-[var(--abu-clay)] hover:text-[var(--abu-clay-hover)]"
                     >
                       {batchResultExpanded ? (
                         <><ChevronDown className="h-3 w-3" />{t.batch.collapse}</>
@@ -240,7 +240,7 @@ function ToolCallItem({ toolCall, isLast }: { toolCall: ToolCall; isLast: boolea
                     </button>
                   </div>
                   {batchResultExpanded && (
-                    <pre className="mt-2 text-[11px] font-mono text-[#b5c9a8] whitespace-pre-wrap break-words leading-relaxed max-h-64 overflow-y-auto">
+                    <pre className="mt-2 text-caption font-mono text-[#b5c9a8] whitespace-pre-wrap break-words leading-relaxed max-h-64 overflow-y-auto">
                       {toolCall.result}
                     </pre>
                   )}
@@ -257,17 +257,17 @@ function ToolCallItem({ toolCall, isLast }: { toolCall: ToolCall; isLast: boolea
                   )}
                   {toolCall.result.includes('[sandbox-blocked]') ? (
                     <div className="space-y-1.5">
-                      <div className="px-2 py-1.5 rounded bg-red-500/20 border border-red-500/30">
-                        <p className="text-[11px] font-mono text-red-300 leading-relaxed">
+                      <div className="px-2 py-1.5 rounded bg-[var(--abu-danger-bg)] border border-[var(--abu-danger)]">
+                        <p className="text-caption font-mono text-[var(--abu-danger)] leading-relaxed">
                           {toolCall.result.split('\n')[0].replace('[sandbox-blocked] ', '')}
                         </p>
                       </div>
-                      <pre className="text-[11px] font-mono text-[#b5c9a8]/70 whitespace-pre-wrap break-words leading-relaxed max-h-24 overflow-y-auto">
+                      <pre className="text-caption font-mono text-[#b5c9a8]/70 whitespace-pre-wrap break-words leading-relaxed max-h-24 overflow-y-auto">
                         {toolCall.result.split('\n').slice(2).join('\n')}
                       </pre>
                     </div>
                   ) : (
-                    <pre className="text-[11px] font-mono text-[#b5c9a8] whitespace-pre-wrap break-words leading-relaxed max-h-32 overflow-y-auto">
+                    <pre className="text-caption font-mono text-[#b5c9a8] whitespace-pre-wrap break-words leading-relaxed max-h-32 overflow-y-auto">
                       {toolCall.result}
                     </pre>
                   )}

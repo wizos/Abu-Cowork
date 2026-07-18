@@ -49,26 +49,26 @@ export default function StatusBar() {
   const tokenDisplay = currentUsage ? formatTokenUsage(currentUsage) : null;
 
   return (
-    <div className="flex items-center justify-between px-4 py-1.5 border-t border-zinc-800 bg-zinc-900/50 text-xs text-zinc-500">
+    <div className="flex items-center justify-between px-4 py-1.5 border-t border-zinc-800 bg-zinc-900/50 text-minor text-zinc-500">
       {/* Left: Agent status */}
       <div className="flex items-center gap-2">
         {agentStatus === 'idle' ? (
           <>
-            <Zap className="w-3 h-3 text-green-500" />
+            <Zap className="w-3 h-3 text-[var(--abu-success)]" />
             <span>{t.status.ready}</span>
           </>
         ) : agentStatus === 'tool-calling' ? (
           <>
-            <Wrench className="w-3 h-3 text-amber-400 animate-pulse" />
-            <span className="text-amber-400">{t.status.usingTool} {currentTool}</span>
+            <Wrench className="w-3 h-3 text-[var(--abu-warning)] animate-pulse" />
+            <span className="text-[var(--abu-warning)]">{t.status.usingTool} {currentTool}</span>
           </>
         ) : (
           <>
-            <Loader2 className="w-3 h-3 animate-spin text-blue-400" />
-            <span className="text-blue-400">
+            <Loader2 className="w-3 h-3 animate-spin text-[var(--abu-info)]" />
+            <span className="text-[var(--abu-info)]">
               {agentStatus === 'thinking' ? t.status.thinking : t.status.responding}
               {thinkingElapsed > 0 && (
-                <span className="ml-1 text-blue-300">({thinkingElapsed}s)</span>
+                <span className="ml-1 text-[var(--abu-info)]">({thinkingElapsed}s)</span>
               )}
             </span>
           </>

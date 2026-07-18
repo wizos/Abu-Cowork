@@ -262,6 +262,11 @@ interface ChatState {
   // message is added. Ephemeral, not persisted. Stores the agent's registry
   // key (i.e. the same name used for @mention).
   pendingAgentName: string | null;
+  // Pending search jump: set when a full-text search hit is picked. ChatView
+  // scrolls to and briefly highlights the first message in `convId` whose text
+  // contains `query`. Ephemeral one-shot, consumed by ChatView then cleared.
+  // NOT persisted.
+  pendingSearchJump: { convId: string; query: string } | null;
   // Pending references injected from a doc preview selection toolbar. Ephemeral
   // one-shot buffer (mirrors pendingInput): ChatInput drains it into local
   // state then clears. NOT persisted.
@@ -347,6 +352,7 @@ interface ChatActions {
   removeActiveAgent: (agentName: string) => void;
   setCurrentUsage: (usage: TokenUsage | null) => void;
   setPendingInput: (text: string | null) => void;
+  setPendingSearchJump: (v: { convId: string; query: string } | null) => void;
   appendPendingInput: (text: string | null) => void;
   addPendingReference: (ref: ChatReference) => void;
   clearPendingReferences: () => void;
@@ -407,6 +413,7 @@ export const useChatStore = create<ChatStore>()(
       pendingInput: null,
       pendingInputAppend: null,
       pendingAgentName: null,
+      pendingSearchJump: null,
       pendingReferences: [],
       pendingAttachmentPaths: [],
       pendingPermissionMode: undefined,
@@ -1273,6 +1280,12 @@ export const useChatStore = create<ChatStore>()(
       setPendingInput: (text) => {
         set((state) => {
           state.pendingInput = text;
+        });
+      },
+
+      setPendingSearchJump: (v) => {
+        set((state) => {
+          state.pendingSearchJump = v;
         });
       },
 
