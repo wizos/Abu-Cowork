@@ -42,7 +42,12 @@ Inspired by Claude Code's Cowork mode. Features multi-agent architecture with ex
 
 ### Release Process (发版流程)
 1. 确保 `dev` 分支 CI 全绿（build + lint + test）。
-2. **版本号在 `dev` 上 bump，三处同步**：`package.json`、`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml`。CHANGELOG 也在 `dev` 上写好该版条目。（版本号跟着 dev 流到 main，不再出现 dev/main 版本错位。）
+2. **版本号在 `dev` 上 bump，三处同步**：`package.json`、`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml`（顺带 `src-tauri/Cargo.lock` 里 `name = "abu"` 那条）。（版本号跟着 dev 流到 main，不再出现 dev/main 版本错位。）
+   - 🌐 **更新日志双语双维护（语言分流）** —— 每次发版在 `dev` 上把该版条目**两份都写好**，语言不混：
+     - **`CHANGELOG.md`（英文 canonical）** → 驱动 **GitHub Release**（CI「Create GitHub Release」步抽该版段）+ latest.json 的 `notes`（英文默认，给 Tauri updater 和国际用户）。
+     - **`CHANGELOG.zh-CN.md`（中文）** → 驱动 latest.json 的 `notes_i18n["zh-CN"]`。
+     - CI publish job 把两份各抽该版段写进 `latest.json.notes_i18n`；**客户端 `checker.ts` 按 UI locale（`getLocale()`）选对应语言**推给更新弹窗，官网按页面语言取。
+     - ⚠️ 两份同版号、结构对应，但**语言不混**：CHANGELOG.md 全英文、CHANGELOG.zh-CN.md 全中文。v0.31.0 之前的历史仅英文版有，不用回填。
 3. `git checkout main && git merge dev` — **只 merge，绝不 cherry-pick**。正常情况是干净快进/合并；若有冲突且分支已对齐，多半是真冲突，逐个解。
 4. `git tag vX.Y.Z` — 打 tag，格式为 `v` + 语义化版本号。
 5. `git push origin main --tags` — 推送 main 和 tag。
@@ -53,7 +58,7 @@ Inspired by Claude Code's Cowork mode. Features multi-agent architecture with ex
 ### Release Notes Convention (核心要点)
 - **分档**：patch（vX.Y.Z++）用极简模板（根因 + 修复 2-3 行）；minor（vX.Y.0）用完整模板（Features / Fixes / English Summary）；major（vX.0.0）额外加 Migration Notes。
 - **Title**：`vX.Y.Z` 或 `vX.Y.Z — 一句话主题`。patch 选最重要的特征当副标题，让 release 列表能扫读。
-- **双语策略**：中文先（主要用户群），bullet 末尾英文短语点睛即可，**不要每行翻译**。Minor+ 加独立 English Summary section；patch 不加。
+- 🌐 **双语双维护（语言分流，不再单文件混写）**：`CHANGELOG.md` 全英文、`CHANGELOG.zh-CN.md` 全中文，同版号两份都写；CI 按 locale 喂 `latest.json.notes_i18n`，客户端/官网按用户语言取。详见上文 Release Process 第 2 步。
 - **写"为什么"**：哪怕 patch 也至少给一句"用户会看到的变化"，禁止 "See assets below" 这种空 release。
 - **数字即证据**：能给数字给数字（"9 处子进程 spawn"、"TTL 从 5s 延到 30s"），不要"大幅优化"这种空话。
 - **emoji**：patch 标题不加；minor+ 分区图标可加（✨ Features / 🐛 Fixes / 🪟 Windows-only）。

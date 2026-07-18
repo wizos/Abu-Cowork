@@ -277,21 +277,26 @@ jobs:
           repo = os.environ['REPO']
           oss_base = f"https://{os.environ['OSS_BUCKET']}.{os.environ['OSS_REGION']}.aliyuncs.com/releases/{version_tag}"
 
-          # Extract release notes for this version from CHANGELOG.md.
-          # Falls back to a GitHub link if the entry is missing.
-          notes = f"See https://github.com/{repo}/releases/tag/{version_tag}"
-          try:
-              with open('CHANGELOG.md', encoding='utf-8') as f:
-                  cl = f.read()
-              # Match "## v0.11.2 ..." through just before the next "## v" or EOF
+          # Release notes are localized (see RELEASING.md): CHANGELOG.md is the
+          # English canonical source, CHANGELOG.zh-CN.md the Chinese one. The
+          # top-level `notes` stays English (the Tauri updater default + intl
+          # users); `notes_i18n` lets the client pick the user's language. Each
+          # extract matches "## v0.11.2 ..." through the next "## v" or EOF.
+          def extract(path):
+              try:
+                  with open(path, encoding='utf-8') as f:
+                      cl = f.read()
+              except FileNotFoundError:
+                  return ''
               pattern = rf'^## v{re.escape(version_num)}[^\n]*\n(.*?)(?=^## v|\Z)'
               m = re.search(pattern, cl, re.MULTILINE | re.DOTALL)
-              if m:
-                  body = m.group(1).strip()
-                  if body:
-                      notes = body
-          except FileNotFoundError:
-              pass
+              return m.group(1).strip() if m else ''
+
+          fallback = f"See https://github.com/{repo}/releases/tag/{version_tag}"
+          notes_en = extract('CHANGELOG.md') or fallback
+          notes_zh = extract('CHANGELOG.zh-CN.md') or notes_en
+          notes = notes_en
+          notes_i18n = {'en-US': notes_en, 'zh-CN': notes_zh}
 
           platforms = {}
           for key, fname, sig in [
@@ -305,6 +310,7 @@ jobs:
           data = {
               'version': version_tag,
               'notes': notes,
+              'notes_i18n': notes_i18n,
               'pub_date': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
               'platforms': platforms,
           }

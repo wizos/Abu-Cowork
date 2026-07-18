@@ -2,7 +2,11 @@
 
 Release notes writing convention for Abu. Use alongside the Release Process section in `CLAUDE.md`.
 
-> **Core principle**: Like commit messages, write bilingually — but **Chinese-first, English for emphasis** — don't translate every line. Patches use the minimal template; Minor+ uses the full template. Always explain "why" and include specific numbers.
+> **Core principle — two files, dual-maintained by language**: Each release gets its entry written in **both** changelogs, never mixed in one file:
+> - **`CHANGELOG.md` (English, canonical)** → the GitHub Release + `latest.json.notes` (English default for the Tauri updater and international users).
+> - **`CHANGELOG.zh-CN.md` (Chinese)** → `latest.json.notes_i18n["zh-CN"]`.
+>
+> CI extracts this version's section from each file into `latest.json.notes_i18n`; the **client (`checker.ts`) picks notes by the user's UI locale** and the website picks by page language. Same version and structure in both files, but one language each. Patches use the minimal template; Minor+ uses the full template. Always explain "why" and include specific numbers.
 
 ---
 
@@ -106,12 +110,13 @@ Extend the Minor template with:
 
 A subtitle makes the release list scannable. **Strongly recommended even for patches** (except pure chore/CI fixes).
 
-### 2. Bilingual Strategy
+### 2. Two Files, One Language Each
 
-- **Chinese-first**: The primary user base is Chinese-speaking; titles and bullet bodies should be in Chinese.
-- **English for emphasis**: Use conventional commit prefixes at the start of bullets (`feat(xxx):` / `fix(xxx):`); a short English phrase at the end can add punch ("— Why it matters").
-- **Don't translate every line**: It wastes space and reads like machine translation.
-- **English Summary**: Add only for minor+ releases with a confirmed international audience — 3–5 lines overview, no line-by-line correspondence.
+- **`CHANGELOG.md` — English only** (canonical). Drives the GitHub Release and `latest.json.notes`. Public / international / AI-crawler facing.
+- **`CHANGELOG.zh-CN.md` — Chinese only**. Drives `latest.json.notes_i18n["zh-CN"]`, shown in the in-app update dialog for zh-CN users and on the Chinese website.
+- **Same release, two files, never mixed.** Write the entry once in each language — don't append English tails to Chinese bullets or vice-versa. The `## vX.Y.Z · DATE` heading and section structure must match across both so CI extracts them consistently.
+- **CI routing** (`.github/workflows/release.yml`): the "Create GitHub Release" step reads `CHANGELOG.md`; the publish step's `latest.json` generator extracts this version's section from **both** files into `notes` (English) + `notes_i18n` (`en-US` + `zh-CN`). The client (`src/core/updates/checker.ts`) refetches `latest.json` and selects `notes_i18n[getLocale()]`, falling back to the English `notes`.
+- **History before v0.31.0** predates this split and lives only in `CHANGELOG.md` (bilingual); no need to backfill the Chinese file.
 
 ### 3. Explain "why", not just "what"
 

@@ -2,8 +2,14 @@ import { check, type Update } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { publish } from '@/core/notice/bus';
+import { getLocale } from '@/i18n';
 
 const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+// Same manifest the Tauri updater polls (tauri.conf.json → updater.endpoints).
+// We refetch it directly to read the per-locale `notes_i18n` field, which the
+// updater plugin doesn't expose (it only surfaces the top-level `notes`).
+const LATEST_JSON_URL = 'https://abu-agent.oss-cn-beijing.aliyuncs.com/latest.json';
 
 export interface UpdateInfo {
   version: string;
@@ -13,6 +19,28 @@ export interface UpdateInfo {
 }
 
 let _pendingUpdate: Update | null = null;
+
+/**
+ * Pick release notes in the user's UI language. `latest.json` carries
+ * `notes_i18n: { "zh-CN": ..., "en-US": ... }`; the top-level `notes` (what the
+ * updater hands back as `update.body`) stays English for the updater default and
+ * international users. English users already have the right text, so skip the
+ * extra fetch. Any failure (offline, old manifest without `notes_i18n`, missing
+ * locale) falls back to the English body — never worse than before.
+ */
+async function localizedNotes(fallback: string): Promise<string> {
+  const locale = getLocale();
+  if (locale === 'en-US') return fallback;
+  try {
+    const res = await fetch(LATEST_JSON_URL, { cache: 'no-cache' });
+    if (!res.ok) return fallback;
+    const data = (await res.json()) as { notes_i18n?: Record<string, string> };
+    const localized = data.notes_i18n?.[locale]?.trim();
+    return localized && localized.length > 0 ? localized : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 // When OSS latest.json body is just "See {github-url}", fetch the real body from GitHub API.
 async function enrichReleaseNotes(rawNotes: string): Promise<{ notes: string; url: string }> {
@@ -65,7 +93,8 @@ export async function checkForUpdate(force = false): Promise<UpdateInfo | null> 
 
     _pendingUpdate = update;
 
-    const { notes, url } = await enrichReleaseNotes(update.body ?? '');
+    const localized = await localizedNotes(update.body ?? '');
+    const { notes, url } = await enrichReleaseNotes(localized);
 
     const info: UpdateInfo = {
       version: update.version.replace(/^v/, ''),
