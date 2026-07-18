@@ -81,6 +81,26 @@ describe('serializeReferences', () => {
       expect(out).toContain('````html\n<pre>```code```</pre>\n````');
     });
 
+    it('escalates to a 5-backtick fence when outerHTML contains a 4-backtick run', () => {
+      const out = serializeReferences([mkElement({ outerHTML: '<pre>````code````</pre>' })]);
+      // The naive "``` present -> use ````" fix is NOT sufficient here: a
+      // 4-backtick fence would close early on the content's own 4-backtick
+      // run. Assert the fence is exactly 5 backticks (not >=4, which a
+      // substring check on "````html" would satisfy even for a 5-tick fence,
+      // since it's a substring of "`````html") by isolating the run of
+      // backticks immediately before "html" on its own line.
+      const fenceMatch = /^(`+)html$/m.exec(out);
+      expect(fenceMatch).not.toBeNull();
+      expect(fenceMatch![1].length).toBe(5);
+      // And the body + closing fence are exactly as expected.
+      expect(out).toContain('`````html\n<pre>````code````</pre>\n`````');
+    });
+
+    it('uses a plain 3-backtick fence when outerHTML has no backticks', () => {
+      const out = serializeReferences([mkElement({ outerHTML: '<div>plain</div>' })]);
+      expect(out).toContain('```html\n<div>plain</div>\n```');
+    });
+
     it('mixes doc-selection and dom-element references with correct per-item numbering', () => {
       const out = serializeReferences([mk('段A'), mkElement({ comment: '改颜色' })]);
       expect(out).toContain('[引用 1 · 来源：doc.md]');

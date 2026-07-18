@@ -23,7 +23,8 @@ import { isMacOS } from '@/utils/platform';
 import { getToolbarButtons } from './previewToolbarConfig';
 import { openWithDefaultApp } from '@/utils/openWithDefaultApp';
 import { createDomElementReference, type BrowserElementPayload } from '@/types/chatReference';
-import { isValidInspectSelection } from '@/utils/inspectMessage';
+import { isValidInspectSelection, resolveReferencePath } from '@/utils/inspectMessage';
+import { generateId } from '@/lib/utils';
 
 const PdfPreview = lazy(() => import('@/components/preview/PdfPreview'));
 const DocxPreview = lazy(() => import('@/components/preview/DocxPreview'));
@@ -393,7 +394,7 @@ export default function PreviewPanel({
       disableInspect();
       return;
     }
-    const nonce = Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
+    const nonce = generateId();
     try {
       const targetOrigin = new URL(htmlPreviewUrl).origin;
       inspectNonceRef.current = nonce;
@@ -443,13 +444,20 @@ export default function PreviewPanel({
       });
       if (!valid) return;
       const payload = (e.data as { payload: BrowserElementPayload }).payload;
-      useChatStore.getState().addPendingReference(createDomElementReference(payload));
+      // The picker payload's pageUrl is the loopback iframe's location.href,
+      // which embeds the per-launch file-access token
+      // (http://127.0.0.1:<port>/files/<TOKEN>/<root_id>/<path>). Never let
+      // that flow into source.path (persisted history + sent to the LLM) —
+      // swap in the real on-disk file path we already know instead. See
+      // resolveReferencePath's doc comment.
+      const ref = createDomElementReference({ ...payload, pageUrl: resolveReferencePath(previewFilePath, payload.pageUrl) });
+      useChatStore.getState().addPendingReference(ref);
       // Single-select: exit inspect mode after one pick.
       disableInspect();
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [htmlPreviewUrl, disableInspect]);
+  }, [htmlPreviewUrl, disableInspect, previewFilePath]);
 
   // Disarm on file switch / manual reload — a fresh document has a fresh
   // (idle-by-default) picker instance, so any previously-armed state is stale.

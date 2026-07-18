@@ -8,9 +8,15 @@ function toBlockquote(text: string): string {
     .join('\n');
 }
 
-/** 代码围栏内容含 ``` 时升级为 ````，避免围栏被正文提前截断 */
+/**
+ * 围栏长度必须超过正文里最长的连续反引号串，否则正文中 4+ 连续反引号仍会
+ * 提前截断围栏（固定用 4 个反引号不够 —— 正文若含 4+ 反引号串同样会撞车）。
+ * 取正文最长连续反引号串长度 +1，且不低于 3。
+ */
 function codeFence(text: string): string {
-  return text.includes('```') ? '````' : '```';
+  const runs = text.match(/`+/g);
+  const longestRun = runs ? Math.max(...runs.map((r) => r.length)) : 0;
+  return '`'.repeat(Math.max(3, longestRun + 1));
 }
 
 function serializeDocSelection(ref: ChatReference, index: number): string {

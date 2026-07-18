@@ -12,7 +12,15 @@
  * server-side truncation.
  */
 
-const MAX_PAYLOAD_BYTES = 64 * 1024;
+// The picker script raw-truncates outerHTML to 40960 chars before it ever
+// hits the wire, but JSON.stringify (this file's own size check) then
+// JSON-escapes that string: quote/backslash/newline-dense HTML can expand
+// materially under `\"`/`\\`/`\n` escaping, and computedStyle + text(≤2000)
+// add on top. 64KB was too tight against the 40960-char raw truncation and
+// could silently drop a legitimate pick (isValidInspectSelection → false,
+// inspect stays armed with no feedback). 128KB gives headroom for
+// JSON-escaping overhead while still bounding the message size.
+const MAX_PAYLOAD_BYTES = 128 * 1024;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -61,4 +69,18 @@ export function isValidInspectSelection(params: InspectSelectionCheckParams): bo
   if (serialized.length > MAX_PAYLOAD_BYTES) return false;
 
   return true;
+}
+
+/**
+ * `BrowserElementPayload.pageUrl` for a preview-tab pick is the loopback
+ * iframe's `location.href` — `http://127.0.0.1:<port>/files/<TOKEN>/<root_id>/<rel_path>`
+ * (see preview_server.rs). Writing that straight into `ChatReference.source.path`
+ * would leak the per-launch loopback file-access token into the LLM message
+ * and persisted history. Prefer the real on-disk file path the panel already
+ * knows (`previewFilePath`); only fall back to stripping the loopback prefix
+ * off `pageUrl` when that's unavailable (e.g. a future non-preview caller).
+ */
+export function resolveReferencePath(previewFilePath: string | null | undefined, pageUrl: string): string {
+  if (previewFilePath) return previewFilePath;
+  return pageUrl.replace(/^https?:\/\/127\.0\.0\.1(:\d+)?\/files\/[^/]+\/[^/]+\//, '');
 }

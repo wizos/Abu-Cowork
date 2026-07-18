@@ -69,6 +69,25 @@ const BLOCKED_FILE_PREFIXES: &[&str] = &[
 
 const BLOCKED_FILE_EXTS: &[&str] = &["pem", "key", "p12", "pfx"];
 
+/// HTML injection (see `serve_file` step 7) buffers the *whole* file into
+/// memory AND holds a second, injected copy simultaneously (~2x resident)
+/// before the response is handed off — unlike the streaming branch used for
+/// every other file type, which holds only a constant-size chunk at a time.
+/// Without a cap, a huge AI-generated HTML file (or a user-opened huge log
+/// renamed to .html) could OOM the process. Above this threshold, HTML falls
+/// through to the streaming path unmodified — the "select element" picker is
+/// simply unavailable on such files, which is an acceptable trade-off for
+/// "preview" scope (see module doc "Limitation").
+const MAX_HTML_INJECT_BYTES: u64 = 16 * 1024 * 1024;
+
+/// Whether a file should take the buffered "inject the picker script" path
+/// vs. the constant-memory streaming path. Pure function of (is this an
+/// html/htm extension, file size in bytes) so it's unit-testable without a
+/// real file on disk — see `tests::should_inject_html_*` below.
+fn should_inject_html(ext_is_html: bool, len: u64) -> bool {
+    ext_is_html && len <= MAX_HTML_INJECT_BYTES
+}
+
 /// The preview-tab element picker runtime, injected inline into every
 /// `.html`/`.htm` response — see `inject_picker_script`. Sibling of
 /// `abu-inspect.js` (the browser-tab picker); forked because the transport
@@ -305,11 +324,14 @@ async fn serve_file(
         mime.push_str("; charset=utf-8");
     }
 
-    let is_html = target
+    let ext_is_html = target
         .extension()
         .and_then(|e| e.to_str())
         .map(|e| e.eq_ignore_ascii_case("html") || e.eq_ignore_ascii_case("htm"))
         .unwrap_or(false);
+    // Large HTML falls through to the streaming branch below instead of the
+    // buffered injection branch — see MAX_HTML_INJECT_BYTES's doc comment.
+    let is_html = should_inject_html(ext_is_html, metadata.len());
 
     // 7. Body. HTML gets buffered + the picker script spliced in — this
     // can't stream, since injection changes the byte length. Every other
@@ -739,6 +761,32 @@ mod tests {
     }
 
     // ─── HTML picker script injection ────────────────────────────────────
+
+    // ─── HTML injection size cap ───────────────────────────────────────
+
+    #[test]
+    fn should_inject_html_small_html_file() {
+        assert!(should_inject_html(true, 1024));
+        assert!(should_inject_html(true, 0));
+    }
+
+    #[test]
+    fn should_inject_html_non_html_extension_never_injects() {
+        // Even a tiny non-HTML file must not take the injection path.
+        assert!(!should_inject_html(false, 10));
+        assert!(!should_inject_html(false, MAX_HTML_INJECT_BYTES));
+    }
+
+    #[test]
+    fn should_inject_html_at_exact_boundary_still_injects() {
+        assert!(should_inject_html(true, MAX_HTML_INJECT_BYTES));
+    }
+
+    #[test]
+    fn should_inject_html_over_boundary_falls_through_to_streaming() {
+        assert!(!should_inject_html(true, MAX_HTML_INJECT_BYTES + 1));
+        assert!(!should_inject_html(true, 100 * 1024 * 1024));
+    }
 
     #[test]
     fn find_ci_basic_and_case_insensitive() {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isValidInspectSelection, type InspectSelectionCheckParams } from './inspectMessage';
+import { isValidInspectSelection, resolveReferencePath, type InspectSelectionCheckParams } from './inspectMessage';
 
 const IFRAME_WINDOW = { __marker: 'iframe' } as unknown;
 const OTHER_WINDOW = { __marker: 'other' } as unknown;
@@ -84,18 +84,67 @@ describe('isValidInspectSelection', () => {
     ).toBe(false);
   });
 
-  it('rejects an oversized payload (> 64KB serialized)', () => {
-    const oversized = { ...validPayload, outerHTML: 'x'.repeat(70 * 1024) };
+  it('rejects an oversized payload (> 128KB serialized)', () => {
+    const oversized = { ...validPayload, outerHTML: 'x'.repeat(140 * 1024) };
     expect(
       isValidInspectSelection(mkParams({ data: { type: 'abu-preview-inspect:selected', nonce: NONCE, payload: oversized } })),
     ).toBe(false);
   });
 
   it('accepts a payload right at the boundary', () => {
-    // Pad outerHTML so serialized payload lands under 64KB.
+    // Pad outerHTML so serialized payload lands under 128KB.
     const boundaryPayload = { ...validPayload, outerHTML: 'x'.repeat(100) };
     expect(
       isValidInspectSelection(mkParams({ data: { type: 'abu-preview-inspect:selected', nonce: NONCE, payload: boundaryPayload } })),
     ).toBe(true);
+  });
+
+  it('accepts a legit picker-truncated payload that would have overflowed the old 64KB cap', () => {
+    // Picker script raw-truncates outerHTML to 40960 chars, but every `"`
+    // in a quote-dense string doubles in size under JSON escaping (`\"`).
+    // 40960 raw chars of quotes -> ~80KB serialized, which overflowed the
+    // old 64KB cap (silently dropping the pick) but fits comfortably under
+    // the new 128KB cap.
+    const heavyOuterHTML = '"'.repeat(40960);
+    const heavyPayload = { ...validPayload, outerHTML: heavyOuterHTML, text: 'x'.repeat(2000) };
+    const serializedLen = JSON.stringify(heavyPayload).length;
+    expect(serializedLen).toBeGreaterThan(64 * 1024);
+    expect(serializedLen).toBeLessThanOrEqual(128 * 1024);
+    expect(
+      isValidInspectSelection(mkParams({ data: { type: 'abu-preview-inspect:selected', nonce: NONCE, payload: heavyPayload } })),
+    ).toBe(true);
+  });
+});
+
+describe('resolveReferencePath', () => {
+  it('returns previewFilePath when present, ignoring pageUrl entirely', () => {
+    expect(resolveReferencePath('/Users/shawn/project/index.html', 'http://127.0.0.1:54321/files/TOKEN123/rootid/index.html')).toBe(
+      '/Users/shawn/project/index.html',
+    );
+  });
+
+  it('strips the loopback prefix when previewFilePath is absent (null)', () => {
+    expect(resolveReferencePath(null, 'http://127.0.0.1:54321/files/TOKEN123/rootid/sub/dir/index.html')).toBe('sub/dir/index.html');
+  });
+
+  it('strips the loopback prefix when previewFilePath is absent (undefined)', () => {
+    expect(resolveReferencePath(undefined, 'http://127.0.0.1:54321/files/abcDEF456/root9/index.html')).toBe('index.html');
+  });
+
+  it('strips the loopback prefix when previewFilePath is empty string (falsy)', () => {
+    expect(resolveReferencePath('', 'http://127.0.0.1:9999/files/tok/root/index.html')).toBe('index.html');
+  });
+
+  it('handles https loopback URLs too', () => {
+    expect(resolveReferencePath(null, 'https://127.0.0.1:54321/files/TOKEN/root/index.html')).toBe('index.html');
+  });
+
+  it('leaves a non-loopback pageUrl unchanged', () => {
+    expect(resolveReferencePath(null, 'https://example.com/checkout')).toBe('https://example.com/checkout');
+  });
+
+  it('never leaks the token into the returned path', () => {
+    const result = resolveReferencePath(undefined, 'http://127.0.0.1:54321/files/SUPER-SECRET-TOKEN/rootid/index.html');
+    expect(result).not.toContain('SUPER-SECRET-TOKEN');
   });
 });
