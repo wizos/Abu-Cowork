@@ -20,7 +20,7 @@
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    font-size: 13px; /* reading default — aligned with --text-body token (was 15px) */
+    font-size: 14px; /* reading default — aligned with --text-body token (13→14: matches TRAE/WorkBuddy chat body) */
     line-height: 1.6;
   }
 
@@ -207,13 +207,13 @@
   --text-minor--line-height: 18px;
   --text-minor--font-weight: 400;
 
-  --text-body: 13px; /* ← single reading default */
-  --text-body--line-height: 20px;
+  --text-body: 14px; /* ← single reading default (13→14: matches TRAE/WorkBuddy chat body) */
+  --text-body--line-height: 22px;
   --text-body--font-weight: 400;
 
   /* Heading ramp — TRAE heading-*, weight 600 capped (no 700) */
-  --text-h-xs: 13px;
-  --text-h-xs--line-height: 20px;
+  --text-h-xs: 14px; /* body-sized bold inline heading — tracks --text-body */
+  --text-h-xs--line-height: 22px;
   --text-h-xs--font-weight: 600;
 
   --text-h-sm: 16px;

@@ -315,8 +315,8 @@ sizes (`text-xs/sm/base/lg/xl/2xl/3xl`) — both are banned by ESLint (`no-restr
 |---|---|---|
 | `text-caption` | 11 / 16 / 400 | badges, timestamps, minimal captions |
 | `text-minor` | 12 / 18 / 400 | secondary labels, helper text |
-| `text-body` | 13 / 20 / 400 | **reading default** — body, lists, most text (emphasis = add `font-medium`) |
-| `text-h-xs` | 13 / 20 / 600 | inline small headings, group headers |
+| `text-body` | 14 / 22 / 400 | **reading default** — body, lists, most text (emphasis = add `font-medium`) |
+| `text-h-xs` | 14 / 22 / 600 | inline small headings, group headers |
 | `text-h-sm` | 16 / 24 / 600 | card / small modal titles |
 | `text-h-md` | 20 / 28 / 600 | page / modal titles |
 | `text-h-lg` | 22 / 30 / 600 | empty-state big titles |
