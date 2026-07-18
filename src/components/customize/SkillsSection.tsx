@@ -132,7 +132,7 @@ function FileTreeItem({
   return (
     <div
       className={`flex items-center gap-2 py-1 px-2 rounded-md cursor-pointer text-body transition-colors ${
-        isActive ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]' : 'text-[var(--abu-text-muted)] hover:bg-[var(--abu-bg-active)]/60 hover:text-[var(--abu-text-primary)]'
+        isActive ? 'bg-[var(--abu-bg-hover)] text-[var(--abu-text-primary)]' : 'text-[var(--abu-text-muted)] hover:bg-[var(--abu-bg-active)]/60 hover:text-[var(--abu-text-primary)]'
       }`}
       style={{ marginLeft: ml }}
       onClick={() => onFileClick?.(node.path)}
@@ -516,7 +516,7 @@ export default function SkillsSection({ manualCreateTrigger, showUploadModal: ex
                     <div className="max-h-40 overflow-y-auto overlay-scroll border-b border-[var(--abu-border)] p-1.5 space-y-0.5">
                       <div
                         className={`flex items-center gap-2 py-1 px-2 rounded-md cursor-pointer text-body transition-colors ${
-                          activeFilePath === 'SKILL.md' ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]' : 'text-[var(--abu-text-muted)] hover:bg-[var(--abu-bg-active)]/60 hover:text-[var(--abu-text-primary)]'
+                          activeFilePath === 'SKILL.md' ? 'bg-[var(--abu-bg-hover)] text-[var(--abu-text-primary)]' : 'text-[var(--abu-text-muted)] hover:bg-[var(--abu-bg-active)]/60 hover:text-[var(--abu-text-primary)]'
                         }`}
                         onClick={() => setActiveFilePath('SKILL.md')}
                       >

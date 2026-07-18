@@ -163,7 +163,7 @@ export default function AccountMenu({ onEditProfile }: { onEditProfile: () => vo
         className={cn(
           'w-full flex items-center gap-2.5 px-2 py-1.5 rounded-xl border transition-colors text-left',
           open
-            ? 'bg-[var(--abu-bg-active)] border-[var(--abu-border)]'
+            ? 'bg-[var(--abu-bg-hover)] border-[var(--abu-border)]'
             : 'border-transparent hover:bg-[var(--abu-bg-hover)]'
         )}
         aria-haspopup="menu"

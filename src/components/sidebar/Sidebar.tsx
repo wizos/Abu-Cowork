@@ -272,7 +272,7 @@ export default function Sidebar() {
           className={cn(
             'btn-ghost flex items-center gap-3 w-full px-3 py-2.5 text-body font-medium rounded-lg',
             activeConversationId === null && viewMode === 'chat'
-              ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]'
+              ? 'bg-[var(--abu-bg-hover)] text-[var(--abu-text-primary)]'
               : 'text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]'
           )}
         >
@@ -286,7 +286,7 @@ export default function Sidebar() {
               className={cn(
                 'btn-ghost flex items-center gap-3 w-full px-3 py-2.5 text-body rounded-lg',
                 viewMode === 'todos'
-                  ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]'
+                  ? 'bg-[var(--abu-bg-hover)] text-[var(--abu-text-primary)]'
                   : 'text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]'
               )}
             >
@@ -298,7 +298,7 @@ export default function Sidebar() {
               className={cn(
                 'btn-ghost flex items-center gap-3 w-full px-3 py-2.5 text-body rounded-lg',
                 viewMode === 'inbox'
-                  ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]'
+                  ? 'bg-[var(--abu-bg-hover)] text-[var(--abu-text-primary)]'
                   : 'text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]'
               )}
             >
@@ -317,7 +317,7 @@ export default function Sidebar() {
           className={cn(
             'btn-ghost flex items-center gap-3 w-full px-3 py-2.5 text-body rounded-lg',
             viewMode === 'toolbox'
-              ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]'
+              ? 'bg-[var(--abu-bg-hover)] text-[var(--abu-text-primary)]'
               : 'text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]'
           )}
         >
@@ -329,7 +329,7 @@ export default function Sidebar() {
           className={cn(
             'btn-ghost flex items-center gap-3 w-full px-3 py-2.5 text-body rounded-lg',
             viewMode === 'automation'
-              ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]'
+              ? 'bg-[var(--abu-bg-hover)] text-[var(--abu-text-primary)]'
               : 'text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]'
           )}
         >
@@ -407,7 +407,11 @@ export default function Sidebar() {
                 className={cn(
                   'group flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer transition-colors w-full text-left',
                   conv.id === activeConversationId && viewMode === 'chat'
-                    ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]'
+                    // Selected uses --abu-bg-hover (same color as hover), not
+                    // --abu-bg-active: the redesign darkened the sidebar to
+                    // --abu-bg-canvas (#f2f0e9), nearly identical to
+                    // --abu-bg-active (#f0eee6), which made the selection invisible.
+                    ? 'bg-[var(--abu-bg-hover)] text-[var(--abu-text-primary)]'
                     : 'text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]'
                 )}
               >

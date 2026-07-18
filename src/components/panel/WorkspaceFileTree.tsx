@@ -121,6 +121,8 @@ interface TreeRowProps {
   errorsByPath: Map<string, string>;
   toggleExpand: (path: string) => void;
   openPreview: (path: string) => void;
+  /** Path of the file currently open in the preview panel, for highlighting. */
+  activePath: string | null;
   onContextMenu: (e: React.MouseEvent, entry: WorkspaceTreeEntry) => void;
   renamingPath: string | null;
   onRenameSubmit: (entry: WorkspaceTreeEntry, name: string) => void;
@@ -140,6 +142,7 @@ function TreeRow({
   errorsByPath,
   toggleExpand,
   openPreview,
+  activePath,
   onContextMenu,
   renamingPath,
   onRenameSubmit,
@@ -156,6 +159,8 @@ function TreeRow({
   const Icon = entry.isDirectory ? (isExpanded ? FolderOpen : Folder) : getFileIcon(entry.name);
   const isRenaming = renamingPath === entry.path;
   const isCreatingHere = entry.isDirectory && creatingInFolder?.folderPath === entry.path;
+  // Highlight the file currently open in the preview panel (files only).
+  const isActive = !entry.isDirectory && activePath === entry.path;
 
   const handleActivate = () => {
     if (entry.isDirectory) {
@@ -173,7 +178,9 @@ function TreeRow({
       <div
         role={isRenaming ? undefined : 'button'}
         tabIndex={isRenaming ? undefined : 0}
-        className="group flex items-center gap-1 py-1 rounded-md hover:bg-[var(--abu-bg-muted)] transition-colors cursor-pointer"
+        className={`group flex items-center gap-1 py-1 rounded-md transition-colors cursor-pointer ${
+          isActive ? 'bg-[var(--abu-bg-hover)]' : 'hover:bg-[var(--abu-bg-hover)]'
+        }`}
         style={{ paddingLeft: rowIndent, paddingRight: BASE_PADDING_PX }}
         title={isRenaming ? undefined : entry.path}
         onClick={isRenaming ? undefined : handleActivate}
@@ -261,6 +268,7 @@ function TreeRow({
               errorsByPath={errorsByPath}
               toggleExpand={toggleExpand}
               openPreview={openPreview}
+              activePath={activePath}
               onContextMenu={onContextMenu}
               renamingPath={renamingPath}
               onRenameSubmit={onRenameSubmit}
@@ -286,6 +294,7 @@ function TreeRow({
 export default function WorkspaceFileTree() {
   const { t } = useI18n();
   const openPreview = usePreviewStore((s) => s.openPreview);
+  const previewFilePath = usePreviewStore((s) => s.previewFilePath);
   const {
     rootPath,
     rootEntries,
@@ -627,6 +636,7 @@ export default function WorkspaceFileTree() {
                 errorsByPath={errorsByPath}
                 toggleExpand={toggleExpand}
                 openPreview={openPreview}
+                activePath={previewFilePath}
                 onContextMenu={handleRowContextMenu}
                 renamingPath={renamingPath}
                 onRenameSubmit={handleRenameSubmit}

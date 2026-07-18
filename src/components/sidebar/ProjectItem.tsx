@@ -155,7 +155,9 @@ export default function ProjectItem({ project, conversations, expanded, onNewTas
                 className={cn(
                   'group/conv flex items-center gap-1.5 w-full pl-8 pr-2 py-1.5 rounded-lg text-minor transition-colors cursor-pointer',
                   isActive
-                    ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]'
+                    // Selected = --abu-bg-hover (same as hover); --abu-bg-active is
+                    // nearly identical to the sidebar canvas bg and reads as invisible.
+                    ? 'bg-[var(--abu-bg-hover)] text-[var(--abu-text-primary)]'
                     : 'text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)] hover:text-[var(--abu-text-primary)]'
                 )}
               >

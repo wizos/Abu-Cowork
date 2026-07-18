@@ -110,7 +110,7 @@ export default function TodoView() {
                 className={cn(
                   'px-3 py-1.5 rounded-md',
                   tab === k
-                    ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]'
+                    ? 'bg-[var(--abu-bg-hover)] text-[var(--abu-text-primary)]'
                     : 'text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]',
                 )}
               >

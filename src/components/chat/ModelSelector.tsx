@@ -287,7 +287,7 @@ export function ModelSelector({ open, onClose, anchorRef }: ModelSelectorProps) 
                         'w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-left',
                         'text-minor transition-colors',
                         isActive
-                          ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]'
+                          ? 'bg-[var(--abu-bg-hover)] text-[var(--abu-text-primary)]'
                           : 'text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)]'
                       )}
                     >

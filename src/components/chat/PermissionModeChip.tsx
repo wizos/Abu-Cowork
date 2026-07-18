@@ -103,7 +103,7 @@ export default function PermissionModeChip({ conversationId }: Props) {
                 className={cn(
                   'flex items-start gap-2.5 w-full text-left px-3 py-2.5 rounded-lg transition-colors',
                   mode === effectiveMode
-                    ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]'
+                    ? 'bg-[var(--abu-bg-hover)] text-[var(--abu-text-primary)]'
                     : 'text-[var(--abu-text-secondary)] hover:bg-[var(--abu-bg-hover)] hover:text-[var(--abu-text-primary)]'
                 )}
               >
