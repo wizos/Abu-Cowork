@@ -136,6 +136,18 @@ async function readSnapshotContent(dir: string, id: string): Promise<string | nu
   }
 }
 
+/** True when `content` byte-for-byte matches any existing snapshot of the file.
+ *  Cheap size prefilter first; only size-matching snapshots are read back. */
+async function contentExistsInHistory(dir: string, index: VersionIndex, content: string): Promise<boolean> {
+  const byteSize = new TextEncoder().encode(content).length;
+  for (const v of index.versions) {
+    if (v.byteSize !== byteSize) continue;
+    const snap = await readSnapshotContent(dir, v.id);
+    if (snap !== null && snap === content) return true;
+  }
+  return false;
+}
+
 // Per-history-dir lock so a baseline snapshot (on file load) and an autosave
 // snapshot firing in close succession can't race on the index.json
 // read-modify-write cycle (mirrors outputSnapshots.ts's withConvLock).
@@ -277,7 +289,16 @@ export async function revertToVersion(filePath: string, id: string): Promise<str
   try {
     if (await exists(filePath)) {
       const current = await readTextFile(filePath);
-      if (current !== content) {
+      const dir = await getHistoryDir(filePath);
+      const index = await loadIndex(dir, filePath);
+      // Dedupe against the *entire* history, not just the revert target —
+      // the current disk content may already match some other (e.g. older
+      // baseline) entry, in which case it's already recoverable and doesn't
+      // need a fresh pre-revert copy. Deliberately does not backfill
+      // REVERT_LABEL onto the matched entry: that entry has its own meaning
+      // (e.g. the baseline) and shouldn't be relabeled as a revert point.
+      const alreadyRecoverable = await contentExistsInHistory(dir, index, current);
+      if (!alreadyRecoverable) {
         await snapshotVersion(filePath, current, { source: 'manual', label: REVERT_LABEL });
       }
     }

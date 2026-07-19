@@ -273,7 +273,7 @@ describe('canvasVersions', () => {
       expect(await mod.listVersions(filePath)).toHaveLength(1);
     });
 
-    it('backfills REVERT_LABEL onto the deduped latest entry when disk equals latest snapshot (autosave-then-revert path)', async () => {
+    it('skips the pre-revert snapshot without relabeling when disk equals the latest snapshot (autosave-then-revert path)', async () => {
       await mod.snapshotVersion(filePath, 'A'); // seq 0
       await mod.snapshotVersion(filePath, 'B'); // autosave snapshot
       fs.files.set(filePath, 'B'); // autosave keeps disk in sync
@@ -282,12 +282,40 @@ describe('canvasVersions', () => {
       const oldId = versions1.find((v) => v.id.endsWith('-0'))!.id;
       await mod.revertToVersion(filePath, oldId);
 
+      // Disk content ('B') already matches the latest history entry, so the
+      // full-history dedup (contentExistsInHistory) skips the pre-revert
+      // snapshot entirely — no new entry, and the matched entry is NOT
+      // relabeled with REVERT_LABEL (it keeps its own identity/meta).
       const versions2 = await mod.listVersions(filePath);
-      expect(versions2).toHaveLength(2); // no new entry — backfilled instead
+      expect(versions2).toHaveLength(2);
       const latest = versions2[0];
-      expect(latest.label).toBe(mod.REVERT_LABEL);
-      expect(latest.source).toBe('manual');
+      expect(latest.label).toBeUndefined();
+      expect(latest.source).toBeUndefined();
       await expect(mod.readVersion(filePath, latest.id)).resolves.toBe('B');
+    });
+
+    it('does not create a duplicate entry when disk content matches a non-latest history entry (e.g. reverting to the baseline)', async () => {
+      // History: A (baseline, seq 0), B (latest). Disk currently holds A's
+      // content (e.g. the user already manually reverted to the baseline
+      // outside the app). Reverting to B must not snapshot "A" again — it's
+      // already recoverable from the baseline entry.
+      await mod.snapshotVersion(filePath, 'A'); // baseline
+      await mod.snapshotVersion(filePath, 'B');
+      fs.files.set(filePath, 'A');
+
+      const versionsBefore = await mod.listVersions(filePath); // most recent first: B, A
+      const baselineEntry = versionsBefore.find((v) => v.id.endsWith('-0'))!;
+      const bEntry = versionsBefore.find((v) => v.id !== baselineEntry.id)!;
+
+      const written = await mod.revertToVersion(filePath, bEntry.id);
+
+      expect(written).toBe('B');
+      expect(fs.files.get(filePath)).toBe('B');
+
+      const versionsAfter = await mod.listVersions(filePath);
+      expect(versionsAfter).toHaveLength(2); // no new entry created
+      const baselineAfter = versionsAfter.find((v) => v.id === baselineEntry.id)!;
+      expect(baselineAfter.label).toBeUndefined(); // not polluted with REVERT_LABEL
     });
 
     it('does not overwrite an existing label on dedupe hit', async () => {
