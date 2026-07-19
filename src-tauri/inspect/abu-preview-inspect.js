@@ -181,6 +181,15 @@
       'position:fixed;pointer-events:none;z-index:2147483646;box-sizing:border-box;' +
       'border:2px solid ' + BRAND_COLOR + ';background:transparent;display:none;';
 
+    // Tag badge for the *selected* element (e.g. `h1`, `div`), persistent while
+    // the selection is up — mirrors the hover badge so the selected block keeps
+    // its label even as the user hovers other elements (TRAE-style).
+    var selectedLabel = document.createElement('div');
+    selectedLabel.style.cssText =
+      'position:fixed;pointer-events:none;z-index:2147483646;display:none;white-space:nowrap;' +
+      'background:' + BRAND_COLOR + ';color:#fff;font:12px/1.4 -apple-system,BlinkMacSystemFont,sans-serif;' +
+      'padding:2px 6px;border-radius:3px;';
+
     // Skeleton only — `applyBarChrome`/`applyEditorChrome` set the full,
     // theme-driven cssText each time the bar is (re)shown.
     var bar = document.createElement('div');
@@ -190,6 +199,7 @@
     root.appendChild(hoverBox);
     root.appendChild(hoverLabel);
     root.appendChild(selectedBox);
+    root.appendChild(selectedLabel);
     root.appendChild(bar);
 
     // documentElement, not body: this script is injected right before
@@ -205,6 +215,7 @@
       hoverBox: hoverBox,
       hoverLabel: hoverLabel,
       selectedBox: selectedBox,
+      selectedLabel: selectedLabel,
       bar: bar
     };
 
@@ -615,6 +626,17 @@
     var rect = el.getBoundingClientRect();
     positionBoxToRect(d.selectedBox, rect);
     d.selectedBox.style.display = 'block';
+
+    // Persistent tag badge on the selected element (mirrors the hover badge).
+    d.selectedLabel.textContent = displayName(el);
+    var slTop = rect.top - 20;
+    if (slTop < 0) {
+      slTop = rect.top + 2;
+    }
+    d.selectedLabel.style.left = rect.left + 'px';
+    d.selectedLabel.style.top = slTop + 'px';
+    d.selectedLabel.style.display = 'block';
+
     showConfirmBar(el);
   }
 
@@ -624,6 +646,7 @@
     var d = state.dom;
     if (d) {
       d.selectedBox.style.display = 'none';
+      d.selectedLabel.style.display = 'none';
       d.bar.style.display = 'none';
     }
   }
@@ -635,11 +658,17 @@
   // ---------- Event handlers ----------
 
   function onMouseMove(e) {
-    if (state.mode !== 'hover') {
+    // Hover-highlight in both 'hover' and 'selected' modes — with a selection
+    // up, the user can still glide over other elements to pick a different one
+    // (the selected block keeps its own box + badge). Suspended only while the
+    // comment editor is open.
+    if (state.mode !== 'hover' && state.mode !== 'selected') {
       return;
     }
     var el = hitTest(e.clientX, e.clientY);
-    if (!el) {
+    if (!el || el === state.selectedEl) {
+      // Over nothing, or back over the already-selected element: no second
+      // (hover) box on top of the selected one.
       hideHover();
       state.hoverEl = null;
       return;
@@ -649,22 +678,23 @@
   }
 
   function onClick(e) {
-    if (state.mode !== 'hover') {
+    if (state.mode !== 'hover' && state.mode !== 'selected') {
       return;
     }
     var el = hitTest(e.clientX, e.clientY);
-    if (!el) {
+    if (!el || el === state.selectedEl) {
       return;
     }
     e.preventDefault();
     e.stopPropagation();
+    // Clicking a different element (re)selects it — the previous selection is
+    // dropped and the confirm bar re-anchors to the new one.
     selectElement(el);
   }
 
   function onMouseLeave() {
-    if (state.mode === 'hover') {
-      hideHover();
-    }
+    hideHover();
+    state.hoverEl = null;
   }
 
   function onKeyDown(e) {

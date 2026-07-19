@@ -722,7 +722,11 @@ export default function PreviewPanel({
             size="icon-xs"
             disabled={!iframeLoaded}
             onClick={toggleInspect}
-            className={cn(inspecting ? 'text-[var(--abu-clay)] bg-[var(--abu-clay-bg)]' : 'text-[var(--abu-text-tertiary)] hover:text-[var(--abu-clay)]')}
+            className={cn(
+              inspecting
+                ? 'text-[var(--abu-clay)] bg-[var(--abu-clay-bg)] hover:text-[var(--abu-clay)] hover:bg-[var(--abu-clay-bg)]'
+                : 'text-[var(--abu-text-tertiary)] hover:text-[var(--abu-clay)]',
+            )}
             title={t.panel.selectElement}
           >
             <SquareDashedMousePointer className="w-3.5 h-3.5" strokeWidth={1.5} />
