@@ -1523,8 +1523,6 @@ export interface TranslationDict {
     versionHistoryRevertFailedTitle: string;
     versionHistoryLoadFailed: string;
     versionSourceAi: string;
-    versionSourceManual: string;
-    versionSourceAuto: string;
     versionRevertPoint: string;
     versionHistoryBoundaryNote: string;
     // FilesSection

@@ -195,20 +195,11 @@ export function VersionHistoryMenu({ filePath, open, onClose, anchorRef, onRever
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="truncate tabular-nums">{formatVersionTime(v.ts)}</span>
-                    <span
-                      className={cn(
-                        'shrink-0 px-1 rounded text-caption',
-                        isAi
-                          ? 'bg-[var(--abu-info-bg)] text-[var(--abu-info)]'
-                          : 'bg-[var(--abu-bg-hover)] text-[var(--abu-text-muted)]'
-                      )}
-                    >
-                      {v.label === REVERT_LABEL
-                        ? t.panel.versionSourceAuto
-                        : isAi
-                          ? t.panel.versionSourceAi
-                          : t.panel.versionSourceManual}
-                    </span>
+                    {isAi && (
+                      <span className="shrink-0 px-1 rounded text-caption bg-[var(--abu-info-bg)] text-[var(--abu-info)]">
+                        {t.panel.versionSourceAi}
+                      </span>
+                    )}
                   </div>
                   {label && (
                     <div className="truncate text-caption text-[var(--abu-text-muted)]">{label}</div>
