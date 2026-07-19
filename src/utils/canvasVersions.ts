@@ -155,7 +155,7 @@ async function withDirLock<T>(dir: string, fn: () => Promise<T>): Promise<T> {
 export async function snapshotVersion(
   filePath: string,
   content: string,
-  meta?: { source?: 'ai' | 'manual'; label?: string }
+  meta?: Pick<VersionMeta, 'source' | 'label'>
 ): Promise<void> {
   const dir = await getHistoryDir(filePath);
 
@@ -172,7 +172,20 @@ export async function snapshotVersion(
     // read on every autosave of changed content.
     if (latest && latest.byteSize === byteSize) {
       const latestContent = await readSnapshotContent(dir, latest.id);
-      if (latestContent !== null && latestContent === content) return;
+      if (latestContent !== null && latestContent === content) {
+        // Dedupe hit: the state is already captured by `latest`. If the caller
+        // brought meta (e.g. the pre-revert REVERT_LABEL) and the existing
+        // entry is unlabeled, backfill it so the label isn't silently lost —
+        // this is the common autosave-then-revert path where disk content
+        // always equals the latest snapshot. An entry that already carries a
+        // label keeps it (never overwrite existing semantics).
+        if (meta && !latest.label && (meta.source || meta.label)) {
+          if (meta.source) latest.source = meta.source;
+          if (meta.label) latest.label = meta.label;
+          await saveIndex(dir, index);
+        }
+        return;
+      }
     }
 
     const ts = Date.now();

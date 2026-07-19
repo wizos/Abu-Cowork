@@ -264,6 +264,33 @@ describe('canvasVersions', () => {
       await mod.revertToVersion(filePath, versions[0].id);
       expect(await mod.listVersions(filePath)).toHaveLength(1);
     });
+
+    it('backfills REVERT_LABEL onto the deduped latest entry when disk equals latest snapshot (autosave-then-revert path)', async () => {
+      await mod.snapshotVersion(filePath, 'A'); // seq 0
+      await mod.snapshotVersion(filePath, 'B'); // autosave snapshot
+      fs.files.set(filePath, 'B'); // autosave keeps disk in sync
+
+      const versions1 = await mod.listVersions(filePath);
+      const oldId = versions1.find((v) => v.id.endsWith('-0'))!.id;
+      await mod.revertToVersion(filePath, oldId);
+
+      const versions2 = await mod.listVersions(filePath);
+      expect(versions2).toHaveLength(2); // no new entry — backfilled instead
+      const latest = versions2[0];
+      expect(latest.label).toBe(mod.REVERT_LABEL);
+      expect(latest.source).toBe('manual');
+      await expect(mod.readVersion(filePath, latest.id)).resolves.toBe('B');
+    });
+
+    it('does not overwrite an existing label on dedupe hit', async () => {
+      await mod.snapshotVersion(filePath, 'X', { source: 'ai', label: '用户消息' });
+      await mod.snapshotVersion(filePath, 'X', { source: 'manual', label: mod.REVERT_LABEL });
+
+      const versions = await mod.listVersions(filePath);
+      expect(versions).toHaveLength(1);
+      expect(versions[0].label).toBe('用户消息');
+      expect(versions[0].source).toBe('ai');
+    });
   });
 
   // Unused import guard: readDir is mocked (per spec) even though this module
