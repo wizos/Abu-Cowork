@@ -1,8 +1,12 @@
 # Release Notes Convention
 
-Release notes writing convention for Abu. Use alongside the Release Process section in `CLAUDE.md`.
+Release notes writing convention for Abu. Use alongside the Release Process section in `CLAUDE.md`. For the step-by-step release flow, follow the one-page [`RELEASE-CHECKLIST.md`](./RELEASE-CHECKLIST.md); this doc covers how to *write* the notes.
 
-> **Core principle**: Like commit messages, write bilingually — but **Chinese-first, English for emphasis** — don't translate every line. Patches use the minimal template; Minor+ uses the full template. Always explain "why" and include specific numbers.
+> **Core principle — two files, dual-maintained by language**: Each release gets its entry written in **both** changelogs, never mixed in one file:
+> - **`CHANGELOG.md` (English, canonical)** → the GitHub Release + `latest.json.notes` (English default for the Tauri updater and international users).
+> - **`CHANGELOG.zh-CN.md` (Chinese)** → `latest.json.notes_i18n["zh-CN"]`.
+>
+> CI extracts this version's section from each file into `latest.json.notes_i18n`; the **client (`checker.ts`) picks notes by the user's UI locale** and the website picks by page language. Same version and structure in both files, but one language each. Patches use the minimal template; Minor+ uses the full template. Always explain "why" and include specific numbers.
 
 ---
 
@@ -106,12 +110,13 @@ Extend the Minor template with:
 
 A subtitle makes the release list scannable. **Strongly recommended even for patches** (except pure chore/CI fixes).
 
-### 2. Bilingual Strategy
+### 2. Two Files, One Language Each
 
-- **Chinese-first**: The primary user base is Chinese-speaking; titles and bullet bodies should be in Chinese.
-- **English for emphasis**: Use conventional commit prefixes at the start of bullets (`feat(xxx):` / `fix(xxx):`); a short English phrase at the end can add punch ("— Why it matters").
-- **Don't translate every line**: It wastes space and reads like machine translation.
-- **English Summary**: Add only for minor+ releases with a confirmed international audience — 3–5 lines overview, no line-by-line correspondence.
+- **`CHANGELOG.md` — English only** (canonical). Drives the GitHub Release and `latest.json.notes`. Public / international / AI-crawler facing.
+- **`CHANGELOG.zh-CN.md` — Chinese only**. Drives `latest.json.notes_i18n["zh-CN"]`, shown in the in-app update dialog for zh-CN users and on the Chinese website.
+- **Same release, two files, never mixed.** Write the entry once in each language — don't append English tails to Chinese bullets or vice-versa. The `## vX.Y.Z · DATE` heading and section structure must match across both so CI extracts them consistently.
+- **CI routing** (`.github/workflows/release.yml`): the "Create GitHub Release" step reads `CHANGELOG.md`; the publish step's `latest.json` generator extracts this version's section from **both** files into `notes` (English) + `notes_i18n` (`en-US` + `zh-CN`). The client (`src/core/updates/checker.ts`) refetches `latest.json` and selects `notes_i18n[getLocale()]`, falling back to the English `notes`.
+- **History before v0.31.0** predates this split and lives only in `CHANGELOG.md` (bilingual); no need to backfill the Chinese file.
 
 ### 3. Explain "why", not just "what"
 
@@ -157,6 +162,9 @@ Consistent with the house voice style — use numbers when you have them:
 
 ## Checklist (run through before creating a release)
 
+- [ ] **Both changelogs written for this version**: `CHANGELOG.md` (English) and `CHANGELOG.zh-CN.md` (Chinese)?
+- [ ] **`npm run release:check` passes** (version consistency + both changelog sections in the right language)? CI also gates this in the `preflight` job, but run it locally first.
+- [ ] Tag pushed **on its own** (`git push origin vX.Y.Z`), not with `--tags`?
 - [ ] Does the title have a descriptive subtitle?
 - [ ] Does every bullet clearly state the user-facing impact?
 - [ ] Is there at least one specific number?
@@ -179,8 +187,11 @@ Correct order:
 # 1. Write release notes to a file (avoids shell escaping issues)
 vim /tmp/release-notes.md
 
-# 2. Push the tag (triggers CI to auto-create the empty release + run the build)
-git push origin main --tags
+# 2. Push main, then the tag ON ITS OWN (triggers CI: preflight → build → release)
+#    Do NOT use `git push origin main --tags`: pushing >3 tags at once makes
+#    GitHub skip the tag push events, so the Release workflow never fires.
+git push origin main
+git push origin vX.Y.Z
 
 # 3. Wait for CI to create the release (visible in release list is enough — no need to wait for assets)
 gh release list --limit 3

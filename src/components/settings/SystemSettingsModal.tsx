@@ -131,7 +131,9 @@ export default function SystemSettingsView() {
                       className={cn(
                         'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-body font-medium transition-colors text-left',
                         isActive
-                          ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]'
+                          // Selected uses --abu-bg-hover (same as hover) so it stays
+                          // clearly visible — --abu-bg-active is too close to the panel bg.
+                          ? 'bg-[var(--abu-bg-hover)] text-[var(--abu-text-primary)]'
                           : 'text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]'
                       )}
                     >

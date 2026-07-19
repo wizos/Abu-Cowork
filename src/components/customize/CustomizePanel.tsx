@@ -88,7 +88,10 @@ export default function CustomizePanel() {
                   className={cn(
                     'flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-md text-body font-medium transition-colors',
                     isActive
-                      ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]'
+                      // White pill on the tinted track (matches SubTabBar): the
+                      // track is bg-active/80, so a bg-active pill was the same
+                      // color and invisible.
+                      ? 'bg-[var(--abu-bg-base)] text-[var(--abu-text-primary)] shadow-sm'
                       : 'text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-secondary)]'
                   )}
                 >

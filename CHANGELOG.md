@@ -2,31 +2,51 @@
 
 All notable changes to Abu are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+> This file is the **English canonical** changelog — it drives the GitHub Release
+> and the English update notes. The Chinese counterpart is
+> [`CHANGELOG.zh-CN.md`](./CHANGELOG.zh-CN.md); keep both in sync per release (see
+> `RELEASING.md`). Entries before v0.31.0 predate this split and remain bilingual.
+
+## v0.32.0 · 2026-07-19
+
+### Added
+
+- **Select an element in the HTML preview → add to chat** — In the HTML preview panel, toggle "select element", hover to highlight any element on the page, and click to send it to the composer as a reference (with an optional comment as an instruction). The picker is injected server-side into the loopback-served preview and returns selections over an `origin`- and nonce-checked `postMessage` channel, so it runs only on your own local files. Hover badges, click-to-reselect, and the comment shortcut (⌘/Ctrl+J) match the document-selection toolbar.
+- **Localized update notes** — The in-app update dialog and the website's "What's new" now show release notes in your language (English or Chinese), driven from a single structured source per release.
+
+### Changed
+
+- **Local HTML opens in the preview panel** — The manually-opened browser tab's entry points are hidden; local HTML files are viewed — and now inspected — in the preview panel, where UTF-8 charset and the source toggle already live. The browser tab stays available programmatically for a future agent-browsing surface.
+
+### Fixed
+
+- **Markdown**: a single tilde `~` no longer renders as strikethrough — only `~~x~~` does.
+- **UI**: selected/active items are now visible on the recessed canvas; scrollbars stay hidden app-wide until you scroll; the update-download progress bar no longer animates its width oddly.
+- **Theme**: the Windows native title bar now follows the app's dark mode. Upgrading users are reset once to the default light theme on this update.
+
+**Full Changelog**: https://github.com/PM-Shawn/Abu-Cowork/compare/v0.31.0...v0.32.0
+
 ## v0.31.0 · 2026-07-18
 
 ### Added
 
-- **右栏多页签工作区**：右栏文件预览升级为多页签工作区 —— 多文件预览并存（keep-alive 隐藏不卸载）、真 PTY 终端（portable-pty 后端 + xterm.js 前端）、原生 webview 浏览器页签（任意站点，不受 iframe 的 X-Frame-Options 限制），并以「任务摘要」作为默认页签。Multi-tab workspace: multi-file preview + real PTY terminal + native-webview browser.
-- **主窗口卡片化改版**：卡片化视觉层次（card-on-canvas）、顶栏与 macOS 红绿灯对齐、工具箱与自动化收进主布局的卡片网格（固定尺寸横卡 + 自适应铺满 + 统一启用开关）。Panel visual-hierarchy redesign with an in-layout toolbox/automation card grid.
-- **会话全文搜索接入 FTS5**：侧栏会话搜索弹窗接入 SQLite FTS5，可按标题 + 正文跨历史会话检索。Conversation search modal wired to FTS5 (title + body).
-- **账户菜单 + 设置导航整理**：左下角三个按钮收进头像 popover（内联切主题/语言、接真实检查更新流），设置分组重组。Account-menu popover + regrouped settings navigation.
+- **Multi-tab right-panel workspace** — The file-preview panel becomes a multi-tab workspace: multiple files previewed side by side (kept alive while hidden), a real PTY terminal (portable-pty backend + xterm.js frontend), and a native-webview browser tab that loads any site without iframe X-Frame-Options limits — with a task-summary default tab.
+- **Card-on-canvas main-window redesign** — A card-based visual hierarchy, a top bar aligned to the macOS traffic lights, and the toolbox & automation folded into an in-layout card grid (fixed-size cards + auto-fill grid + a unified enable toggle).
+- **Conversation full-text search over FTS5** — The sidebar conversation-search modal is wired to SQLite FTS5, searching across history by title + body.
+- **Account menu + settings navigation** — The three bottom-sidebar buttons collapse into an avatar popover (inline theme/language switches, real check-for-update flow); settings are regrouped.
 
 ### Changed
 
-- **字号排版体系（8-token）**：全部字号迁移到 8 档 `--text-*` token（font-size + line-height + font-weight 三绑定），清零 px 硬编码与命名字号；阅读正文号定为 14px（对齐主流聊天客户端），标题字重封顶 600。Migrated all font sizes to an 8-token typography scale.
-- **语义色 + 链接色 tokenization**：链接与状态色收敛为 `--abu-{danger/warning/success/info}`（fg/solid/bg 三角色）+ 专用 `--abu-link`（品牌橙不复用 accent）；765 处裸 Tailwind 色阶转 token 并达 WCAG AA，`--abu-text-muted` 也提到 AA。Link + status colors tokenized to a semantic scale, all AA.
+- **8-token typography scale** — All font sizes migrate to an 8-step `--text-*` token scale (font-size + line-height + font-weight bound together); px hardcodes and named sizes are eliminated. Reading body is set to 14px and heading weight is capped at 600.
+- **Semantic + link color tokenization** — Link and status colors are consolidated into `--abu-{danger/warning/success/info}` (fg/solid/bg roles) plus a dedicated `--abu-link`; 765 raw Tailwind color usages are tokenized and brought to WCAG AA, and `--abu-text-muted` is raised to AA.
 
 ### Fixed
 
-- **消息列表底部锁定 + 搜索跳转**：虚拟化消息列表在打开/切换会话时正确锁定到底部；搜索命中跳转配淡出高亮。Virtualized list bottom-lock on open/switch + search-hit jump.
-- **`cn()` 吞字号 token**：修复 tailwind-merge 把 `text-[var(--)]` 误判为 font-size 从而吞掉字号 token 的问题（extendTailwindMerge 根治，app 级）。Stop tailwind-merge from silently dropping font-size tokens in `cn()`.
-- **工作区页签交互**：页签拖拽真正重排 + 中性插入线、关闭（×）不再误触发拖拽、PDF worker 经 Vite `?url` 加载并 memoize file 对象（修「object can not be cloned」）、恢复面板收起按钮。Workspace tab drag / close / PDF-preview fixes.
-- **PTY 子进程回收**：终端被杀后回收子进程，spawn 竞态下清理孤儿进程。Reap killed pty child + orphan on spawn race.
-- **macOS 顶栏可点性**：页签条上方的 + 按钮曾落在 macOS 拖拽区导致不可点，已修。Tab-strip + button no longer sits under the macOS drag region.
-
-### English Summary
-
-v0.31.0 is a UI-focused feature release. Highlights: a multi-tab right-panel workspace (multi-file preview + a real PTY terminal via portable-pty/xterm.js + a native-webview browser tab that loads any site without iframe X-Frame limits, task-summary as the default tab); a card-on-canvas panel redesign folding the toolbox and automation into an in-layout card grid; conversation search wired to SQLite FTS5; and an account-menu popover with regrouped settings. It also lands two systemic design-token migrations — an 8-token typography scale (reading body set to 14px, heading weight capped at 600) and a semantic color/link tokenization covering 765 raw Tailwind color usages, all brought to WCAG AA — plus fixes to message-list bottom-lock, a tailwind-merge bug that dropped font-size tokens, workspace tab drag/close and PDF preview, PTY child-process cleanup, and a macOS drag-region click issue.
+- **Message-list bottom-lock + search jump** — The virtualized message list now locks to the bottom on open/switch; search-hit navigation lands with a fading highlight.
+- **`cn()` dropping font-size tokens** — Fixed tailwind-merge misclassifying `text-[var(--)]` as a font-size and silently dropping the token (root-fixed via extendTailwindMerge, app-wide).
+- **Workspace tab interactions** — Tab drag actually reorders (neutral drop indicator), the close (×) no longer starts a drag, the PDF worker loads via Vite `?url` with a memoized file object (fixes "object can not be cloned"), and the panel-collapse button is restored.
+- **PTY child-process cleanup** — Reap the child when a terminal is killed; clean up orphans on a spawn race.
+- **macOS top-bar clickability** — The + button above the tab strip no longer sits under the macOS drag region.
 
 **Full Changelog**: https://github.com/PM-Shawn/Abu-Cowork/compare/v0.30.0...v0.31.0
 

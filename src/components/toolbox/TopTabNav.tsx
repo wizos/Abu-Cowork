@@ -53,7 +53,7 @@ export default function TopTabNav<T extends string>({
               className={cn(
                 'flex items-center gap-2 px-3 py-1.5 rounded-lg text-body font-medium transition-colors shrink-0',
                 isActive
-                  ? 'bg-[var(--abu-bg-active)] text-[var(--abu-text-primary)]'
+                  ? 'bg-[var(--abu-bg-hover)] text-[var(--abu-text-primary)]'
                   : 'text-[var(--abu-text-tertiary)] hover:text-[var(--abu-text-primary)] hover:bg-[var(--abu-bg-hover)]'
               )}
             >
