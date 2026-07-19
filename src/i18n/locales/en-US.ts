@@ -1391,11 +1391,11 @@ const enUS: TranslationDict = {
     versionHistoryRevert: 'Revert to this version',
     versionHistoryReverted: 'Reverted to this version',
     versionHistoryRevertFailedTitle: 'Revert failed',
+    versionHistoryLoadFailed: 'Failed to load version history',
     versionSourceAi: 'Before AI edit',
     versionSourceManual: 'Manual',
     versionRevertPoint: 'Before revert',
     versionHistoryBoundaryNote: 'Only edits made in the editor or by AI tools are recorded; changes from shell commands or scripts are not captured.',
-    versionHistoryLoadFailed: 'Failed to load version history',
     // FilesSection
     operationRead: 'Read',
     operationModify: 'Modify',

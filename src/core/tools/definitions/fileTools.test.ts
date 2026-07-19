@@ -403,4 +403,14 @@ describe('AI edit pre-snapshot hook', () => {
     expect(result).toContain('Error: old_content not found');
     expect(snapshotBeforeAiEditMock).not.toHaveBeenCalled();
   });
+
+  it('edit_file does not snapshot when the file does not exist', async () => {
+    vi.mocked(exists).mockResolvedValue(false);
+    const result = await editFileTool.execute(
+      { path: '/w/missing.txt', old_content: 'a', new_content: 'b' },
+      { loopId: 'loop1' }
+    );
+    expect(result).toContain('Error: File not found');
+    expect(snapshotBeforeAiEditMock).not.toHaveBeenCalled();
+  });
 });
