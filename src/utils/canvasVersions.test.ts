@@ -236,6 +236,34 @@ describe('canvasVersions', () => {
       });
       expect(fs.files.get(filePath)).toBe('original content');
     });
+
+    it('snapshots the current on-disk state (REVERT_LABEL) before overwriting', async () => {
+      await mod.snapshotVersion(filePath, 'old version');
+      const versions1 = await mod.listVersions(filePath);
+      const oldId = versions1[0].id;
+
+      // Disk has newer, un-snapshotted content at revert time.
+      fs.files.set(filePath, 'current disk content');
+
+      const written = await mod.revertToVersion(filePath, oldId);
+      expect(written).toBe('old version');
+      expect(fs.files.get(filePath)).toBe('old version');
+
+      const versions2 = await mod.listVersions(filePath); // most recent first
+      expect(versions2).toHaveLength(2);
+      expect(versions2[0].label).toBe(mod.REVERT_LABEL);
+      expect(versions2[0].source).toBe('manual');
+      await expect(mod.readVersion(filePath, versions2[0].id)).resolves.toBe('current disk content');
+    });
+
+    it('does not create a revert-point snapshot when disk already equals the target version', async () => {
+      await mod.snapshotVersion(filePath, 'same');
+      const versions = await mod.listVersions(filePath);
+      fs.files.set(filePath, 'same');
+
+      await mod.revertToVersion(filePath, versions[0].id);
+      expect(await mod.listVersions(filePath)).toHaveLength(1);
+    });
   });
 
   // Unused import guard: readDir is mocked (per spec) even though this module

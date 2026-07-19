@@ -242,6 +242,19 @@ export async function readVersion(filePath: string, id: string): Promise<string>
  */
 export async function revertToVersion(filePath: string, id: string): Promise<string> {
   const content = await readVersion(filePath, id);
+  // Safety snapshot of the current on-disk state before overwriting, so a
+  // revert is itself revertable (undo-the-undo without a redo stack).
+  // Best-effort: a failure here must not block the revert the user asked for.
+  try {
+    if (await exists(filePath)) {
+      const current = await readTextFile(filePath);
+      if (current !== content) {
+        await snapshotVersion(filePath, current, { source: 'manual', label: REVERT_LABEL });
+      }
+    }
+  } catch (err) {
+    console.warn('[canvasVersions] pre-revert snapshot failed (continuing with revert)', filePath, err);
+  }
   await atomicWrite(filePath, content);
   return content;
 }
