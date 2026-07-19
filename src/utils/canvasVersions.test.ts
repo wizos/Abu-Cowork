@@ -145,6 +145,14 @@ describe('canvasVersions', () => {
       expect(remainingSnapFiles).toHaveLength(31);
     });
 
+    it('skips writing a snapshot when content exceeds MAX_SNAPSHOT_BYTES (oversize content is skipped, not truncated)', async () => {
+      const oversize = 'a'.repeat(mod.__testing.MAX_SNAPSHOT_BYTES + 1);
+      await mod.snapshotVersion(filePath, oversize);
+
+      const versions = await mod.listVersions(filePath);
+      expect(versions).toEqual([]);
+    });
+
     it('persists source/label meta when provided and omits them when absent', async () => {
       await mod.snapshotVersion(filePath, 'manual content');
       await mod.snapshotVersion(filePath, 'ai content', { source: 'ai', label: '把标题改成蓝色' });

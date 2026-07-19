@@ -26,6 +26,13 @@ import { atomicWrite } from '@/utils/atomicFs';
 /** Max snapshots retained per file — oldest are evicted beyond this. */
 const MAX_VERSIONS_PER_FILE = 30;
 
+/** Max bytes for a single snapshot's content — guards disk usage & memory;
+ *  oversize content is skipped, not truncated. Centralized here (rather than
+ *  only in the AI pre-edit path) so every write path into version history —
+ *  manual autosave, AI pre-edit, and the pre-revert safety snapshot — is
+ *  covered by the same cap. */
+const MAX_SNAPSHOT_BYTES = 5 * 1024 * 1024;
+
 export interface VersionMeta {
   id: string;
   ts: number;
@@ -166,6 +173,11 @@ export async function snapshotVersion(
     const latest = index.versions[index.versions.length - 1];
     const byteSize = new TextEncoder().encode(content).length;
 
+    if (byteSize > MAX_SNAPSHOT_BYTES) {
+      console.warn('[canvasVersions] skip oversize snapshot', filePath, byteSize);
+      return;
+    }
+
     // Dedupe against the most recent snapshot. Compare the cheap byteSize
     // first (already tracked in the index) and only read the full previous
     // .snap back from disk when the sizes actually match — avoids a full-file
@@ -277,4 +289,5 @@ export const __testing = {
   sha256Hex16,
   normalizePath,
   MAX_VERSIONS_PER_FILE,
+  MAX_SNAPSHOT_BYTES,
 };

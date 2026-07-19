@@ -16,8 +16,12 @@ import { normalizeSeparators } from '@/utils/pathUtils';
 import { getMessageText } from '@/core/context/contextUtils';
 import { useChatStore } from '@/stores/chatStore';
 
-/** Files larger than this are not snapshotted — guards disk usage. Preview-
- *  editable files are far smaller; competitors have no cap at all. */
+/** Files larger than this are not read into memory in the stat-then-read
+ *  branch below — guards against loading a huge file just to snapshot it.
+ *  Same value as canvasVersions.ts's own cap (which is the actual, centralized
+ *  enforcement point for every write path into version history); kept here
+ *  too so the stat branch can skip the disk read entirely instead of reading
+ *  the file only to have the store reject it. */
 const MAX_SNAPSHOT_BYTES = 5 * 1024 * 1024;
 /** Max label length persisted into the version index. */
 const MAX_LABEL_CHARS = 60;
@@ -90,10 +94,12 @@ export async function snapshotBeforeAiEdit(
         return;
       }
       content = await readTextFile(path);
-    } else if (new TextEncoder().encode(content).length > MAX_SNAPSHOT_BYTES) {
-      console.warn('[aiEditSnapshots] skip oversize content', path);
-      return;
     }
+    // Note: no oversize check for the knownContent branch here — the caller
+    // already has the content in memory (it just read/produced it), and
+    // snapshotVersion() now enforces the same MAX_SNAPSHOT_BYTES cap itself,
+    // so every path into version history is covered by one authoritative
+    // check instead of duplicating it here.
 
     await snapshotVersion(path, content, {
       source: 'ai',

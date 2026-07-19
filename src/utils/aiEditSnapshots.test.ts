@@ -71,11 +71,14 @@ describe('snapshotBeforeAiEdit', () => {
     expect(snapshotVersionMock).toHaveBeenCalledWith('/w/a.html', 'pre-read', expect.anything());
   });
 
-  it('skips oversize knownContent measured in real UTF-8 bytes (CJK undercount guard)', async () => {
-    // 2M CJK chars ≈ 6MB UTF-8 (> 5MB cap) but .length is only 2M (< cap).
+  it('passes oversize knownContent straight through to snapshotVersion (cap enforcement moved to the store)', async () => {
+    // 2M CJK chars ≈ 6MB UTF-8 (> 5MB cap) but .length is only 2M (< cap) —
+    // this module no longer re-checks size for knownContent; snapshotVersion()
+    // in canvasVersions.ts is now the single place that enforces the cap.
     const cjk = '中'.repeat(2 * 1024 * 1024);
     await mod.snapshotBeforeAiEdit('/w/cjk.html', { loopId: 'loop1', knownContent: cjk });
-    expect(snapshotVersionMock).not.toHaveBeenCalled();
+    expect(snapshotVersionMock).toHaveBeenCalledTimes(1);
+    expect(snapshotVersionMock).toHaveBeenCalledWith('/w/cjk.html', cjk, expect.anything());
   });
 
   it('labels the snapshot with the latest non-system user message, truncated to 60 chars', async () => {
