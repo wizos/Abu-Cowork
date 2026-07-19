@@ -22,6 +22,7 @@ All notable changes to Abu are documented here. Format based on [Keep a Changelo
 
 - **Markdown**: a single tilde `~` no longer renders as strikethrough — only `~~x~~` does.
 - **UI**: selected/active items are now visible on the recessed canvas; scrollbars stay hidden app-wide until you scroll; the update-download progress bar no longer animates its width oddly.
+- **Theme**: the Windows native title bar now follows the app's dark mode. Upgrading users are reset once to the default light theme on this update.
 
 **Full Changelog**: https://github.com/PM-Shawn/Abu-Cowork/compare/v0.31.0...v0.32.0
 
